@@ -1,0 +1,1185 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Webhook Integration</title>
+    <style>
+        :root {
+            --background: 0 0% 100%;
+            --foreground: 222.2 84% 4.9%;
+            --card: 0 0% 100%;
+            --card-foreground: 222.2 84% 4.9%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 210 40% 96%;
+            --secondary-foreground: 222.2 84% 4.9%;
+            --muted: 210 40% 96%;
+            --muted-foreground: 215.4 16.3% 46.9%;
+            --accent: 210 40% 96%;
+            --accent-foreground: 222.2 84% 4.9%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 214.3 31.8% 91.4%;
+            --input: 214.3 31.8% 91.4%;
+            --ring: 221.2 83.2% 53.3%;
+            --radius: 0.5rem;
+        }
+
+        * {
+            border-radius: var(--radius);
+        }
+
+        body {
+            background-color: hsl(var(--background));
+            color: hsl(var(--foreground));
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+
+        .login-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+            z-index: 9999;
+        }
+
+        .login-container.hidden {
+            display: none;
+        }
+
+        .login-card {
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .login-card h1 {
+            color: hsl(var(--foreground));
+            margin-bottom: 1rem;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .login-card p {
+            color: hsl(var(--muted-foreground));
+            text-align: center;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
+        }
+
+        .login-form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .login-form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: hsl(var(--foreground));
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .login-form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid hsl(var(--input));
+            border-radius: var(--radius);
+            font-size: 1rem;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+
+        .login-form-group input:focus {
+            outline: none;
+            border-color: hsl(var(--ring));
+            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 0.75rem;
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .login-btn:hover {
+            background: hsl(var(--primary) / 0.9);
+        }
+
+        .login-alert {
+            display: none;
+            padding: 0.75rem;
+            background: hsl(var(--destructive) / 0.1);
+            color: hsl(var(--destructive));
+            border: 1px solid hsl(var(--destructive) / 0.2);
+            border-radius: var(--radius);
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .login-alert.show {
+            display: block;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: hsl(var(--foreground));
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            margin: 0;
+            flex: 1;
+        }
+
+        .header-actions {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+
+        .logout-btn {
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+            border: 1px solid hsl(var(--border));
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.875rem;
+        }
+
+        .logout-btn:hover {
+            background: hsl(var(--accent));
+        }
+
+        .content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .card {
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .card h2 {
+            color: hsl(var(--foreground));
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid hsl(var(--primary));
+            padding-bottom: 0.5rem;
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: hsl(var(--foreground));
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        input[type="password"],
+        textarea,
+        select {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid hsl(var(--input));
+            border-radius: var(--radius);
+            font-size: 1rem;
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="password"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: hsl(var(--ring));
+            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 6rem;
+            font-family: 'Courier New', monospace;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        input[type="checkbox"] {
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
+        }
+
+        button {
+            flex: 1;
+            padding: 0.75rem;
+            border: none;
+            border-radius: var(--radius);
+            font-size: 1rem;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+
+        .btn-primary:hover {
+            background: hsl(var(--primary) / 0.9);
+        }
+
+        .btn-secondary {
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
+        }
+
+        .btn-secondary:hover {
+            background: hsl(var(--accent));
+        }
+
+        .btn-danger {
+            background: hsl(var(--destructive));
+            color: hsl(var(--destructive-foreground));
+        }
+
+        .btn-danger:hover {
+            background: hsl(var(--destructive) / 0.9);
+        }
+
+        .btn-test {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+        }
+
+        .btn-test:hover {
+            background: hsl(var(--primary) / 0.9);
+        }
+
+        .btn-small {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .rules-list {
+            max-height: 37.5rem;
+            overflow-y: auto;
+        }
+
+        .rule-item {
+            background: hsl(var(--muted));
+            border-left: 4px solid hsl(var(--primary));
+            padding: 1rem;
+            margin-bottom: 1rem;
+            border-radius: var(--radius);
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .rule-item.disabled {
+            opacity: 0.6;
+            border-left-color: hsl(var(--muted-foreground));
+        }
+
+        .rule-content {
+            flex: 1;
+        }
+
+        .rule-name {
+            font-weight: 600;
+            color: hsl(var(--foreground));
+            margin-bottom: 0.5rem;
+        }
+
+        .rule-condition {
+            background: hsl(var(--background));
+            padding: 0.625rem;
+            border-radius: calc(var(--radius) - 2px);
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            color: hsl(var(--muted-foreground));
+            margin-bottom: 0.5rem;
+            word-break: break-word;
+        }
+
+        .rule-channel {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+        }
+
+        .rule-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 100px;
+        }
+
+        .rule-status {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            font-size: 0.85em;
+        }
+
+        .status-badge {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #27ae60;
+        }
+
+        .status-badge.disabled {
+            background: #999;
+        }
+
+        .alert {
+            padding: 1rem;
+            border-radius: calc(var(--radius) - 2px);
+            margin-bottom: 1rem;
+            display: none;
+            border: 1px solid hsl(var(--border));
+        }
+
+        .alert.show {
+            display: block;
+        }
+
+        .alert-success {
+            background: hsl(var(--muted));
+            color: hsl(var(--muted-foreground));
+        }
+
+        .alert-error {
+            background: hsl(var(--destructive) / 0.1);
+            color: hsl(var(--destructive));
+        }
+
+        .alert-info {
+            background: hsl(var(--accent));
+            color: hsl(var(--accent-foreground));
+        }
+
+        .instructions {
+            background: hsl(var(--muted));
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: hsl(var(--shadow) / 0.1) 0px 4px 6px -1px, hsl(var(--shadow) / 0.1) 0px 2px 4px -2px;
+            color: hsl(var(--foreground));
+        }
+
+        .instructions h3 {
+            color: hsl(var(--primary));
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .instructions h3:first-child {
+            margin-top: 0;
+        }
+
+        .instructions code {
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .instructions pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .instructions ul,
+        .instructions ol {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+
+        .instructions li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+
+        .webhook-url {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            word-break: break-all;
+            font-family: 'Courier New', monospace;
+            margin-top: 10px;
+        }
+
+        .test-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+
+        .test-result {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
+        }
+
+        .bot-token-section {
+            background: #f0f9ff;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+
+        .bot-token-status {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .token-status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: white;
+            border-radius: 5px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .token-status-badge.set {
+            color: #27ae60;
+        }
+
+        .token-status-badge.not-set {
+            color: #e74c3c;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .token-status-badge.set .status-dot {
+            background: #27ae60;
+        }
+
+        .token-status-badge.not-set .status-dot {
+            background: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            header h1 {
+                font-size: 2em;
+            }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <!-- Login Screen -->
+    <div class="login-container" id="loginContainer">
+        <div class="login-card">
+            <h1>🔐 Вход</h1>
+            <p>Telegram Webhook Integration</p>
+
+            <div id="loginAlert" class="login-alert"></div>
+
+            <form id="loginForm">
+                <div class="login-form-group">
+                    <label for="username">Логин</label>
+                    <input type="text" id="username" placeholder="vadmin" required>
+                </div>
+
+                <div class="login-form-group">
+                    <label for="password">Пароль</label>
+                    <input type="password" id="password" placeholder="••••••" required>
+                </div>
+
+                <button type="submit" class="login-btn">Войти</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Application -->
+    <div class="main-app" id="mainApp" style="display: none;">
+        <div class="container">
+            <header>
+                <h1>📱 Telegram Webhook Integration</h1>
+                <div class="header-actions">
+                    <button class="logout-btn" onclick="logout()">Выход</button>
+                </div>
+            </header>
+
+            <div class="content">
+                <!-- Bot Token and Rules Form -->
+                <div class="card">
+                    <h2>⚙️ Конфигурация</h2>
+                    
+                    <div class="bot-token-section">
+                        <div class="bot-token-status">
+                            <label>Токен Telegram бота</label>
+                            <span id="tokenStatusBadge" class="token-status-badge not-set">
+                                <span class="status-dot"></span>
+                                <span id="tokenStatusText">Не установлен</span>
+                            </span>
+                        </div>
+                        <div class="form-group">
+                            <input type="text" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Получите от @BotFather в Telegram</small>
+                        </div>
+                        <button class="btn-primary" onclick="saveBotToken()">Сохранить токен</button>
+                    </div>
+
+                    <div class="test-send-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid hsl(var(--border));">
+                        <h3>🧪 Тест отправки</h3>
+                        <div class="form-group">
+                            <label for="testChatId">Chat ID</label>
+                            <input type="text" id="testChatId" placeholder="-1001234567890">
+                        </div>
+                        <div class="form-group">
+                            <label for="testMessage">Сообщение</label>
+                            <input type="text" id="testMessage" placeholder="Тестовое сообщение">
+                        </div>
+                        <button class="btn-secondary" onclick="testSend()">Отправить тест</button>
+                        <div id="testResult" style="margin-top: 0.5rem;"></div>
+                    </div>
+
+                    <h2>Создать правило</h2>
+                    
+                    <div id="addAlert" class="alert"></div>
+
+                    <form id="ruleForm">
+                        <div class="form-group">
+                            <label for="ruleName">Название правила</label>
+                            <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="condition">Условие (JavaScript выражение)</label>
+                            <textarea id="condition" placeholder="Например: payload.team_id === 14" required></textarea>
+                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Доступна переменная <code>payload</code> с данными вебхука</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="chatId">ID Telegram чата</label>
+                            <input type="text" id="chatId" placeholder="Например: -1001234567890" required>
+                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Для группы/канала используйте отрицательное число</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="botToken">Токен Telegram бота (опционально)</label>
+                            <input type="text" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Если не указано, используется общий токен</small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="messageTemplate">Шаблон сообщения (опционально)</label>
+                            <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
+                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Используйте <code>${'{payload}'}</code> для вставки данных</small>
+                        </div>
+
+                        <div class="form-group checkbox-group">
+                            <input type="checkbox" id="enabled" checked>
+                            <label for="enabled" style="margin: 0;">Включено</label>
+                        </div>
+
+                        <div class="button-group">
+                            <button type="submit" class="btn-primary">Сохранить правило</button>
+                            <button type="reset" class="btn-secondary">Очистить</button>
+                        </div>
+                    </form>
+
+                    <div class="test-section">
+                        <h3 style="margin-top: 0; color: #333;">Тест условия</h3>
+                        <div class="form-group">
+                            <label for="testCondition">Условие</label>
+                            <textarea id="testCondition" placeholder="payload.team_id === 14"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="testPayload">Тестовый payload (JSON)</label>
+                            <textarea id="testPayload" placeholder='{"team_id": 14, "name": "Test"}'></textarea>
+                        </div>
+                        <button class="btn-test" onclick="testCondition()">Протестировать</button>
+                        <div id="testResult" class="test-result" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <!-- Rules List -->
+                <div class="card">
+                    <h2>Активные правила</h2>
+                    
+                    <div id="rulesAlert" class="alert"></div>
+
+                    <div id="rulesList" class="rules-list">
+                        <p style="color: #999; text-align: center; padding: 40px 20px;">Загрузка правил...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Webhook History -->
+            <div class="instructions">
+                <h3>📊 История вебхуков</h3>
+                <div style="margin-bottom: 20px;">
+                    <button class="btn-primary" onclick="loadWebhookLogs()" style="margin-right: 10px;">Обновить</button>
+                    <button class="btn-danger" onclick="clearWebhookLogs()">Очистить</button>
+                </div>
+                <div id="logsContainer" style="background: hsl(var(--muted)); border-radius: var(--radius); padding: 1rem; max-height: 25rem; overflow-y: auto;">
+                    <p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="instructions">
+                <h3>🚀 Быстрый старт</h3>
+                <ol>
+                    <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
+                    <li>Введите токен в поле "Токен Telegram бота" и нажмите "Сохранить токен"</li>
+                    <li>Создайте правило маршрутизации выше</li>
+                </ol>
+
+                <h3>📝 Примеры условий</h3>
+                <ul>
+                    <li><code>payload.team_id === 14</code> - проверка ID команды</li>
+                    <li><code>payload.status === 'error'</code> - проверка статуса</li>
+                    <li><code>payload.priority > 5</code> - проверка приоритета</li>
+                    <li><code>payload.user.role === 'admin'</code> - проверка вложенного свойства</li>
+                    <li><code>payload.tags.includes('urgent')</code> - проверка массива</li>
+                    <li><code>payload.timestamp > Date.now() - 3600000</code> - проверка времени</li>
+                </ul>
+
+                <h3>🔗 Webhook URL</h3>
+                <p>Отправляйте POST запросы на этот адрес:</p>
+                <div class="webhook-url" id="webhookUrl">http://localhost:3000/webhook</div>
+
+                <h3>📋 Пример запроса</h3>
+                <pre>curl -X POST http://localhost:3000/webhook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "team_id": 14,
+    "status": "success",
+    "message": "Deployment completed"
+  }'</pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let editingRuleId = null;
+        let authToken = localStorage.getItem('authToken');
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuthStatus();
+            document.getElementById('loginForm').addEventListener('submit', handleLogin);
+            document.getElementById('ruleForm').addEventListener('submit', saveRule);
+        });
+
+        async function checkAuthStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/auth-status`, {
+                    headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
+                });
+                const data = await response.json();
+
+                if (data.authenticated) {
+                    showMainApp();
+                } else {
+                    showLoginScreen();
+                }
+            } catch (error) {
+                showLoginScreen();
+            }
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.token;
+                    localStorage.setItem('authToken', authToken);
+                    showMainApp();
+                } else {
+                    showLoginAlert('Неверный логин или пароль', 'error');
+                    document.getElementById('password').value = '';
+                }
+            } catch (error) {
+                showLoginAlert('Ошибка входа: ' + error.message, 'error');
+            }
+        }
+
+        function showLoginScreen() {
+            document.getElementById('loginContainer').classList.remove('hidden');
+            document.getElementById('mainApp').style.display = 'none';
+        }
+
+        function showMainApp() {
+            document.getElementById('loginContainer').classList.add('hidden');
+            document.getElementById('mainApp').style.display = 'block';
+            updateWebhookUrl();
+            loadBotTokenStatus();
+            loadRules();
+            loadWebhookLogs();
+        }
+
+        function showLoginAlert(message, type) {
+            const alert = document.getElementById('loginAlert');
+            alert.textContent = message;
+            alert.className = `login-alert show`;
+        }
+
+        async function logout() {
+            try {
+                await fetch(`${API_BASE}/logout`, { 
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                localStorage.removeItem('authToken');
+                authToken = null;
+                showLoginScreen();
+                document.getElementById('loginForm').reset();
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
+
+        function getHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+        }
+
+        async function loadBotTokenStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/bot-token`, {
+                    headers: getHeaders()
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    document.getElementById('botToken').value = data.botToken;
+
+                    const badge = document.getElementById('tokenStatusBadge');
+                    const text = document.getElementById('tokenStatusText');
+
+                    if (data.isSet) {
+                        badge.className = 'token-status-badge set';
+                        text.textContent = 'Установлен';
+                    } else {
+                        badge.className = 'token-status-badge not-set';
+                        text.textContent = 'Не установлен';
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading bot token status:', error);
+            }
+        }
+
+        async function saveBotToken() {
+            const token = document.getElementById('botToken').value;
+
+            if (!token) {
+                showAlert('addAlert', 'Введите токен бота', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/bot-token`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ botToken: token })
+                });
+
+                if (response.ok) {
+                    showAlert('addAlert', 'Токен сохранен', 'success');
+                    loadBotTokenStatus();
+                } else {
+                    const error = await response.json();
+                    showAlert('addAlert', 'Ошибка: ' + error.error, 'error');
+                }
+            } catch (error) {
+                showAlert('addAlert', 'Ошибка при сохранении: ' + error.message, 'error');
+            }
+        }
+
+        async function testSend() {
+            const chatId = document.getElementById('testChatId').value;
+            const message = document.getElementById('testMessage').value;
+
+            if (!chatId || !message) {
+                document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--destructive));">Введите Chat ID и сообщение</span>';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/test-send`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ chatId, message })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--primary));">Сообщение отправлено успешно!</span>';
+                } else {
+                    document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--destructive));">Ошибка: ' + JSON.stringify(result.error) + '</span>';
+                }
+            } catch (error) {
+                document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--destructive));">Ошибка: ' + error.message + '</span>';
+            }
+        }
+
+        function updateWebhookUrl() {
+            const url = `${window.location.origin}/webhook`;
+            document.getElementById('webhookUrl').textContent = url;
+        }
+
+        async function loadRules() {
+            try {
+                const response = await fetch(`${API_BASE}/rules`, {
+                    headers: getHeaders()
+                });
+                const rules = await response.json();
+                displayRules(rules);
+            } catch (error) {
+                showAlert('rulesAlert', 'Ошибка при загрузке правил: ' + error.message, 'error');
+            }
+        }
+
+        function displayRules(rules) {
+            const container = document.getElementById('rulesList');
+            
+            if (rules.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Нет созданных правил</p>';
+                return;
+            }
+
+            container.innerHTML = rules.map(rule => `
+                <div class="rule-item ${rule.enabled ? '' : 'disabled'}">
+                    <div class="rule-content">
+                        <div class="rule-name">${escapeHtml(rule.name)}</div>
+                        <div class="rule-condition">${escapeHtml(rule.condition)}</div>
+                        <div class="rule-channel">📍 Канал: <code>${escapeHtml(rule.chatId)}</code></div>
+                        ${rule.botToken ? `<div class="rule-bot">🤖 Бот: <code>${escapeHtml(rule.botToken.substring(0, 10))}...</code></div>` : ''}
+                        <div class="rule-status">
+                            <span class="status-badge ${rule.enabled ? '' : 'disabled'}"></span>
+                            ${rule.enabled ? 'Включено' : 'Отключено'}
+                        </div>
+                    </div>
+                    <div class="rule-actions">
+                        <button class="btn-primary btn-small" onclick="editRule(${rule.id})">Редактировать</button>
+                        <button class="btn-danger btn-small" onclick="deleteRule(${rule.id})">Удалить</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function saveRule(e) {
+            e.preventDefault();
+
+            const ruleName = document.getElementById('ruleName').value;
+            const condition = document.getElementById('condition').value;
+            const chatId = document.getElementById('chatId').value;
+            const messageTemplate = document.getElementById('messageTemplate').value;
+            const enabled = document.getElementById('enabled').checked;
+
+            if (!ruleName || !condition || !chatId) {
+                showAlert('addAlert', 'Заполните все обязательные поля', 'error');
+                return;
+            }
+
+            try {
+                const method = editingRuleId ? 'PUT' : 'POST';
+                const url = editingRuleId 
+                    ? `${API_BASE}/rules/${editingRuleId}`
+                    : `${API_BASE}/rules`;
+
+                const response = await fetch(url, {
+                    method: method,
+                    headers: getHeaders(),
+                    body: JSON.stringify({
+                        name: ruleName,
+                        condition: condition,
+                        chatId: chatId,
+                        botToken: botToken || '',
+                        messageTemplate: messageTemplate || null,
+                        enabled: enabled
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to save rule');
+
+                showAlert('addAlert', editingRuleId ? 'Правило обновлено' : 'Правило создано', 'success');
+                
+                document.getElementById('ruleForm').reset();
+                editingRuleId = null;
+                document.querySelector('.card h2:nth-of-type(2)').textContent = 'Создать правило';
+                
+                await loadRules();
+            } catch (error) {
+                showAlert('addAlert', 'Ошибка: ' + error.message, 'error');
+            }
+        }
+
+        async function editRule(id) {
+            try {
+                const response = await fetch(`${API_BASE}/rules`, {
+                    headers: getHeaders()
+                });
+                const rules = await response.json();
+                const rule = rules.find(r => r.id === id);
+
+                if (!rule) return;
+
+                document.getElementById('ruleName').value = rule.name;
+                document.getElementById('condition').value = rule.condition;
+                document.getElementById('chatId').value = rule.chatId;
+                document.getElementById('botToken').value = rule.botToken || '';
+                document.getElementById('messageTemplate').value = rule.messageTemplate || '';
+                document.getElementById('enabled').checked = rule.enabled;
+
+                editingRuleId = id;
+                document.querySelector('.card h2:nth-of-type(2)').textContent = 'Редактировать правило';
+                document.querySelector('#ruleForm button[type="submit"]').textContent = 'Обновить правило';
+
+                document.getElementById('ruleName').focus();
+            } catch (error) {
+                showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
+            }
+        }
+
+        async function deleteRule(id) {
+            if (!confirm('Вы уверены, что хотите удалить это правило?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/rules/${id}`, { 
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+                if (!response.ok) throw new Error('Failed to delete rule');
+
+                showAlert('rulesAlert', 'Правило удалено', 'success');
+                await loadRules();
+            } catch (error) {
+                showAlert('rulesAlert', 'Ошибка при удалении: ' + error.message, 'error');
+            }
+        }
+
+        async function testCondition() {
+            const condition = document.getElementById('testCondition').value;
+            const payloadStr = document.getElementById('testPayload').value;
+
+            if (!condition || !payloadStr) {
+                alert('Заполните условие и payload');
+                return;
+            }
+
+            try {
+                const payload = JSON.parse(payloadStr);
+                const response = await fetch(`${API_BASE}/test-rule`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ condition, payload })
+                });
+
+                const result = await response.json();
+                const resultDiv = document.getElementById('testResult');
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<strong>✓ Результат:</strong> <strong>${result.result ? 'TRUE' : 'FALSE'}</strong>`;
+                    resultDiv.style.background = result.result ? '#d4edda' : '#fff3cd';
+                } else {
+                    resultDiv.innerHTML = `<strong>✗ Ошибка:</strong> ${escapeHtml(result.error)}`;
+                    resultDiv.style.background = '#f8d7da';
+                }
+                
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        async function loadWebhookLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/webhook-logs`, {
+                    headers: getHeaders()
+                });
+                const logs = await response.json();
+                const container = document.getElementById('logsContainer');
+                
+                if (logs.length === 0) {
+                    container.innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center;">История пуста</p>';
+                    return;
+                }
+
+                container.innerHTML = logs.map(log => `
+                    <div style="border-bottom: 1px solid hsl(var(--border)); padding: 0.625rem 0; color: hsl(var(--foreground));">
+                        <strong style="color: hsl(var(--foreground));">${new Date(log.timestamp).toLocaleString()}</strong><br>
+                        <strong style="color: hsl(var(--foreground));">Payload:</strong> <pre style="background: hsl(var(--background)); color: hsl(var(--foreground)); padding: 0.5rem; margin: 0.3125rem 0; font-size: 0.875rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">${JSON.stringify(log.payload, null, 2)}</pre>
+                        <strong style="color: hsl(var(--foreground));">Matched Rules:</strong> ${log.matched}
+                        ${log.telegram_results && log.telegram_results.length > 0 ? `
+                        <br><strong style="color: hsl(var(--foreground));">Telegram Results:</strong>
+                        <ul style="margin: 0.3125rem 0; padding-left: 1.25rem;">
+                            ${log.telegram_results.map(result => `
+                                <li style="color: ${result.success ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'};">
+                                    Chat ID: ${result.chatId} - ${result.success ? 'Отправлено' : 'Ошибка'}
+                                    ${result.success ? ` (ID: ${result.response?.result?.message_id || 'N/A'})` : ''}
+                                    ${result.success ? `<br><small>Ответ: <code>${JSON.stringify(result.response)}</code></small>` : `<br><small>Детали: <code>${JSON.stringify(result.error)}</code></small>`}
+                                </li>
+                            `).join('')}
+                        </ul>
+                        ` : ''}
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('logsContainer').innerHTML = '<p style="color: hsl(var(--destructive));">Ошибка загрузки истории</p>';
+            }
+        }
+
+        async function clearWebhookLogs() {
+            if (!confirm('Вы уверены, что хотите очистить историю?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/webhook-logs`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+                if (response.ok) {
+                    loadWebhookLogs();
+                } else {
+                    alert('Ошибка очистки');
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        function showAlert(elementId, message, type) {
+            const alert = document.getElementById(elementId);
+            alert.textContent = message;
+            alert.className = `alert show alert-${type}`;
+            
+            setTimeout(() => {
+                alert.classList.remove('show');
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+    </script>
+</body>
+</html>

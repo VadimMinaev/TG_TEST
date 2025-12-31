@@ -1,0 +1,24 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Server",
+			"type": "shell",
+			"command": "node",
+			"args": [
+				"server/app.js"
+			],
+			"isBackground": true
+		},
+		{
+			"label": "Install and Run Dev",
+			"type": "shell",
+			"command": "npm",
+			"args": [
+				"install",
+				"express-session"
+			],
+			"group": "build"
+		}
+	]
+}
