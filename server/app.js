@@ -10,11 +10,11 @@ app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
 let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
-const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
 const sessions = new Set();
+let rules = []; // Store rules in memory
 
 // Ensure data directory exists
 const dataDir = path.join(__dirname, '../data');
@@ -115,17 +115,11 @@ app.post('/api/test-send', auth, async (req, res) => {
 });
 
 app.get('/api/rules', auth, (req, res) => {
-  try {
-    const data = fs.readFileSync(RULES_FILE, 'utf8');
-    res.json(JSON.parse(data));
-  } catch {
-    res.json([]);
-  }
+  res.json(rules);
 });
 
 app.post('/api/rules', auth, async (req, res) => {
   try {
-    const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
     const { botToken, ...ruleData } = req.body;
     
     if (botToken && botToken.trim()) {
@@ -137,7 +131,6 @@ app.post('/api/rules', auth, async (req, res) => {
     
     const newRule = { id: Date.now(), ...ruleData, botToken: botToken || '', enabled: req.body.enabled !== false };
     rules.push(newRule);
-    fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2));
     res.json(newRule);
   } catch (error) {
     console.error('Error in /api/rules POST:', error);
@@ -147,7 +140,6 @@ app.post('/api/rules', auth, async (req, res) => {
 
 app.put('/api/rules/:id', auth, async (req, res) => {
   try {
-    const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
     const idx = rules.findIndex(r => r.id == req.params.id);
     if (idx >= 0) {
       const { botToken, ...ruleData } = req.body;
@@ -164,7 +156,6 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       }
       
       rules[idx] = { ...rules[idx], ...ruleData };
-      fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2));
       res.json(rules[idx]);
     } else {
       res.status(404).json({ error: 'not found' });
@@ -176,9 +167,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
 });
 
 app.delete('/api/rules/:id', auth, (req, res) => {
-  let rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
   rules = rules.filter(r => r.id != req.params.id);
-  fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2));
   res.json({ status: 'ok' });
 });
 
