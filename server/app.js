@@ -16,7 +16,7 @@ const CRED_PASS = 'vadmin';
 const sessions = new Set();
 
 // Database setup
-let db;
+let db = { rules: [], logs: [] }; // Default to in-memory
 if (process.env.DATABASE_URL) {
   const { Client } = require('pg');
   const client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -29,11 +29,9 @@ if (process.env.DATABASE_URL) {
       console.log('DB connected and tables created');
     } catch (err) {
       console.error('DB init error:', err);
-      db = { rules: [], logs: [] }; // fallback
+      // Keep in-memory fallback
     }
   })();
-} else {
-  db = { rules: [], logs: [] };
 }
 
 // Ensure data directory exists
