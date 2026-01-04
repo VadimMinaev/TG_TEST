@@ -2,6 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
 
 const app = express();
@@ -14,7 +15,18 @@ const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
 const sessions = new Set();
-let rules = []; // Store rules in memory
+
+// Database setup
+const dbPath = path.join(__dirname, '../data/database.db');
+const db = new sqlite3.Database(dbPath);
+db.run(`CREATE TABLE IF NOT EXISTS rules (id INTEGER PRIMARY KEY, data TEXT)`);
+db.run(`CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)`);
+
+// Ensure data directory exists
+const dataDir = path.join(__dirname, '../data');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+}
 
 // Ensure data directory exists
 const dataDir = path.join(__dirname, '../data');
@@ -25,11 +37,7 @@ if (!fs.existsSync(dataDir)) {
 // Log webhook
 function logWebhook(payload, matched, rules_count, telegram_results = []) {
   try {
-    let logs = [];
-    if (fs.existsSync(LOGS_FILE)) {
-      logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8'));
-    }
-    logs.unshift({
+    const logEntry = {
       id: Date.now(),
       timestamp: new Date().toISOString(),
       payload,
@@ -37,9 +45,14 @@ function logWebhook(payload, matched, rules_count, telegram_results = []) {
       total_rules: rules_count,
       telegram_results,
       status: matched > 0 ? 'matched' : 'no_match'
+    };
+    db.run('INSERT INTO logs (data) VALUES (?)', JSON.stringify(logEntry), (err) => {
+      if (err) console.error('Log DB error:', err);
+      // Keep only last 100 logs
+      db.run('DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 100)', (err) => {
+        if (err) console.error('Log cleanup error:', err);
+      });
     });
-    if (logs.length > 100) logs = logs.slice(0, 100);
-    fs.writeFileSync(LOGS_FILE, JSON.stringify(logs, null, 2));
   } catch (e) {
     console.error('Log error:', e.message);
   }
@@ -115,7 +128,13 @@ app.post('/api/test-send', auth, async (req, res) => {
 });
 
 app.get('/api/rules', auth, (req, res) => {
-  res.json(rules);
+  db.all('SELECT id, data FROM rules', (err, rows) => {
+    if (err) {
+      console.error('DB error:', err);
+      return res.status(500).json({ error: 'DB error' });
+    }
+    res.json(rows.map(r => ({ ...JSON.parse(r.data), id: r.id })));
+  });
 });
 
 app.post('/api/rules', auth, async (req, res) => {
@@ -130,8 +149,13 @@ app.post('/api/rules', auth, async (req, res) => {
     }
     
     const newRule = { id: Date.now(), ...ruleData, botToken: botToken || '', enabled: req.body.enabled !== false };
-    rules.push(newRule);
-    res.json(newRule);
+    db.run('INSERT INTO rules (id, data) VALUES (?, ?)', newRule.id, JSON.stringify(newRule), function(err) {
+      if (err) {
+        console.error('DB insert error:', err);
+        return res.status(500).json({ error: 'DB error' });
+      }
+      res.json(newRule);
+    });
   } catch (error) {
     console.error('Error in /api/rules POST:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -140,8 +164,15 @@ app.post('/api/rules', auth, async (req, res) => {
 
 app.put('/api/rules/:id', auth, async (req, res) => {
   try {
-    const idx = rules.findIndex(r => r.id == req.params.id);
-    if (idx >= 0) {
+    db.get('SELECT data FROM rules WHERE id = ?', req.params.id, (err, row) => {
+      if (err) {
+        console.error('DB get error:', err);
+        return res.status(500).json({ error: 'DB error' });
+      }
+      if (!row) {
+        return res.status(404).json({ error: 'not found' });
+      }
+      const existing = JSON.parse(row.data);
       const { botToken, ...ruleData } = req.body;
       
       if ('botToken' in req.body && botToken && botToken.trim()) {
@@ -155,11 +186,15 @@ app.put('/api/rules/:id', auth, async (req, res) => {
         ruleData.botToken = botToken;
       }
       
-      rules[idx] = { ...rules[idx], ...ruleData };
-      res.json(rules[idx]);
-    } else {
-      res.status(404).json({ error: 'not found' });
-    }
+      const updated = { ...existing, ...ruleData };
+      db.run('UPDATE rules SET data = ? WHERE id = ?', JSON.stringify(updated), req.params.id, (err) => {
+        if (err) {
+          console.error('DB update error:', err);
+          return res.status(500).json({ error: 'DB error' });
+        }
+        res.json(updated);
+      });
+    });
   } catch (error) {
     console.error('Error in /api/rules PUT:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -167,8 +202,13 @@ app.put('/api/rules/:id', auth, async (req, res) => {
 });
 
 app.delete('/api/rules/:id', auth, (req, res) => {
-  rules = rules.filter(r => r.id != req.params.id);
-  res.json({ status: 'ok' });
+  db.run('DELETE FROM rules WHERE id = ?', req.params.id, (err) => {
+    if (err) {
+      console.error('DB delete error:', err);
+      return res.status(500).json({ error: 'DB error' });
+    }
+    res.json({ status: 'ok' });
+  });
 });
 
 app.post('/api/test-rule', auth, (req, res) => {
@@ -226,27 +266,23 @@ app.post('/webhook', async (req, res) => {
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 app.get('/api/webhook-logs', auth, (req, res) => {
-  try {
-    if (fs.existsSync(LOGS_FILE)) {
-      const logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8'));
-      res.json(logs);
-    } else {
-      res.json([]);
+  db.all('SELECT data FROM logs ORDER BY id DESC', (err, rows) => {
+    if (err) {
+      console.error('Logs DB error:', err);
+      return res.status(500).json({ error: 'DB error' });
     }
-  } catch (e) {
-    res.json([]);
-  }
+    res.json(rows.map(r => JSON.parse(r.data)));
+  });
 });
 
 app.delete('/api/webhook-logs', auth, (req, res) => {
-  try {
-    if (fs.existsSync(LOGS_FILE)) {
-      fs.unlinkSync(LOGS_FILE);
+  db.run('DELETE FROM logs', (err) => {
+    if (err) {
+      console.error('Logs delete error:', err);
+      return res.status(500).json({ error: 'DB error' });
     }
     res.json({ status: 'ok' });
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
+  });
 });
 
 const server = app.listen(PORT, () => {
