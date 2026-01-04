@@ -75,10 +75,15 @@ app.post('/api/bot-token', auth, (req, res) => {
   
   TELEGRAM_BOT_TOKEN = newToken;
   // Save to .env
-  const envPath = path.join(__dirname, '../.env');
-  let envContent = fs.readFileSync(envPath, 'utf8');
-  envContent = envContent.replace(/TELEGRAM_BOT_TOKEN=.*/, `TELEGRAM_BOT_TOKEN=${newToken}`);
-  fs.writeFileSync(envPath, envContent);
+  try {
+    const envPath = path.join(__dirname, '../.env');
+    let envContent = fs.readFileSync(envPath, 'utf8');
+    envContent = envContent.replace(/TELEGRAM_BOT_TOKEN=.*/, `TELEGRAM_BOT_TOKEN=${newToken}`);
+    fs.writeFileSync(envPath, envContent);
+  } catch (error) {
+    console.error('Error saving to .env:', error);
+    // Continue anyway, since token is updated in memory
+  }
   res.json({ status: 'ok' });
 });
 
