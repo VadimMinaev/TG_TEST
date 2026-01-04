@@ -244,7 +244,19 @@ app.post('/api/test-rule', auth, (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
-  const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
+  let rules = [];
+  if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+    try {
+      const result = await db.query('SELECT data FROM rules');
+      rules = result.rows.map(r => r.data);
+    } catch (err) {
+      console.error('DB error in webhook:', err);
+      rules = [];
+    }
+  } else {
+    rules = db.rules;
+  }
+  
   let matched = 0;
   let telegram_results = [];
   
