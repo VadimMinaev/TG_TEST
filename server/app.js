@@ -2,7 +2,6 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const sqlite3 = require('sqlite3').verbose();
 require('dotenv').config();
 
 const app = express();
@@ -17,10 +16,18 @@ const CRED_PASS = 'vadmin';
 const sessions = new Set();
 
 // Database setup
-const dbPath = path.join(__dirname, '../data/database.db');
-const db = new sqlite3.Database(dbPath);
-db.run(`CREATE TABLE IF NOT EXISTS rules (id INTEGER PRIMARY KEY, data TEXT)`);
-db.run(`CREATE TABLE IF NOT EXISTS logs (id INTEGER PRIMARY KEY AUTOINCREMENT, data TEXT)`);
+let db;
+if (process.env.DATABASE_URL) {
+  const { Client } = require('pg');
+  db = new Client({ connectionString: process.env.DATABASE_URL });
+  db.connect().then(() => {
+    db.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
+    db.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
+  }).catch(err => console.error('DB connect error:', err));
+} else {
+  // Fallback to in-memory
+  db = { rules: [], logs: [] };
+}
 
 // Ensure data directory exists
 const dataDir = path.join(__dirname, '../data');
@@ -46,13 +53,14 @@ function logWebhook(payload, matched, rules_count, telegram_results = []) {
       telegram_results,
       status: matched > 0 ? 'matched' : 'no_match'
     };
-    db.run('INSERT INTO logs (data) VALUES (?)', JSON.stringify(logEntry), (err) => {
-      if (err) console.error('Log DB error:', err);
+    if (process.env.DATABASE_URL) {
+      db.query('INSERT INTO logs (data) VALUES ($1)', [logEntry]).catch(err => console.error('Log DB error:', err));
       // Keep only last 100 logs
-      db.run('DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 100)', (err) => {
-        if (err) console.error('Log cleanup error:', err);
-      });
-    });
+      db.query('DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 100)').catch(err => console.error('Log cleanup error:', err));
+    } else {
+      db.logs.unshift(logEntry);
+      if (db.logs.length > 100) db.logs = db.logs.slice(0, 100);
+    }
   } catch (e) {
     console.error('Log error:', e.message);
   }
@@ -127,14 +135,18 @@ app.post('/api/test-send', auth, async (req, res) => {
   }
 });
 
-app.get('/api/rules', auth, (req, res) => {
-  db.all('SELECT id, data FROM rules', (err, rows) => {
-    if (err) {
+app.get('/api/rules', auth, async (req, res) => {
+  if (process.env.DATABASE_URL) {
+    try {
+      const result = await db.query('SELECT id, data FROM rules');
+      res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
+    } catch (err) {
       console.error('DB error:', err);
-      return res.status(500).json({ error: 'DB error' });
+      res.status(500).json({ error: 'DB error' });
     }
-    res.json(rows.map(r => ({ ...JSON.parse(r.data), id: r.id })));
-  });
+  } else {
+    res.json(db.rules);
+  }
 });
 
 app.post('/api/rules', auth, async (req, res) => {
@@ -149,13 +161,13 @@ app.post('/api/rules', auth, async (req, res) => {
     }
     
     const newRule = { id: Date.now(), ...ruleData, botToken: botToken || '', enabled: req.body.enabled !== false };
-    db.run('INSERT INTO rules (id, data) VALUES (?, ?)', newRule.id, JSON.stringify(newRule), function(err) {
-      if (err) {
-        console.error('DB insert error:', err);
-        return res.status(500).json({ error: 'DB error' });
-      }
+    if (process.env.DATABASE_URL) {
+      await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
       res.json(newRule);
-    });
+    } else {
+      db.rules.push(newRule);
+      res.json(newRule);
+    }
   } catch (error) {
     console.error('Error in /api/rules POST:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -164,15 +176,13 @@ app.post('/api/rules', auth, async (req, res) => {
 
 app.put('/api/rules/:id', auth, async (req, res) => {
   try {
-    db.get('SELECT data FROM rules WHERE id = ?', req.params.id, (err, row) => {
-      if (err) {
-        console.error('DB get error:', err);
-        return res.status(500).json({ error: 'DB error' });
-      }
-      if (!row) {
+    const ruleId = parseInt(req.params.id);
+    if (process.env.DATABASE_URL) {
+      const result = await db.query('SELECT data FROM rules WHERE id = $1', [ruleId]);
+      if (result.rows.length === 0) {
         return res.status(404).json({ error: 'not found' });
       }
-      const existing = JSON.parse(row.data);
+      const existing = result.rows[0].data;
       const { botToken, ...ruleData } = req.body;
       
       if ('botToken' in req.body && botToken && botToken.trim()) {
@@ -187,28 +197,50 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       }
       
       const updated = { ...existing, ...ruleData };
-      db.run('UPDATE rules SET data = ? WHERE id = ?', JSON.stringify(updated), req.params.id, (err) => {
-        if (err) {
-          console.error('DB update error:', err);
-          return res.status(500).json({ error: 'DB error' });
+      await db.query('UPDATE rules SET data = $1 WHERE id = $2', [updated, ruleId]);
+      res.json(updated);
+    } else {
+      const idx = db.rules.findIndex(r => r.id == ruleId);
+      if (idx >= 0) {
+        const { botToken, ...ruleData } = req.body;
+        
+        if ('botToken' in req.body && botToken && botToken.trim()) {
+          const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
+          if (!response.data.ok) {
+            return res.status(400).json({ error: 'Invalid bot token' });
+          }
         }
-        res.json(updated);
-      });
-    });
+        
+        if ('botToken' in req.body) {
+          ruleData.botToken = botToken;
+        }
+        
+        db.rules[idx] = { ...db.rules[idx], ...ruleData };
+        res.json(db.rules[idx]);
+      } else {
+        res.status(404).json({ error: 'not found' });
+      }
+    }
   } catch (error) {
     console.error('Error in /api/rules PUT:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-app.delete('/api/rules/:id', auth, (req, res) => {
-  db.run('DELETE FROM rules WHERE id = ?', req.params.id, (err) => {
-    if (err) {
+app.delete('/api/rules/:id', auth, async (req, res) => {
+  const ruleId = parseInt(req.params.id);
+  if (process.env.DATABASE_URL) {
+    try {
+      await db.query('DELETE FROM rules WHERE id = $1', [ruleId]);
+      res.json({ status: 'ok' });
+    } catch (err) {
       console.error('DB delete error:', err);
-      return res.status(500).json({ error: 'DB error' });
+      res.status(500).json({ error: 'DB error' });
     }
+  } else {
+    db.rules = db.rules.filter(r => r.id != ruleId);
     res.json({ status: 'ok' });
-  });
+  }
 });
 
 app.post('/api/test-rule', auth, (req, res) => {
@@ -265,24 +297,33 @@ app.post('/webhook', async (req, res) => {
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
-app.get('/api/webhook-logs', auth, (req, res) => {
-  db.all('SELECT data FROM logs ORDER BY id DESC', (err, rows) => {
-    if (err) {
+app.get('/api/webhook-logs', auth, async (req, res) => {
+  if (process.env.DATABASE_URL) {
+    try {
+      const result = await db.query('SELECT data FROM logs ORDER BY id DESC');
+      res.json(result.rows.map(r => r.data));
+    } catch (err) {
       console.error('Logs DB error:', err);
-      return res.status(500).json({ error: 'DB error' });
+      res.status(500).json({ error: 'DB error' });
     }
-    res.json(rows.map(r => JSON.parse(r.data)));
-  });
+  } else {
+    res.json(db.logs);
+  }
 });
 
-app.delete('/api/webhook-logs', auth, (req, res) => {
-  db.run('DELETE FROM logs', (err) => {
-    if (err) {
+app.delete('/api/webhook-logs', auth, async (req, res) => {
+  if (process.env.DATABASE_URL) {
+    try {
+      await db.query('DELETE FROM logs');
+      res.json({ status: 'ok' });
+    } catch (err) {
       console.error('Logs delete error:', err);
-      return res.status(500).json({ error: 'DB error' });
+      res.status(500).json({ error: 'DB error' });
     }
+  } else {
+    db.logs = [];
     res.json({ status: 'ok' });
-  });
+  }
 });
 
 const server = app.listen(PORT, () => {
