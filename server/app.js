@@ -248,6 +248,22 @@ app.post('/api/test-rule', auth, (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
+  // Handle webhook verification
+  if (req.body.event === 'webhook.verify') {
+    const callbackUrl = req.body.payload?.callback;
+    if (callbackUrl) {
+      try {
+        await axios.get(callbackUrl);
+        console.log('Webhook verified successfully');
+      } catch (error) {
+        console.error('Webhook verification failed:', error.message);
+      }
+    }
+    res.json({ verified: true });
+    return;
+  }
+
+  // Existing webhook processing
   let rules = [];
   if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
     try {
