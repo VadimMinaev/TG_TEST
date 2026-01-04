@@ -966,7 +966,7 @@
                         <div class="rule-name">${escapeHtml(rule.name)}</div>
                         <div class="rule-condition">${escapeHtml(rule.condition)}</div>
                         <div class="rule-channel">📍 Канал: <code>${escapeHtml(rule.chatId)}</code></div>
-                        ${rule.botToken ? `<div class="rule-bot">🤖 Бот: <code>${escapeHtml(rule.botToken.substring(0, 10))}...</code></div>` : ''}
+                        ${rule.botToken && typeof rule.botToken === 'string' ? `<div class="rule-bot">🤖 Бот: <code>${escapeHtml(rule.botToken.substring(0, 10))}...</code></div>` : ''}
                         <div class="rule-status">
                             <span class="status-badge ${rule.enabled ? '' : 'disabled'}"></span>
                             ${rule.enabled ? 'Включено' : 'Отключено'}

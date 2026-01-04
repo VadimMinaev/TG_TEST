@@ -129,13 +129,17 @@ app.get('/api/rules', auth, async (req, res) => {
   if (process.env.DATABASE_URL) {
     try {
       const result = await db.query('SELECT id, data FROM rules');
-      res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
+      let rules = result.rows.map(r => ({ ...r.data, id: r.id }));
+      rules = rules.map(r => ({ ...r, botToken: typeof r.botToken === 'string' ? r.botToken : '' }));
+      res.json(rules);
     } catch (err) {
       console.error('DB error:', err);
       res.status(500).json({ error: 'DB error' });
     }
   } else {
-    res.json(db.rules);
+    let rules = db.rules;
+    rules = rules.map(r => ({ ...r, botToken: typeof r.botToken === 'string' ? r.botToken : '' }));
+    res.json(rules);
   }
 });
 
@@ -150,7 +154,7 @@ app.post('/api/rules', auth, async (req, res) => {
       }
     }
     
-    const newRule = { id: Date.now(), ...ruleData, botToken: botToken || '', enabled: req.body.enabled !== false };
+    const newRule = { id: Date.now(), ...ruleData, botToken: (typeof botToken === 'string' ? botToken : '') || '', enabled: req.body.enabled !== false };
     if (process.env.DATABASE_URL) {
       await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
       res.json(newRule);
@@ -183,7 +187,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       }
       
       if ('botToken' in req.body) {
-        ruleData.botToken = botToken;
+        ruleData.botToken = (typeof botToken === 'string' ? botToken : '') || '';
       }
       
       const updated = { ...existing, ...ruleData };
