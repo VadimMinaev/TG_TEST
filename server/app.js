@@ -102,16 +102,7 @@ app.post('/api/bot-token', auth, (req, res) => {
   }
   
   TELEGRAM_BOT_TOKEN = newToken;
-  // Save to .env
-  try {
-    const envPath = path.join(__dirname, '../.env');
-    let envContent = fs.readFileSync(envPath, 'utf8');
-    envContent = envContent.replace(/TELEGRAM_BOT_TOKEN=.*/, `TELEGRAM_BOT_TOKEN=${newToken}`);
-    fs.writeFileSync(envPath, envContent);
-  } catch (error) {
-    console.error('Error saving to .env:', error);
-    // Continue anyway, since token is updated in memory
-  }
+  // Note: In Railway, update TELEGRAM_BOT_TOKEN via dashboard env vars
   res.json({ status: 'ok' });
 });
 
@@ -154,7 +145,7 @@ app.post('/api/rules', auth, async (req, res) => {
   try {
     const { botToken, ...ruleData } = req.body;
     
-    if (botToken && botToken.trim()) {
+    if (botToken && typeof botToken === 'string' && botToken.trim()) {
       const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
       if (!response.data.ok) {
         return res.status(400).json({ error: 'Invalid bot token' });
@@ -186,7 +177,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       const existing = result.rows[0].data;
       const { botToken, ...ruleData } = req.body;
       
-      if ('botToken' in req.body && botToken && botToken.trim()) {
+      if ('botToken' in req.body && botToken && typeof botToken === 'string' && botToken.trim()) {
         const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
         if (!response.data.ok) {
           return res.status(400).json({ error: 'Invalid bot token' });
@@ -205,7 +196,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       if (idx >= 0) {
         const { botToken, ...ruleData } = req.body;
         
-        if ('botToken' in req.body && botToken && botToken.trim()) {
+        if ('botToken' in req.body && botToken && typeof botToken === 'string' && botToken.trim()) {
           const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
           if (!response.data.ok) {
             return res.status(400).json({ error: 'Invalid bot token' });
