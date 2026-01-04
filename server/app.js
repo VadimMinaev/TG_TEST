@@ -113,51 +113,54 @@ app.get('/api/rules', auth, (req, res) => {
 });
 
 app.post('/api/rules', auth, async (req, res) => {
-  const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
-  const { botToken, ...ruleData } = req.body;
-  
-  if (botToken && botToken.trim()) {
-    try {
+  try {
+    const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
+    const { botToken, ...ruleData } = req.body;
+    
+    if (botToken && botToken.trim()) {
       const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
       if (!response.data.ok) {
         return res.status(400).json({ error: 'Invalid bot token' });
       }
-    } catch (error) {
-      return res.status(400).json({ error: 'Bot token validation failed', details: error.response?.data || error.message });
     }
+    
+    const newRule = { id: Date.now(), ...ruleData, botToken: botToken || '', enabled: req.body.enabled !== false };
+    rules.push(newRule);
+    fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2));
+    res.json(newRule);
+  } catch (error) {
+    console.error('Error in /api/rules POST:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
-  
-  const newRule = { id: Date.now(), ...ruleData, botToken: botToken || '', enabled: req.body.enabled !== false };
-  rules.push(newRule);
-  fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2));
-  res.json(newRule);
 });
 
 app.put('/api/rules/:id', auth, async (req, res) => {
-  const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
-  const idx = rules.findIndex(r => r.id == req.params.id);
-  if (idx >= 0) {
-    const { botToken, ...ruleData } = req.body;
-    
-    if (botToken !== undefined) {
-      if (botToken && botToken.trim()) {
-        try {
-          const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
-          if (!response.data.ok) {
-            return res.status(400).json({ error: 'Invalid bot token' });
-          }
-        } catch (error) {
-          return res.status(400).json({ error: 'Bot token validation failed', details: error.response?.data || error.message });
+  try {
+    const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
+    const idx = rules.findIndex(r => r.id == req.params.id);
+    if (idx >= 0) {
+      const { botToken, ...ruleData } = req.body;
+      
+      if ('botToken' in req.body && botToken && botToken.trim()) {
+        const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
+        if (!response.data.ok) {
+          return res.status(400).json({ error: 'Invalid bot token' });
         }
       }
-      ruleData.botToken = botToken;
+      
+      if ('botToken' in req.body) {
+        ruleData.botToken = botToken;
+      }
+      
+      rules[idx] = { ...rules[idx], ...ruleData };
+      fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2));
+      res.json(rules[idx]);
+    } else {
+      res.status(404).json({ error: 'not found' });
     }
-    
-    rules[idx] = { ...rules[idx], ...ruleData };
-    fs.writeFileSync(RULES_FILE, JSON.stringify(rules, null, 2));
-    res.json(rules[idx]);
-  } else {
-    res.status(404).json({ error: 'not found' });
+  } catch (error) {
+    console.error('Error in /api/rules PUT:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
