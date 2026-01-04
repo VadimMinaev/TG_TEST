@@ -116,7 +116,7 @@ app.post('/api/rules', auth, async (req, res) => {
   const rules = (() => { try { return JSON.parse(fs.readFileSync(RULES_FILE, 'utf8')); } catch { return []; } })();
   const { botToken, ...ruleData } = req.body;
   
-  if (botToken) {
+  if (botToken && botToken.trim()) {
     try {
       const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
       if (!response.data.ok) {
@@ -140,7 +140,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
     const { botToken, ...ruleData } = req.body;
     
     if (botToken !== undefined) {
-      if (botToken) {
+      if (botToken && botToken.trim()) {
         try {
           const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
           if (!response.data.ok) {
