@@ -19,13 +19,20 @@ const sessions = new Set();
 let db;
 if (process.env.DATABASE_URL) {
   const { Client } = require('pg');
-  db = new Client({ connectionString: process.env.DATABASE_URL });
-  db.connect().then(() => {
-    db.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
-    db.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
-  }).catch(err => console.error('DB connect error:', err));
+  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  (async () => {
+    try {
+      await client.connect();
+      await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
+      await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
+      db = client;
+      console.log('DB connected and tables created');
+    } catch (err) {
+      console.error('DB init error:', err);
+      db = { rules: [], logs: [] }; // fallback
+    }
+  })();
 } else {
-  // Fallback to in-memory
   db = { rules: [], logs: [] };
 }
 
