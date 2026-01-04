@@ -222,32 +222,6 @@ app.put('/api/rules/:id', auth, async (req, res) => {
 });
 
 app.delete('/api/rules/:id', auth, async (req, res) => {
-  const ruleId = parseInt(req.params.id);
-  if (process.env.DATABASE_URL) {
-    try {
-      await db.query('DELETE FROM rules WHERE id = $1', [ruleId]);
-      res.json({ status: 'ok' });
-    } catch (err) {
-      console.error('DB delete error:', err);
-      res.status(500).json({ error: 'DB error' });
-    }
-  } else {
-    db.rules = db.rules.filter(r => r.id != ruleId);
-    res.json({ status: 'ok' });
-  }
-});
-
-app.post('/api/test-rule', auth, (req, res) => {
-  try {
-    const fn = new Function('payload', `return ${req.body.condition}`);
-    const result = fn(req.body.payload);
-    res.json({ result });
-  } catch (e) {
-    res.status(400).json({ error: e.message });
-  }
-});
-
-app.post('/webhook', async (req, res) => {
   // Handle webhook verification
   if (req.body.event === 'webhook.verify') {
     const callbackUrl = req.body.payload?.callback;
@@ -263,7 +237,10 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // Existing webhook processing
+  // Determine the actual payload passed to rule conditions
+  const incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
+
+  // Load rules
   let rules = [];
   if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
     try {
@@ -276,45 +253,82 @@ app.post('/webhook', async (req, res) => {
   } else {
     rules = db.rules;
   }
-  
+
   let matched = 0;
   let telegram_results = [];
-  
+
+  const formatMessage = (fullBody, payload, rule) => {
+    try {
+      // Prefer last note text when present
+      if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
+        const note = payload.note[payload.note.length - 1];
+        const author = note.person?.name || note.person_name || fullBody.person_name || '';
+        const text = note.text || '';
+        const account = note.account?.name || note.account?.id || '';
+        return `${author}${account ? ' @' + account : ''}: ${text}`;
+      }
+      // Fallback to common fields
+      if (payload && (payload.text || payload.message)) return payload.text || payload.message;
+      // Generic short summary
+      const parts = [];
+      if (fullBody.event) parts.push(`event: ${fullBody.event}`);
+      if (fullBody.object_id) parts.push(`object_id: ${fullBody.object_id}`);
+      if (fullBody.person_name) parts.push(`by: ${fullBody.person_name}`);
+      return parts.length > 0 ? parts.join(' | ') : JSON.stringify(payload || fullBody).slice(0, 4000);
+    } catch (e) {
+      return JSON.stringify(payload || fullBody).slice(0, 4000);
+    }
+  };
+
   for (const rule of rules) {
-    if (!rule.enabled) continue;
+    if (!rule || rule.enabled === false) continue;
     try {
       const fn = new Function('payload', `return ${rule.condition}`);
-      if (fn(req.body)) {
+      let ruleMatches = false;
+      try {
+        ruleMatches = !!fn(incomingPayload);
+      } catch (evalErr) {
+        console.error('Rule evaluation error for rule', rule.id || '(no id):', evalErr.message);
+      }
+      if (ruleMatches) {
         matched++;
         const token = rule.botToken || TELEGRAM_BOT_TOKEN;
-        if (token && token !== 'YOUR_TOKEN' && token !== 'ВАШ_ТОКЕН_ЗДЕСЬ') {
+        if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
+          telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
+          continue;
+        }
+
+        // Support single chatId or array of chatIds
+        const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
+        if (chatIds.length === 0) {
+          telegram_results.push({ chatId: null, success: false, error: 'No chatId configured for rule' });
+          continue;
+        }
+
+        const messageText = formatMessage(req.body, incomingPayload, rule);
+
+        for (const chat of chatIds) {
           try {
             const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-              chat_id: rule.chatId,
-              text: JSON.stringify(req.body, null, 2)
+              chat_id: chat,
+              text: messageText
             });
-            telegram_results.push({
-              chatId: rule.chatId,
-              success: true,
-              response: response.data
-            });
+            telegram_results.push({ chatId: chat, success: true, response: response.data });
           } catch (error) {
-            telegram_results.push({
-              chatId: rule.chatId,
-              success: false,
-              error: error.response ? error.response.data : error.message
-            });
+            const errDetail = error.response?.data || error.message;
+            console.error('Telegram send error for chat', chat, errDetail);
+            telegram_results.push({ chatId: chat, success: false, error: errDetail });
           }
         }
       }
     } catch (e) {
-      console.error('Rule evaluation error:', e.message);
+      console.error('Rule handler error:', e.message);
     }
   }
-  
+
   const sent = telegram_results.filter(r => r.success).length;
   logWebhook(req.body, matched, rules.length, telegram_results);
-  res.json({ matched, sent });
+  res.json({ matched, sent, telegram_results });
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
