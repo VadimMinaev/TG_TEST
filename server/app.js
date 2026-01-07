@@ -474,12 +474,9 @@ app.post('/webhook', async (req, res) => {
       }
     } catch (e) {
       console.error('Rule handler error:', e.message);
-    }
-  }
-
-  const sent = telegram_results.filter(r => r.success).length; // Количество успешно отправленных сообщений
-  logWebhook(req.body, matched, rules.length, telegram_results); // Логируем webhook
-  res.json({ matched, sent, telegram_results }); // Возвращаем результат
+  const sent = telegram_results.filter(r => r.success).length; // ���������� ������� ������������ ���������
+  logWebhook(req.body, matched, rules.length, telegram_results); // �������� webhook
+  res.json({ matched, sent, telegram_results }); // ���������� ���������
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -509,13 +506,13 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
     }
   } else {
     db.logs = [];
-    saveLogs(); // Сохраняем пустой массив в файл
+    saveLogs(); // ��������� ������ ������ � ����
     res.json({ status: 'ok' });
   }
 });
 
 const server = app.listen(PORT, () => {
-  console.log(`✅ Server on http://localhost:${PORT}`);
+  console.log(` Server on http://localhost:${PORT}`);
 });
 
 process.on('SIGTERM', () => server.close(() => process.exit(0)));
