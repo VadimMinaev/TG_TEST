@@ -17,9 +17,8 @@ const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
 const sessions = new Set();
 
-// ЦЕНТРАЛИЗОВАННАЯ СИСТЕМА ПЕРЕВОДОВ - ЛЕГКО РАСШИРЯТЬ
+// ЦЕНТРАЛИЗОВАННАЯ СИСТЕМА ПЕРЕВОДОВ
 const fieldTranslations = {
-  // Основные поля
   id: 'ID',
   subject: 'Тема',
   status: 'Статус',
@@ -28,57 +27,39 @@ const fieldTranslations = {
   impact: 'Влияние',
   priority: 'Приоритет',
   urgency: 'Срочность',
-  
-  // SLA и временные метки
   response_target_at: 'Крайний срок ответа',
   resolution_target_at: 'Крайний срок решения',
   created_at: 'Создан',
   updated_at: 'Обновлен',
-  
-  // Связанные с пользователем поля
   requested_by: {
     name: 'Инициатор запроса',
-    account: {
-      name: 'Организация'
-    }
+    account: { name: 'Организация' }
   },
   person: {
     name: 'Автор',
-    account: {
-      name: 'Организация'
-    }
+    account: { name: 'Организация' }
   },
-  
-  // Поля в заметках
   note: 'Комментарий',
   text: 'Текст',
   message: 'Сообщение',
-  
-  // Другие поля
   command: 'Команда',
   comment: 'Комментарий',
-  
-  // Системные поля
   event: 'Событие',
   object_id: 'ID объекта',
   account: 'Аккаунт',
   payload: 'Данные'
 };
 
-// Функция для получения перевода с поддержкой вложенных полей
 function getFieldTranslation(path) {
   const parts = path.split('.');
   let current = fieldTranslations;
-  
   for (const part of parts) {
     if (current && current[part] !== undefined) {
       current = current[part];
     } else {
-      // Если нет перевода для полного пути, возвращаем последний сегмент
       return fieldTranslations[part] || part;
     }
   }
-  
   return typeof current === 'string' ? current : path;
 }
 
@@ -198,7 +179,6 @@ app.post('/api/bot-token', auth, (req, res) => {
   if (!newToken || newToken === 'YOUR_TOKEN') {
     return res.status(400).json({ error: 'Invalid token' });
   }
-  
   TELEGRAM_BOT_TOKEN = newToken;
   res.json({ status: 'ok' });
 });
@@ -247,16 +227,13 @@ app.get('/api/rules', auth, async (req, res) => {
 app.post('/api/rules', auth, async (req, res) => {
   try {
     const { botToken, ...ruleData } = req.body;
-    
     if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
       return res.status(400).json({ error: 'Bot token is required' });
     }
-    
     const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
     if (!response.data.ok) {
       return res.status(400).json({ error: 'Invalid bot token' });
     }
-    
     const newRule = { id: Date.now(), ...ruleData, botToken, enabled: req.body.enabled !== false, encoding: 'utf8' };
     if (process.env.DATABASE_URL) {
       await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
@@ -282,7 +259,6 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       }
       const existing = result.rows[0].data;
       const { botToken, ...ruleData } = req.body;
-      
       if ('botToken' in req.body) {
         if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
           return res.status(400).json({ error: 'Bot token is required' });
@@ -293,7 +269,6 @@ app.put('/api/rules/:id', auth, async (req, res) => {
         }
         ruleData.botToken = botToken;
       }
-      
       const updated = { ...existing, ...ruleData };
       if (!updated.botToken) {
         return res.status(400).json({ error: 'Bot token is required' });
@@ -304,7 +279,6 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       const idx = db.rules.findIndex(r => r.id == ruleId);
       if (idx >= 0) {
         const { botToken, ...ruleData } = req.body;
-        
         if ('botToken' in req.body) {
           if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
             return res.status(400).json({ error: 'Bot token is required' });
@@ -315,12 +289,10 @@ app.put('/api/rules/:id', auth, async (req, res) => {
           }
           ruleData.botToken = botToken;
         }
-        
         const updated = { ...db.rules[idx], ...ruleData };
         if (!updated.botToken) {
           return res.status(400).json({ error: 'Bot token is required' });
         }
-        
         db.rules[idx] = updated;
         saveRules();
         res.json(db.rules[idx]);
@@ -362,7 +334,6 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
 
 // WEBHOOK HANDLER
 app.post('/webhook', async (req, res) => {
-  // Обработка верификации webhook
   if (req.body.event === 'webhook.verify') {
     const callbackUrl = req.body.payload?.callback;
     if (callbackUrl) {
@@ -378,9 +349,6 @@ app.post('/webhook', async (req, res) => {
   }
 
   let incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
-
-  // УБРАНО ПРИНУДИТЕЛЬНОЕ ДЕКОДИРОВАНИЕ - ДАННЫЕ УЖЕ В UTF-8
-  // incomingPayload = decodeObject(incomingPayload);
 
   let rules = [];
   if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
@@ -398,31 +366,28 @@ app.post('/webhook', async (req, res) => {
   let matched = 0;
   let telegram_results = [];
 
-  // УЛУЧШЕННАЯ ФУНКЦИЯ ФОРМАТИРОВАНИЯ СООБЩЕНИЙ С ПОДДЕРЖКОЙ ВСЕХ ПОЛЕЙ
   const formatMessage = (fullBody, payload) => {
     try {
       const messageParts = [];
-      
+
       // 1. Основная информация
       if (payload.id) {
         messageParts.push(`🆔 ${getFieldTranslation('id')}: ${payload.id}`);
       }
-      
       if (payload.subject) {
         messageParts.push(`📋 ${getFieldTranslation('subject')}: ${payload.subject}`);
       }
-      
       if (payload.requested_by?.name) {
         const account = payload.requested_by.account?.name || '';
         messageParts.push(`👤 ${getFieldTranslation('requested_by.name')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
       }
-      
+
       // 2. Статус
       if (payload.status) {
         messageParts.push(`📊 ${getFieldTranslation('status')}: ${payload.status}`);
       }
-      
-      // 3. SLA и временные метки (с форматированием дат)
+
+      // 3. SLA
       const slaFields = ['response_target_at', 'resolution_target_at'];
       for (const field of slaFields) {
         if (payload[field] && payload[field] !== null) {
@@ -444,16 +409,22 @@ app.post('/webhook', async (req, res) => {
           messageParts.push(`⏰ ${getFieldTranslation(field)}: ${value}`);
         }
       }
-      
-      // 4. Дополнительные поля
-      const additionalFields = ['team.name', 'category', 'impact', 'priority', 'urgency'];
-      for (const field of additionalFields) {
-        if (payload[field] && payload[field] !== null && payload[field] !== '') {
-          messageParts.push(`${getFieldTranslation(field)}: ${payload[field]}`);
+
+      // 4. Дополнительные поля (плоские)
+      const additionalFields = [
+        { key: 'team_name', trans: 'team' },
+        { key: 'category', trans: 'category' },
+        { key: 'impact', trans: 'impact' },
+        { key: 'priority', trans: 'priority' },
+        { key: 'urgency', trans: 'urgency' }
+      ];
+      for (const { key, trans } of additionalFields) {
+        if (payload[key] !== undefined && payload[key] !== null && payload[key] !== '') {
+          messageParts.push(`${getFieldTranslation(trans)}: ${payload[key]}`);
         }
       }
-      
-      // 5. Заметки/комментарии - ПОДДЕРЖКА И ОДИНОЧНОГО ОБЪЕКТА, И МАССИВА
+
+      // 5. Заметки
       const notes = payload.note ? (Array.isArray(payload.note) ? payload.note : [payload.note]) : [];
       if (notes.length > 0) {
         messageParts.push(`📝 ${getFieldTranslation('note')}:`);
@@ -462,7 +433,7 @@ app.post('/webhook', async (req, res) => {
           const account = note.account?.name || note.person?.account?.name || '';
           const text = note.text || '';
           let timestamp = '';
-          
+
           if (note.created_at) {
             try {
               const date = new Date(note.created_at);
@@ -481,26 +452,25 @@ app.post('/webhook', async (req, res) => {
               timestamp = note.created_at;
             }
           }
-          
+
           messageParts.push(`${index + 1}. ${author}${account ? ' @' + account : ''}${timestamp ? ' (' + timestamp + ')' : ''}: ${text}`);
         });
       }
-      
-      // 6. Прямые сообщения (если нет заметок)
+
+      // 6. Прямые сообщения
       if (payload && (payload.text || payload.message) && !payload.note) {
         const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
         const account = payload.account?.name || payload.requested_by?.account?.name || '';
         const text = payload.text || payload.message;
         messageParts.push(`💬 ${getFieldTranslation('message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
       }
-      
-      // 7. Резервный вариант
+
+      // 7. Резерв
       if (messageParts.length === 0) {
         const infoParts = [];
         if (fullBody.event) infoParts.push(`Событие: ${fullBody.event}`);
         if (fullBody.object_id) infoParts.push(`ID объекта: ${fullBody.object_id}`);
         if (fullBody.person_name) infoParts.push(`Автор: ${fullBody.person_name}`);
-        
         if (infoParts.length > 0) {
           messageParts.push(`ℹ️ Информация: ${infoParts.join(' | ')}`);
         } else {
@@ -509,7 +479,7 @@ app.post('/webhook', async (req, res) => {
           messageParts.push(`📦 Данные:\n\`\`\`\n${truncated}\n\`\`\``);
         }
       }
-      
+
       return messageParts.join('\n\n');
     } catch (e) {
       console.error('Format message error:', e.message);
@@ -561,7 +531,7 @@ app.post('/webhook', async (req, res) => {
       console.error('Rule handler error:', e.message);
     }
   }
-  
+
   const sent = telegram_results.filter(r => r.success).length;
   logWebhook(req.body, matched, rules.length, telegram_results);
   res.json({ matched, sent, telegram_results });
