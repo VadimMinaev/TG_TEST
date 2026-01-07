@@ -19,18 +19,12 @@ const sessions = new Set(); // Хранение активных сессий
 // Расширяйте объект translations для добавления новых переводов
 const translations = {
   'Subject': 'Тема',
+  'Category': 'Категория',
+  'Impact': 'Влияние',
   'Requested by': 'Инициатор запроса',
   'Notes': 'Комментарий',
-  'Message': 'Сообщение',
-  'Command': 'Команда',
-  'Info': 'Информация',
   'ID': 'ID',
-  'Status': 'Статус',
-  'Event': 'Событие',
-  'Object ID': 'ID объекта',
-  'By': 'От',
-  'Payload': 'Полезная нагрузка',
-  'Error formatting message': 'Ошибка форматирования сообщения'
+  'Status': 'Статус'
 };
 
 function translate(key) {
