@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -9,28 +9,28 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
-// Убрали глобальный TELEGRAM_BOT_TOKEN, токен теперь только в правилах
+// РЈР±СЂР°Р»Рё РіР»РѕР±Р°Р»СЊРЅС‹Р№ TELEGRAM_BOT_TOKEN, С‚РѕРєРµРЅ С‚РµРїРµСЂСЊ С‚РѕР»СЊРєРѕ РІ РїСЂР°РІРёР»Р°С…
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
-const sessions = new Set(); // Хранение активных сессий
+const sessions = new Set(); // РҐСЂР°РЅРµРЅРёРµ Р°РєС‚РёРІРЅС‹С… СЃРµСЃСЃРёР№
 
-// Функция для перевода ключевых слов на русский
-// Расширяйте объект translations для добавления новых переводов
+// Р¤СѓРЅРєС†РёСЏ РґР»СЏ РїРµСЂРµРІРѕРґР° РєР»СЋС‡РµРІС‹С… СЃР»РѕРІ РЅР° СЂСѓСЃСЃРєРёР№
+// Р Р°СЃС€РёСЂСЏР№С‚Рµ РѕР±СЉРµРєС‚ translations РґР»СЏ РґРѕР±Р°РІР»РµРЅРёСЏ РЅРѕРІС‹С… РїРµСЂРµРІРѕРґРѕРІ
 const translations = {
-  'Subject': 'Тема',
-  'category': 'Категория',
-  'impact': 'Влияние',
-  'team': 'Команда',
-  'Requested by': 'Инициатор запроса',
-  'Notes': 'Комментарий',
+  'Subject': 'РўРµРјР°',
+  'category': 'РљР°С‚РµРіРѕСЂРёСЏ',
+  'impact': 'Р’Р»РёСЏРЅРёРµ',
+  'team': 'РљРѕРјР°РЅРґР°',
+  'Requested by': 'РРЅРёС†РёР°С‚РѕСЂ Р·Р°РїСЂРѕСЃР°',
+  'Notes': 'РљРѕРјРјРµРЅС‚Р°СЂРёР№',
   'ID': 'ID',
-  'Status': 'Статус'
+  'Status': 'РЎС‚Р°С‚СѓСЃ'
 };
 
 function translate(key) {
-  return translations[key] || key; // Возвращает перевод или оригинал, если перевода нет
+  return translations[key] || key; // Р’РѕР·РІСЂР°С‰Р°РµС‚ РїРµСЂРµРІРѕРґ РёР»Рё РѕСЂРёРіРёРЅР°Р», РµСЃР»Рё РїРµСЂРµРІРѕРґР° РЅРµС‚
 }
 let db = { rules: [], logs: [] }; // Default to in-memory
 if (process.env.DATABASE_URL) {
@@ -49,7 +49,7 @@ if (process.env.DATABASE_URL) {
     }
   })();
 } else {
-  // Загружаем данные из файлов, если нет базы
+  // Р—Р°РіСЂСѓР¶Р°РµРј РґР°РЅРЅС‹Рµ РёР· С„Р°Р№Р»РѕРІ, РµСЃР»Рё РЅРµС‚ Р±Р°Р·С‹
   try {
     if (fs.existsSync(RULES_FILE)) {
       db.rules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
@@ -68,7 +68,7 @@ if (process.env.DATABASE_URL) {
   }
 }
 
-// Функции для сохранения данных в файлы (если нет базы)
+// Р¤СѓРЅРєС†РёРё РґР»СЏ СЃРѕС…СЂР°РЅРµРЅРёСЏ РґР°РЅРЅС‹С… РІ С„Р°Р№Р»С‹ (РµСЃР»Рё РЅРµС‚ Р±Р°Р·С‹)
 function saveRules() {
   if (!process.env.DATABASE_URL) {
     try {
@@ -114,7 +114,7 @@ function logWebhook(payload, matched, rules_count, telegram_results = []) {
     } else {
       db.logs.unshift(logEntry);
       if (db.logs.length > 100) db.logs = db.logs.slice(0, 100);
-      saveLogs(); // Сохраняем в файл
+      saveLogs(); // РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
     }
   } catch (e) {
     console.error('Log error:', e.message);
@@ -179,6 +179,8 @@ app.post('/api/test-send', auth, async (req, res) => {
   } catch (error) {
     res.status(400).json({ success: false, error: error.response?.data || error.message });
   }
+});
+
 app.get('/api/rules', auth, async (req, res) => {
   if (process.env.DATABASE_URL) {
     try {
@@ -216,7 +218,7 @@ app.post('/api/rules', auth, async (req, res) => {
       res.json(newRule);
     } else {
       db.rules.push(newRule);
-      saveRules(); // Сохраняем в файл
+      saveRules(); // РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
       res.json(newRule);
     }
   } catch (error) {
@@ -275,7 +277,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
         }
         
         db.rules[idx] = updated;
-        saveRules(); // Сохраняем в файл
+        saveRules(); // РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
         res.json(db.rules[idx]);
       } else {
         res.status(404).json({ error: 'not found' });
@@ -301,7 +303,7 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
       const idx = db.rules.findIndex(r => r.id == ruleId);
       if (idx >= 0) {
         db.rules.splice(idx, 1);
-        saveRules(); // Сохраняем в файл
+        saveRules(); // РЎРѕС…СЂР°РЅСЏРµРј РІ С„Р°Р№Р»
         res.json({ status: 'deleted' });
       } else {
         res.status(404).json({ error: 'Rule not found' });
@@ -314,7 +316,7 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
-  // Обработка верификации webhook
+  // РћР±СЂР°Р±РѕС‚РєР° РІРµСЂРёС„РёРєР°С†РёРё webhook
   if (req.body.event === 'webhook.verify') {
     const callbackUrl = req.body.payload?.callback;
     if (callbackUrl) {
@@ -329,10 +331,10 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // Определение payload: используем req.body.payload, если есть, иначе весь req.body
+  // РћРїСЂРµРґРµР»РµРЅРёРµ payload: РёСЃРїРѕР»СЊР·СѓРµРј req.body.payload, РµСЃР»Рё РµСЃС‚СЊ, РёРЅР°С‡Рµ РІРµСЃСЊ req.body
   const incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
 
-  // Загрузка правил из базы данных или in-memory
+  // Р—Р°РіСЂСѓР·РєР° РїСЂР°РІРёР» РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С… РёР»Рё in-memory
   let rules = [];
   if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
     try {
@@ -353,28 +355,28 @@ app.post('/webhook', async (req, res) => {
     try {
       let messageParts = [];
 
-      // Сначала добавляем ID, если есть
+      // РЎРЅР°С‡Р°Р»Р° РґРѕР±Р°РІР»СЏРµРј ID, РµСЃР»Рё РµСЃС‚СЊ
       if (payload.id) {
-        messageParts.push(`🆔 ${translate('ID')}: ${payload.id}`);
+        messageParts.push(`рџ†” ${translate('ID')}: ${payload.id}`);
       }
 
-      // Затем Subject
+      // Р—Р°С‚РµРј Subject
       if (payload.subject) {
-        messageParts.push(`📋 ${translate('Subject')}: ${payload.subject}`);
+        messageParts.push(`рџ“‹ ${translate('Subject')}: ${payload.subject}`);
       }
 
       // Requested by
       if (payload.requested_by?.name) {
         const account = payload.requested_by.account?.name || '';
-        messageParts.push(`👤 ${translate('Requested by')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
+        messageParts.push(`рџ‘¤ ${translate('Requested by')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
       }
 
       // Status
       if (payload.status) {
-        messageParts.push(`📊 ${translate('Status')}: ${payload.status}`);
+        messageParts.push(`рџ“Љ ${translate('Status')}: ${payload.status}`);
       }
 
-      // Дополнительные простые поля из payload (не объекты/массивы)
+      // Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ РїСЂРѕСЃС‚С‹Рµ РїРѕР»СЏ РёР· payload (РЅРµ РѕР±СЉРµРєС‚С‹/РјР°СЃСЃРёРІС‹)
       const processedKeys = ['id', 'subject', 'requested_by', 'note', 'text', 'message', 'command', 'comment', 'status'];
       for (const [key, value] of Object.entries(payload)) {
         if (!processedKeys.includes(key) && value !== null && value !== undefined && typeof value !== 'object' && !Array.isArray(value)) {
@@ -382,9 +384,9 @@ app.post('/webhook', async (req, res) => {
         }
       }
 
-      // Обработка массива заметок (notes)
+      // РћР±СЂР°Р±РѕС‚РєР° РјР°СЃСЃРёРІР° Р·Р°РјРµС‚РѕРє (notes)
       if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
-        messageParts.push(`📝 ${translate('Notes')}:`);
+        messageParts.push(`рџ“ќ ${translate('Notes')}:`);
         payload.note.forEach((note, index) => {
           const author = note.person?.name || note.person_name || 'Unknown';
           const account = note.account?.name || note.person?.account?.name || '';
@@ -394,70 +396,70 @@ app.post('/webhook', async (req, res) => {
         });
       }
 
-      // Обработка прямых полей text/message (если нет массива note)
+      // РћР±СЂР°Р±РѕС‚РєР° РїСЂСЏРјС‹С… РїРѕР»РµР№ text/message (РµСЃР»Рё РЅРµС‚ РјР°СЃСЃРёРІР° note)
       if (payload && (payload.text || payload.message) && !Array.isArray(payload.note)) {
         const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
         const account = payload.account?.name || payload.requested_by?.account?.name || '';
         const text = payload.text || payload.message;
-        messageParts.push(`💬 ${translate('Message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
+        messageParts.push(`рџ’¬ ${translate('Message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
       }
 
-      // Обработка структуры command/comment (legacy, если нет других данных)
+      // РћР±СЂР°Р±РѕС‚РєР° СЃС‚СЂСѓРєС‚СѓСЂС‹ command/comment (legacy, РµСЃР»Рё РЅРµС‚ РґСЂСѓРіРёС… РґР°РЅРЅС‹С…)
       if (payload && payload.command && payload.comment && !Array.isArray(payload.note) && !payload.text && !payload.message) {
         const author = payload.author || fullBody.person_name || 'Unknown';
-        messageParts.push(`⚙️ ${translate('Command')}: ${author}: ${payload.command} - ${payload.comment}`);
+        messageParts.push(`вљ™пёЏ ${translate('Command')}: ${author}: ${payload.command} - ${payload.comment}`);
       }
 
-      // Если нет специфичного контента, добавляем общую информацию
+      // Р•СЃР»Рё РЅРµС‚ СЃРїРµС†РёС„РёС‡РЅРѕРіРѕ РєРѕРЅС‚РµРЅС‚Р°, РґРѕР±Р°РІР»СЏРµРј РѕР±С‰СѓСЋ РёРЅС„РѕСЂРјР°С†РёСЋ
       if (messageParts.length === 0) {
         const parts = [];
         if (fullBody.event) parts.push(`${translate('Event')}: ${fullBody.event}`);
         if (fullBody.object_id) parts.push(`${translate('Object ID')}: ${fullBody.object_id}`);
         if (fullBody.person_name) parts.push(`${translate('By')}: ${fullBody.person_name}`);
         if (parts.length > 0) {
-          messageParts.push(`ℹ️ ${translate('Info')}: ` + parts.join(' | '));
+          messageParts.push(`в„№пёЏ ${translate('Info')}: ` + parts.join(' | '));
         } else {
-          messageParts.push(`📦 ${translate('Payload')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000));
+          messageParts.push(`рџ“¦ ${translate('Payload')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000));
         }
       }
 
       return messageParts.join('\n\n');
     } catch (e) {
       console.error('Format message error:', e.message);
-      return `❌ ${translate('Error formatting message')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000);
+      return `вќЊ ${translate('Error formatting message')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000);
     }
   };
 
   for (const rule of rules) {
-    if (!rule || rule.enabled === false) continue; // Пропускаем отключенные правила
+    if (!rule || rule.enabled === false) continue; // РџСЂРѕРїСѓСЃРєР°РµРј РѕС‚РєР»СЋС‡РµРЅРЅС‹Рµ РїСЂР°РІРёР»Р°
     try {
-      // Оцениваем условие правила с помощью Function (динамический JS код)
+      // РћС†РµРЅРёРІР°РµРј СѓСЃР»РѕРІРёРµ РїСЂР°РІРёР»Р° СЃ РїРѕРјРѕС‰СЊСЋ Function (РґРёРЅР°РјРёС‡РµСЃРєРёР№ JS РєРѕРґ)
       const fn = new Function('payload', `return ${rule.condition}`);
       let ruleMatches = false;
       try {
-        ruleMatches = !!fn(incomingPayload); // Выполняем условие и приводим к boolean
+        ruleMatches = !!fn(incomingPayload); // Р’С‹РїРѕР»РЅСЏРµРј СѓСЃР»РѕРІРёРµ Рё РїСЂРёРІРѕРґРёРј Рє boolean
       } catch (evalErr) {
         console.error('Rule evaluation error for rule', rule.id || '(no id):', evalErr.message);
       }
       if (ruleMatches) {
-        matched++; // Увеличиваем счетчик совпадений
-        const token = rule.botToken; // Токен обязателен в правиле
-        if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
+        matched++; // РЈРІРµР»РёС‡РёРІР°РµРј СЃС‡РµС‚С‡РёРє СЃРѕРІРїР°РґРµРЅРёР№
+        const token = rule.botToken; // РўРѕРєРµРЅ РѕР±СЏР·Р°С‚РµР»РµРЅ РІ РїСЂР°РІРёР»Рµ
+        if (!token || token === 'YOUR_TOKEN' || token === 'Р’РђРЁ_РўРћРљР•Рќ_Р—Р”Р•РЎР¬') {
           telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured in rule' });
           continue;
         }
 
-        // Поддержка одного chatId или массива chatIds
+        // РџРѕРґРґРµСЂР¶РєР° РѕРґРЅРѕРіРѕ chatId РёР»Рё РјР°СЃСЃРёРІР° chatIds
         const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
         if (chatIds.length === 0) {
           telegram_results.push({ chatId: null, success: false, error: 'No chatId configured for rule' });
           continue;
         }
 
-        // Форматируем сообщение для отправки
+        // Р¤РѕСЂРјР°С‚РёСЂСѓРµРј СЃРѕРѕР±С‰РµРЅРёРµ РґР»СЏ РѕС‚РїСЂР°РІРєРё
         const messageText = formatMessage(req.body, incomingPayload, rule);
 
-        // Отправляем в каждый чат
+        // РћС‚РїСЂР°РІР»СЏРµРј РІ РєР°Р¶РґС‹Р№ С‡Р°С‚
         for (const chat of chatIds) {
           try {
             const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -474,9 +476,11 @@ app.post('/webhook', async (req, res) => {
       }
     } catch (e) {
       console.error('Rule handler error:', e.message);
-  const sent = telegram_results.filter(r => r.success).length; // ���������� ������� ������������ ���������
-  logWebhook(req.body, matched, rules.length, telegram_results); // �������� webhook
-  res.json({ matched, sent, telegram_results }); // ���������� ���������
+    }
+  }
+  const sent = telegram_results.filter(r => r.success).length; // Количество успешно отправленных сообщений
+  logWebhook(req.body, matched, rules.length, telegram_results); // Логируем webhook
+  res.json({ matched, sent, telegram_results }); // Возвращаем результат
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -506,13 +510,13 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
     }
   } else {
     db.logs = [];
-    saveLogs(); // ��������� ������ ������ � ����
+    saveLogs(); // Сохраняем пустой массив в файл
     res.json({ status: 'ok' });
   }
 });
 
 const server = app.listen(PORT, () => {
-  console.log(` Server on http://localhost:${PORT}`);
+  console.log(`Server on http://localhost:${PORT}`);
 });
 
 process.on('SIGTERM', () => server.close(() => process.exit(0)));
