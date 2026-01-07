@@ -1302,9 +1302,10 @@
                                                         <div class="condition-rows">
                                                             <div class="condition-row">
                                                                 <select class="field-select">
-                                                                    <option value="payload.team">Команда</option>
+                                                                    <option value="payload.team_id">ID команды</option>
+                                                                    <option value="payload.team.name" selected>Название команды</option>
                                                                     <option value="payload.status">Статус</option>
-                                                                    <option value="payload.category" selected>Категория</option>
+                                                                    <option value="payload.category">Категория</option>
                                                                     <option value="payload.impact">Влияние</option>
                                                                     <option value="payload.priority">Приоритет</option>
                                                                     <option value="payload.requested_by.name">Инициатор</option>
@@ -1316,7 +1317,7 @@
                                                                     <option value="<">меньше</option>
                                                                     <option value="includes">содержит</option>
                                                                 </select>
-                                                                <input type="text" class="value-input" placeholder="Значение" value="incident">
+                                                                <input type="text" class="value-input" placeholder="Значение" value="Поддержка конечных пользователей">
                                                             </div>
                                                         </div>
                                                         <button class="add-condition-btn">
@@ -1341,7 +1342,7 @@
                                             </div>
                                             
                                             <div class="code-condition-editor" id="codeConditionEditor" style="display: none;">
-                                                <textarea id="conditionCode" placeholder="Например: payload.category === 'incident' && payload.impact === 'high'">payload.category === 'incident'</textarea>
+                                                <textarea id="conditionCode" placeholder="Например: payload.team.name === 'Поддержка конечных пользователей' && payload.impact === 'high'">payload.team.name === 'Поддержка конечных пользователей'</textarea>
                                                 <small class="form-hint">Доступна переменная <code>payload</code> с данными вебхука</small>
                                             </div>
                                             
@@ -1349,10 +1350,10 @@
                                                 <h3>👀 Предпросмотр условия</h3>
                                                 <div class="preview-result">
                                                     <strong>Сгенерированный код:</strong>
-                                                    <pre id="conditionPreview">payload.category === 'incident'</pre>
+                                                    <pre id="conditionPreview">payload.team.name === 'Поддержка конечных пользователей'</pre>
                                                 </div>
                                                 
-                                                <input type="hidden" id="condition" value="payload.category === 'incident'">
+                                                <input type="hidden" id="condition" value="payload.team.name === 'Поддержка конечных пользователей'">
                                                 
                                                 <h3>📱 Предпросмотр сообщения</h3>
                                                 <div class="telegram-preview">
@@ -1361,11 +1362,14 @@
                                                         <div class="telegram-content">
                                                             <div class="telegram-sender">Webhook Bot</div>
                                                             <div class="telegram-text" id="messagePreview">
-                                                                🆔 ID: 123<br><br>
-                                                                📋 Тема: Проблема с сервером<br><br>
-                                                                👤 Инициатор запроса: Иван Петров @Компания<br><br>
+                                                                🆔 ID: 141<br><br>
+                                                                📋 Тема: Ноутбук CMP00035 больше не загружается<br><br>
+                                                                👤 Инициатор запроса: Мокосеева Ксения @АО ПроПродукт<br><br>
+                                                                Команда: Поддержка конечных пользователей<br>
+                                                                Категория: incident<br>
+                                                                Влияние: medium<br><br>
                                                                 📝 Комментарий:<br>
-                                                                1. Иван Петров @Компания (15.01.2024, 14:30): Проблема с доступом к серверу
+                                                                1. Афанасенко Валерий @АО ПроПродукт (07.01.2026, 16:36): avwqrgw
                                                             </div>
                                                             <div class="telegram-time">Только что</div>
                                                         </div>
@@ -1431,33 +1435,39 @@
                                 <h2>🧪 Тестирование условий</h2>
                                 <div class="form-group">
                                     <label for="testCondition">Условие</label>
-                                    <input type="text" id="testCondition" placeholder="payload.team_id === 14" value="payload.category === 'incident'">
+                                    <input type="text" id="testCondition" placeholder="payload.team_id === 40" value="payload.team.name === 'Поддержка конечных пользователей'">
                                 </div>
                                 <div class="form-group">
                                     <label for="testPayload">Тестовый payload (JSON)</label>
-                                    <textarea id="testPayload" placeholder='{"team_id": 14, "name": "Test"}'>{
+                                    <textarea id="testPayload" placeholder='{"team_id": 40, "name": "Test"}'>{
+  "team_id": 40,
+  "team": {
+    "id": 40,
+    "name": "Поддержка конечных пользователей"
+  },
   "category": "incident",
-  "impact": "high",
-  "team": "Astra Linux Серверы",
-  "subject": "Проблема с доступом к серверу",
+  "impact": "medium",
+  "subject": "Ноутбук CMP00035 больше не загружается",
   "requested_by": {
-    "name": "Иван Петров",
+    "name": "Мокосеева Ксения",
     "account": {
-      "name": "Компания"
+      "name": "АО ПроПродукт"
     }
   },
   "note": [
     {
-      "text": "Проблема с доступом к серверу",
+      "text": "avwqrgw",
       "person": {
-        "name": "Иван Петров"
+        "name": "Афанасенко Валерий"
       },
       "account": {
-        "name": "Компания"
+        "name": "АО ПроПродукт"
       },
-      "created_at": "2024-01-15T14:30:00Z"
+      "created_at": "2026-01-07T16:36:27Z"
     }
-  ]
+  ],
+  "resolution_target_at": "2024-07-29T19:20:00Z",
+  "response_target_at": "2024-07-26T21:50:00Z"
 }</textarea>
                                     <small class="form-hint">Вставьте пример payload из истории для тестирования</small>
                                 </div>
@@ -1530,7 +1540,8 @@
 
                                 <h3>📝 Примеры условий</h3>
                                 <ul>
-                                    <li><code>payload.team === 'Astra Linux Серверы'</code> - проверка команды</li>
+                                    <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
+                                    <li><code>payload.team.name === 'Поддержка конечных пользователей'</code> - проверка по названию команды</li>
                                     <li><code>payload.status === 'error'</code> - проверка статуса</li>
                                     <li><code>payload.impact === 'high'</code> - проверка влияния</li>
                                     <li><code>payload.subject.includes('сервер')</code> - поиск в теме</li>
@@ -1554,14 +1565,18 @@
                                 <pre>curl -X POST http://localhost:3000/webhook \
   -H "Content-Type: application/json" \
   -d '{
+    "team_id": 40,
+    "team": {
+      "id": 40,
+      "name": "Поддержка конечных пользователей"
+    },
     "category": "incident",
-    "impact": "high",
-    "team": "Astra Linux Серверы",
-    "subject": "Сервер недоступен",
+    "impact": "medium",
+    "subject": "Ноутбук CMP00035 больше не загружается",
     "requested_by": {
-      "name": "Иван Петров",
+      "name": "Мокосеева Ксения",
       "account": {
-        "name": "Компания"
+        "name": "АО ПроПродукт"
       }
     }
   }'</pre>
@@ -1700,7 +1715,8 @@
             newRow.className = 'condition-row';
             newRow.innerHTML = `
                 <select class="field-select">
-                    <option value="payload.team">Команда</option>
+                    <option value="payload.team_id">ID команды</option>
+                    <option value="payload.team.name">Название команды</option>
                     <option value="payload.status">Статус</option>
                     <option value="payload.category">Категория</option>
                     <option value="payload.impact">Влияние</option>
@@ -1738,7 +1754,8 @@
             const value = document.querySelector('.value-input').value;
             
             let formattedValue = `'${value}'`;
-            if (!isNaN(value) && value.trim() !== '') {
+            if (!isNaN(value) && value.trim() !== '' && (operator === '===' || operator === '!==') && (field.includes('.id') || field.includes('_id'))) {
+                // Если это числовой ID и оператор сравнения, то не берем в кавычки
                 formattedValue = value;
             }
             
@@ -1759,27 +1776,33 @@
         function updateMessagePreview(condition) {
             // This is a simplified preview - in real app you would evaluate the condition
             const payload = {
-                id: 123,
+                id: 141,
+                team_id: 40,
+                team: {
+                    id: 40,
+                    name: 'Поддержка конечных пользователей'
+                },
                 category: 'incident',
-                impact: 'high',
-                team: 'Astra Linux Серверы',
-                subject: 'Проблема с сервером',
+                impact: 'medium',
+                subject: 'Ноутбук CMP00035 больше не загружается',
                 requested_by: {
-                    name: 'Иван Петров',
+                    name: 'Мокосеева Ксения',
                     account: {
-                        name: 'Компания'
+                        name: 'АО ПроПродукт'
                     }
                 },
                 note: [{
-                    text: 'Проблема с доступом к серверу',
+                    text: 'avwqrgw',
                     person: {
-                        name: 'Иван Петров'
+                        name: 'Афанасенко Валерий'
                     },
                     account: {
-                        name: 'Компания'
+                        name: 'АО ПроПродукт'
                     },
-                    created_at: '2024-01-15T14:30:00Z'
-                }]
+                    created_at: '2026-01-07T16:36:27Z'
+                }],
+                resolution_target_at: '2024-07-29T19:20:00Z',
+                response_target_at: '2024-07-26T21:50:00Z'
             };
             
             let message = '';
@@ -1801,18 +1824,54 @@
             }
             
             // Team, Category, Impact
-            const fields = ['team', 'category', 'impact'];
-            for (const field of fields) {
-                if (payload[field] && payload[field] !== null) {
-                    const labels = {
-                        'team': 'Команда',
-                        'category': 'Категория',
-                        'impact': 'Влияние'
-                    };
-                    message += `${labels[field]}: ${payload[field]}\n`;
-                }
+            if (payload.team?.name) {
+                message += `Команда: ${payload.team.name}\n`;
+            }
+            if (payload.category) {
+                message += `Категория: ${payload.category}\n`;
+            }
+            if (payload.impact) {
+                message += `Влияние: ${payload.impact}\n`;
             }
             message += '\n';
+            
+            // SLA targets
+            if (payload.response_target_at || payload.resolution_target_at) {
+                if (payload.response_target_at) {
+                    try {
+                        const date = new Date(payload.response_target_at);
+                        if (!isNaN(date.getTime())) {
+                            message += `⏰ Крайний срок ответа: ${date.toLocaleString('ru-RU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}\n`;
+                        }
+                    } catch (e) {
+                        message += `⏰ Крайний срок ответа: ${payload.response_target_at}\n`;
+                    }
+                }
+                
+                if (payload.resolution_target_at) {
+                    try {
+                        const date = new Date(payload.resolution_target_at);
+                        if (!isNaN(date.getTime())) {
+                            message += `⏰ Крайний срок решения: ${date.toLocaleString('ru-RU', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                            })}\n`;
+                        }
+                    } catch (e) {
+                        message += `⏰ Крайний срок решения: ${payload.resolution_target_at}\n`;
+                    }
+                }
+                message += '\n';
+            }
             
             // Notes
             if (payload.note) {
@@ -2067,7 +2126,7 @@
                 const codeMode = document.querySelector('input[name="conditionMode"][value="code"]');
                 
                 // Try to parse condition for visual mode
-                if (rule.condition.includes('===') || rule.condition.includes('!==')) {
+                if (rule.condition.includes('team_id') || rule.condition.includes('team.name')) {
                     visualMode.checked = true;
                     document.getElementById('visualConditionEditor').style.display = 'block';
                     document.getElementById('codeConditionEditor').style.display = 'none';
@@ -2331,7 +2390,7 @@
                 }
                 
                 const dataStr = JSON.stringify(rules, null, 2);
-                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                const dataUri = 'application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
                 
                 const exportFileDefaultName = `telegram-webhook-rules-${new Date().toISOString().slice(0,10)}.json`;
                 
