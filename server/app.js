@@ -17,7 +17,7 @@ const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
 const sessions = new Set();
 
-// УЛУЧШЕННАЯ СИСТЕМА ПЕРЕВОДОВ - ОДИН ЦЕНТРАЛИЗОВАННЫЙ БЛОК
+// ЦЕНТРАЛИЗОВАННАЯ СИСТЕМА ПЕРЕВОДОВ - ЛЕГКО РАСШИРЯТЬ
 const fieldTranslations = {
   // Основные поля
   id: 'ID',
@@ -28,6 +28,12 @@ const fieldTranslations = {
   impact: 'Влияние',
   priority: 'Приоритет',
   urgency: 'Срочность',
+  
+  // SLA и временные метки
+  response_target_at: 'Крайний срок ответа',
+  resolution_target_at: 'Крайний срок решения',
+  created_at: 'Создан',
+  updated_at: 'Обновлен',
   
   // Связанные с пользователем поля
   requested_by: {
@@ -47,7 +53,6 @@ const fieldTranslations = {
   note: 'Комментарий',
   text: 'Текст',
   message: 'Сообщение',
-  created_at: 'Дата создания',
   
   // Другие поля
   command: 'Команда',
@@ -393,7 +398,7 @@ app.post('/webhook', async (req, res) => {
   let matched = 0;
   let telegram_results = [];
 
-  // УЛУЧШЕННАЯ ФУНКЦИЯ ФОРМАТИРОВАНИЯ СООБЩЕНИЙ
+  // УЛУЧШЕННАЯ ФУНКЦИЯ ФОРМАТИРОВАНИЯ СООБЩЕНИЙ С ПОДДЕРЖКОЙ ВСЕХ ПОЛЕЙ
   const formatMessage = (fullBody, payload) => {
     try {
       const messageParts = [];
@@ -412,20 +417,43 @@ app.post('/webhook', async (req, res) => {
         messageParts.push(`👤 ${getFieldTranslation('requested_by.name')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
       }
       
-      // 2. Статус и дополнительные поля
+      // 2. Статус
       if (payload.status) {
         messageParts.push(`📊 ${getFieldTranslation('status')}: ${payload.status}`);
       }
       
-      // Дополнительные поля команды, категории, влияния
+      // 3. SLA и временные метки (с форматированием дат)
+      const slaFields = ['response_target_at', 'resolution_target_at'];
+      for (const field of slaFields) {
+        if (payload[field] && payload[field] !== null) {
+          let value = payload[field];
+          try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              value = date.toLocaleString('ru-RU', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              });
+            }
+          } catch (e) {
+            console.error('Date formatting error:', e);
+          }
+          messageParts.push(`⏰ ${getFieldTranslation(field)}: ${value}`);
+        }
+      }
+      
+      // 4. Дополнительные поля
       const additionalFields = ['team', 'category', 'impact', 'priority', 'urgency'];
       for (const field of additionalFields) {
-        if (payload[field] && payload[field] !== null) {
+        if (payload[field] && payload[field] !== null && payload[field] !== '') {
           messageParts.push(`${getFieldTranslation(field)}: ${payload[field]}`);
         }
       }
       
-      // 3. Заметки/комментарии - ПОДДЕРЖКА И ОДИНОЧНОГО ОБЪЕКТА, И МАССИВА
+      // 5. Заметки/комментарии - ПОДДЕРЖКА И ОДИНОЧНОГО ОБЪЕКТА, И МАССИВА
       const notes = payload.note ? (Array.isArray(payload.note) ? payload.note : [payload.note]) : [];
       if (notes.length > 0) {
         messageParts.push(`📝 ${getFieldTranslation('note')}:`);
@@ -433,12 +461,32 @@ app.post('/webhook', async (req, res) => {
           const author = note.person?.name || note.person_name || 'Unknown';
           const account = note.account?.name || note.person?.account?.name || '';
           const text = note.text || '';
-          const timestamp = note.created_at ? new Date(note.created_at).toLocaleString('ru-RU') : '';
+          let timestamp = '';
+          
+          if (note.created_at) {
+            try {
+              const date = new Date(note.created_at);
+              if (!isNaN(date.getTime())) {
+                timestamp = date.toLocaleString('ru-RU', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                });
+              } else {
+                timestamp = note.created_at;
+              }
+            } catch (e) {
+              timestamp = note.created_at;
+            }
+          }
+          
           messageParts.push(`${index + 1}. ${author}${account ? ' @' + account : ''}${timestamp ? ' (' + timestamp + ')' : ''}: ${text}`);
         });
       }
       
-      // 4. Прямые сообщения (если нет заметок)
+      // 6. Прямые сообщения (если нет заметок)
       if (payload && (payload.text || payload.message) && !payload.note) {
         const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
         const account = payload.account?.name || payload.requested_by?.account?.name || '';
@@ -446,7 +494,7 @@ app.post('/webhook', async (req, res) => {
         messageParts.push(`💬 ${getFieldTranslation('message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
       }
       
-      // 5. Резервный вариант
+      // 7. Резервный вариант
       if (messageParts.length === 0) {
         const infoParts = [];
         if (fullBody.event) infoParts.push(`Событие: ${fullBody.event}`);
@@ -456,14 +504,16 @@ app.post('/webhook', async (req, res) => {
         if (infoParts.length > 0) {
           messageParts.push(`ℹ️ Информация: ${infoParts.join(' | ')}`);
         } else {
-          messageParts.push(`📦 Данные: ${JSON.stringify(payload || fullBody).slice(0, 4000)}`);
+          const payloadJson = JSON.stringify(payload || fullBody, null, 2);
+          const truncated = payloadJson.length > 4000 ? payloadJson.slice(0, 3997) + '...' : payloadJson;
+          messageParts.push(`📦 Данные:\n\`\`\`\n${truncated}\n\`\`\``);
         }
       }
       
       return messageParts.join('\n\n');
     } catch (e) {
       console.error('Format message error:', e.message);
-      return `❌ Ошибка форматирования сообщения: ${e.message}`;
+      return `❌ Ошибка форматирования сообщения: ${e.message}\n\n📦 Данные:\n${JSON.stringify(payload || fullBody).slice(0, 4000)}`;
     }
   };
 
