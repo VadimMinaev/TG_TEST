@@ -5,11 +5,10 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // Увеличенный лимит для больших пайлоадов
 app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
-// Глобальная переменная для хранения токена (временно, пока не перейдете полностью на правила)
 let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
@@ -18,7 +17,6 @@ const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
 const sessions = new Set(); // Хранение активных сессий
 
-// Функция для перевода ключевых слов на русский
 const translations = {
   'Subject': 'Тема',
   'category': 'Категория',
@@ -39,37 +37,16 @@ const translations = {
 };
 
 function translate(key) {
-  return translations[key] || key; // Возвращает перевод или оригинал, если перевода нет
+  return translations[key] || key;
 }
 
-// Функция для декодирования текста из CP1251 в UTF-8
-function decodeText(str) {
-  if (typeof str !== 'string') return str;
-  try {
-    // Предполагаем, что текст в CP1251, декодируем
-    return Buffer.from(str, 'latin1').toString('utf8');
-  } catch (e) {
-    return str; // Если не удалось, возвращаем как есть
-  }
-}
-
-// Рекурсивная декодировка объекта
+// ПРОБЛЕМА ТУТ: данные уже приходят в UTF-8, не нужно дополнительное декодирование
+// Эта функция больше не нужна для текущего интеграционного сервиса
 function decodeObject(obj) {
-  if (typeof obj === 'string') {
-    return decodeText(obj);
-  } else if (Array.isArray(obj)) {
-    return obj.map(decodeObject);
-  } else if (obj && typeof obj === 'object') {
-    const decoded = {};
-    for (const [key, value] of Object.entries(obj)) {
-      decoded[key] = decodeObject(value);
-    }
-    return decoded;
-  }
-  return obj;
+  return obj; // Просто возвращаем объект как есть
 }
 
-let db = { rules: [], logs: [] }; // Default to in-memory
+let db = { rules: [], logs: [] };
 if (process.env.DATABASE_URL) {
   const { Client } = require('pg');
   const client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -82,11 +59,9 @@ if (process.env.DATABASE_URL) {
       console.log('DB connected and tables created');
     } catch (err) {
       console.error('DB init error:', err);
-      // Keep in-memory fallback
     }
   })();
 } else {
-  // Загружаем данные из файлов, если нет базы
   try {
     if (fs.existsSync(RULES_FILE)) {
       db.rules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
@@ -105,11 +80,10 @@ if (process.env.DATABASE_URL) {
   }
 }
 
-// Функции для сохранения данных в файлы (если нет базы)
 function saveRules() {
   if (!process.env.DATABASE_URL) {
     try {
-      fs.writeFileSync(RULES_FILE, JSON.stringify(db.rules, null, 2));
+      fs.writeFileSync(RULES_FILE, JSON.stringify(db.rules, null, 2), 'utf8');
     } catch (e) {
       console.error('Error saving rules to file:', e);
     }
@@ -119,20 +93,18 @@ function saveRules() {
 function saveLogs() {
   if (!process.env.DATABASE_URL) {
     try {
-      fs.writeFileSync(LOGS_FILE, JSON.stringify(db.logs, null, 2));
+      fs.writeFileSync(LOGS_FILE, JSON.stringify(db.logs, null, 2), 'utf8');
     } catch (e) {
       console.error('Error saving logs to file:', e);
     }
   }
 }
 
-// Ensure data directory exists
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) {
   fs.mkdirSync(dataDir, { recursive: true });
 }
 
-// Log webhook
 function logWebhook(payload, matched, rules_count, telegram_results = []) {
   try {
     const logEntry = {
@@ -146,26 +118,23 @@ function logWebhook(payload, matched, rules_count, telegram_results = []) {
     };
     if (process.env.DATABASE_URL) {
       db.query('INSERT INTO logs (data) VALUES ($1)', [logEntry]).catch(err => console.error('Log DB error:', err));
-      // Keep only last 100 logs
       db.query('DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 100)').catch(err => console.error('Log cleanup error:', err));
     } else {
       db.logs.unshift(logEntry);
       if (db.logs.length > 100) db.logs = db.logs.slice(0, 100);
-      saveLogs(); // Сохраняем в файл
+      saveLogs();
     }
   } catch (e) {
     console.error('Log error:', e.message);
   }
 }
 
-// AUTH CHECK
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
   if (token && sessions.has(token)) return next();
   res.status(401).json({ error: 'Unauthorized' });
 };
 
-// ROUTES
 app.post('/api/login', (req, res) => {
   if (req.body.username === CRED_USER && req.body.password === CRED_PASS) {
     const token = Date.now().toString();
@@ -193,7 +162,6 @@ app.post('/api/bot-token', auth, (req, res) => {
   }
   
   TELEGRAM_BOT_TOKEN = newToken;
-  // Note: In Railway, update TELEGRAM_BOT_TOKEN via dashboard env vars
   res.json({ status: 'ok' });
 });
 
@@ -214,6 +182,7 @@ app.post('/api/test-send', auth, async (req, res) => {
     });
     res.json({ success: true, response: response.data });
   } catch (error) {
+    console.error('Telegram send error:', error.response?.data || error.message);
     res.status(400).json({ success: false, error: error.response?.data || error.message });
   }
 });
@@ -249,17 +218,17 @@ app.post('/api/rules', auth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid bot token' });
     }
     
-    const newRule = { id: Date.now(), ...ruleData, botToken, enabled: req.body.enabled !== false };
+    const newRule = { id: Date.now(), ...ruleData, botToken, enabled: req.body.enabled !== false, encoding: 'utf8' }; // Добавляем параметр кодировки
     if (process.env.DATABASE_URL) {
       await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
       res.json(newRule);
     } else {
       db.rules.push(newRule);
-      saveRules(); // Сохраняем в файл
+      saveRules();
       res.json(newRule);
     }
   } catch (error) {
-    console.error('Error in /api/rules POST:', error);
+    console.error('Error in /api/rules POST:', error.response?.data || error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -314,14 +283,14 @@ app.put('/api/rules/:id', auth, async (req, res) => {
         }
         
         db.rules[idx] = updated;
-        saveRules(); // Сохраняем в файл
+        saveRules();
         res.json(db.rules[idx]);
       } else {
         res.status(404).json({ error: 'not found' });
       }
     }
   } catch (error) {
-    console.error('Error in /api/rules PUT:', error);
+    console.error('Error in /api/rules PUT:', error.response?.data || error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -340,14 +309,14 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
       const idx = db.rules.findIndex(r => r.id == ruleId);
       if (idx >= 0) {
         db.rules.splice(idx, 1);
-        saveRules(); // Сохраняем в файл
+        saveRules();
         res.json({ status: 'deleted' });
       } else {
         res.status(404).json({ error: 'Rule not found' });
       }
     }
   } catch (error) {
-    console.error('Error in /api/rules DELETE:', error);
+    console.error('Error in /api/rules DELETE:', error.response?.data || error.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -368,13 +337,12 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // Определение payload: используем req.body.payload, если есть, иначе весь req.body
   let incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
 
-  // Декодируем текст из CP1251 в UTF-8
-  incomingPayload = decodeObject(incomingPayload);
+  // ГЛАВНОЕ ИСПРАВЛЕНИЕ: УБРАНО ПРИНУДИТЕЛЬНОЕ ДЕКОДИРОВАНИЕ
+  // incomingPayload уже в правильной кодировке UTF-8
+  // incomingPayload = decodeObject(incomingPayload);
 
-  // Загрузка правил из базы данных или in-memory
   let rules = [];
   if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
     try {
@@ -395,36 +363,30 @@ app.post('/webhook', async (req, res) => {
     try {
       let messageParts = [];
 
-      // Сначала добавляем ID, если есть
       if (payload.id) {
         messageParts.push(`🆔 ${translate('ID')}: ${payload.id}`);
       }
 
-      // Затем Subject
       if (payload.subject) {
         messageParts.push(`📋 ${translate('Subject')}: ${payload.subject}`);
       }
 
-      // Requested by
       if (payload.requested_by?.name) {
         const account = payload.requested_by.account?.name || '';
         messageParts.push(`👤 ${translate('Requested by')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
       }
 
-      // Status
       if (payload.status) {
         messageParts.push(`📊 ${translate('Status')}: ${payload.status}`);
       }
 
-      // Дополнительные простые поля из payload (не объекты/массивы)
-      const processedKeys = ['id', 'subject', 'requested_by', 'note', 'text', 'message', 'command', 'comment', 'status'];
+      const processedKeys = ['id', 'subject', 'requested_by', 'note', 'text', 'message', 'command', 'team', 'comment', 'status'];
       for (const [key, value] of Object.entries(payload)) {
         if (!processedKeys.includes(key) && value !== null && value !== undefined && typeof value !== 'object' && !Array.isArray(value)) {
           messageParts.push(`${translate(key) || key}: ${value}`);
         }
       }
 
-      // Обработка массива заметок (notes)
       if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
         messageParts.push(`📝 ${translate('Notes')}:`);
         payload.note.forEach((note, index) => {
@@ -436,7 +398,6 @@ app.post('/webhook', async (req, res) => {
         });
       }
 
-      // Обработка прямых полей text/message (если нет массива note)
       if (payload && (payload.text || payload.message) && !Array.isArray(payload.note)) {
         const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
         const account = payload.account?.name || payload.requested_by?.account?.name || '';
@@ -444,13 +405,11 @@ app.post('/webhook', async (req, res) => {
         messageParts.push(`💬 ${translate('Message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
       }
 
-      // Обработка структуры command/comment (legacy, если нет других данных)
-      if (payload && payload.command && payload.comment && !Array.isArray(payload.note) && !payload.text && !payload.message) {
+      if (payload && payload.team && payload.comment && !Array.isArray(payload.note) && !payload.text && !payload.message) {
         const author = payload.author || fullBody.person_name || 'Unknown';
-        messageParts.push(`⚙️ ${translate('Command')}: ${author}: ${payload.command} - ${payload.comment}`);
+        messageParts.push(`⚙️ ${translate('Team')}: ${author}: ${payload.team} - ${payload.comment}`);
       }
 
-      // Если нет специфичного контента, добавляем общую информацию
       if (messageParts.length === 0) {
         const parts = [];
         if (fullBody.event) parts.push(`${translate('Event')}: ${fullBody.event}`);
@@ -471,35 +430,31 @@ app.post('/webhook', async (req, res) => {
   };
 
   for (const rule of rules) {
-    if (!rule || rule.enabled === false) continue; // Пропускаем отключенные правила
+    if (!rule || rule.enabled === false) continue;
     try {
-      // Оцениваем условие правила с помощью Function (динамический JS код)
       const fn = new Function('payload', `return ${rule.condition}`);
       let ruleMatches = false;
       try {
-        ruleMatches = !!fn(incomingPayload); // Выполняем условие и приводим к boolean
+        ruleMatches = !!fn(incomingPayload);
       } catch (evalErr) {
         console.error('Rule evaluation error for rule', rule.id || '(no id):', evalErr.message);
       }
       if (ruleMatches) {
-        matched++; // Увеличиваем счетчик совпадений
-        const token = rule.botToken; // Токен обязателен в правиле
+        matched++;
+        const token = rule.botToken;
         if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
           telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured in rule' });
           continue;
         }
 
-        // Поддержка одного chatId или массива chatIds
         const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
         if (chatIds.length === 0) {
           telegram_results.push({ chatId: null, success: false, error: 'No chatId configured for rule' });
           continue;
         }
 
-        // Форматируем сообщение для отправки
         const messageText = formatMessage(req.body, incomingPayload, rule);
 
-        // Отправляем в каждый чат
         for (const chat of chatIds) {
           try {
             const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -518,9 +473,10 @@ app.post('/webhook', async (req, res) => {
       console.error('Rule handler error:', e.message);
     }
   }
-  const sent = telegram_results.filter(r => r.success).length; // Количество успешно отправленных сообщений
-  logWebhook(req.body, matched, rules.length, telegram_results); // Логируем webhook
-  res.json({ matched, sent, telegram_results }); // Возвращаем результат
+  
+  const sent = telegram_results.filter(r => r.success).length;
+  logWebhook(req.body, matched, rules.length, telegram_results);
+  res.json({ matched, sent, telegram_results });
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -550,7 +506,7 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
     }
   } else {
     db.logs = [];
-    saveLogs(); // Сохраняем пустой массив в файл
+    saveLogs();
     res.json({ status: 'ok' });
   }
 });
