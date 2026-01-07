@@ -446,7 +446,7 @@ app.post('/webhook', async (req, res) => {
       }
       
       // 4. Дополнительные поля
-      const additionalFields = ['team', 'category', 'impact', 'priority', 'urgency'];
+      const additionalFields = ['team.name', 'category', 'impact', 'priority', 'urgency'];
       for (const field of additionalFields) {
         if (payload[field] && payload[field] !== null && payload[field] !== '') {
           messageParts.push(`${getFieldTranslation(field)}: ${payload[field]}`);
