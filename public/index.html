@@ -1091,22 +1091,6 @@
             padding: 0;
         }
 
-        .input-with-button {
-            position: relative;
-        }
-
-        .input-with-button button {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: hsl(var(--muted-foreground));
-            cursor: pointer;
-            padding: 0;
-        }
-
         .skeleton {
             background: linear-gradient(90deg, 
                 hsl(var(--muted)) 0%, 
@@ -1303,9 +1287,9 @@
                                                             <div class="condition-row">
                                                                 <select class="field-select">
                                                                     <option value="payload.team_id">ID команды</option>
-                                                                    <option value="payload.team.name" selected>Название команды</option>
+                                                                    <option value="payload.team.name">Название команды</option>
                                                                     <option value="payload.status">Статус</option>
-                                                                    <option value="payload.category">Категория</option>
+                                                                    <option value="payload.category" selected>Категория</option>
                                                                     <option value="payload.impact">Влияние</option>
                                                                     <option value="payload.priority">Приоритет</option>
                                                                     <option value="payload.requested_by.name">Инициатор</option>
@@ -1317,7 +1301,8 @@
                                                                     <option value="<">меньше</option>
                                                                     <option value="includes">содержит</option>
                                                                 </select>
-                                                                <input type="text" class="value-input" placeholder="Значение" value="Поддержка конечных пользователей">
+                                                                <!-- ИСПРАВЛЕНО: Значение по умолчанию на английском с двойными кавычками -->
+                                                                <input type="text" class="value-input" placeholder="Значение" value="incident">
                                                             </div>
                                                         </div>
                                                         <button class="add-condition-btn">
@@ -1342,7 +1327,7 @@
                                             </div>
                                             
                                             <div class="code-condition-editor" id="codeConditionEditor" style="display: none;">
-                                                <textarea id="conditionCode" placeholder="Например: payload.team.name === 'Поддержка конечных пользователей' && payload.impact === 'high'">payload.team.name === 'Поддержка конечных пользователей'</textarea>
+                                                <textarea id="conditionCode" placeholder='Например: payload.category === "incident" && payload.impact === "high"'>payload.category === "incident"</textarea>
                                                 <small class="form-hint">Доступна переменная <code>payload</code> с данными вебхука</small>
                                             </div>
                                             
@@ -1350,10 +1335,10 @@
                                                 <h3>👀 Предпросмотр условия</h3>
                                                 <div class="preview-result">
                                                     <strong>Сгенерированный код:</strong>
-                                                    <pre id="conditionPreview">payload.team.name === 'Поддержка конечных пользователей'</pre>
+                                                    <pre id="conditionPreview">payload.category === "incident"</pre>
                                                 </div>
                                                 
-                                                <input type="hidden" id="condition" value="payload.team.name === 'Поддержка конечных пользователей'">
+                                                <input type="hidden" id="condition" value='payload.category === "incident"'>
                                                 
                                                 <h3>📱 Предпросмотр сообщения</h3>
                                                 <div class="telegram-preview">
@@ -1435,7 +1420,7 @@
                                 <h2>🧪 Тестирование условий</h2>
                                 <div class="form-group">
                                     <label for="testCondition">Условие</label>
-                                    <input type="text" id="testCondition" placeholder="payload.team_id === 40" value="payload.team.name === 'Поддержка конечных пользователей'">
+                                    <input type="text" id="testCondition" placeholder='payload.team_id === 40' value='payload.category === "incident"'>
                                 </div>
                                 <div class="form-group">
                                     <label for="testPayload">Тестовый payload (JSON)</label>
@@ -1541,13 +1526,13 @@
                                 <h3>📝 Примеры условий</h3>
                                 <ul>
                                     <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
-                                    <li><code>payload.team.name === 'Поддержка конечных пользователей'</code> - проверка по названию команды</li>
-                                    <li><code>payload.status === 'error'</code> - проверка статуса</li>
-                                    <li><code>payload.impact === 'high'</code> - проверка влияния</li>
-                                    <li><code>payload.subject.includes('сервер')</code> - поиск в теме</li>
-                                    <li><code>payload.note && payload.note.some(n => n.text.includes('срочно'))</code> - проверка комментариев</li>
+                                    <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
+                                    <li><code>payload.status === "error"</code> - проверка статуса</li>
+                                    <li><code>payload.impact === "high"</code> - проверка влияния</li>
+                                    <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
+                                    <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
                                     <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
-                                    <li><code>payload.category === 'incident' && payload.impact === 'high'</code> - несколько условий</li>
+                                    <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
                                 </ul>
 
                                 <h3>🔗 Webhook URL</h3>
@@ -1748,15 +1733,41 @@
             updateConditionPreview();
         }
 
+        // ИСПРАВЛЕНО: Умное форматирование значений с правильными кавычками
         function updateConditionPreview() {
             const field = document.querySelector('.field-select').value;
             const operator = document.querySelector('.operator-select').value;
             const value = document.querySelector('.value-input').value;
             
-            let formattedValue = `'${value}'`;
-            if (!isNaN(value) && value.trim() !== '' && (operator === '===' || operator === '!==') && (field.includes('.id') || field.includes('_id'))) {
-                // Если это числовой ID и оператор сравнения, то не берем в кавычки
-                formattedValue = value;
+            // Определяем, нужно ли брать значение в кавычки
+            let needsQuotes = true;
+            let formattedValue = value;
+            
+            // Для числовых полей и ID не используем кавычки
+            if (field.includes('.id') || field.includes('_id') || 
+                field.includes('.priority') || 
+                (field === 'payload.priority' && !isNaN(value)) ||
+                (field === 'payload.team_id' && !isNaN(value))) {
+                needsQuotes = false;
+            }
+            
+            // Для некоторых операторов не используем кавычки
+            if (operator === '>' || operator === '<' || operator === '>=' || operator === '<=') {
+                needsQuotes = false;
+            }
+            
+            // Форматируем значение
+            if (needsQuotes) {
+                // Для boolean значений не используем кавычки
+                if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+                    formattedValue = value.toLowerCase();
+                } else {
+                    // Используем ДВОЙНЫЕ кавычки как в JSON
+                    formattedValue = `"${value.replace(/"/g, '\\"')}"`;
+                }
+            } else {
+                // Убираем кавычки для числовых значений
+                formattedValue = value.replace(/['"]/g, '');
             }
             
             const condition = `${field} ${operator} ${formattedValue}`;
@@ -2049,9 +2060,7 @@
         }
 
         function filterRules(query) {
-            // This will be called when user types in search box
-            // We reload rules but with filtering applied on client side
-            loadRules(); // The displayRules function will handle filtering
+            loadRules();
         }
 
         async function saveRule(e) {
@@ -2097,8 +2106,6 @@
                 document.querySelector('.card h2:nth-of-type(1)').textContent = 'Создать правило';
                 
                 await loadRules();
-                
-                // Scroll to rules list
                 document.getElementById('rulesList').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 showAlert('addAlert', 'Ошибка: ' + error.message, 'error');
@@ -2126,7 +2133,8 @@
                 const codeMode = document.querySelector('input[name="conditionMode"][value="code"]');
                 
                 // Try to parse condition for visual mode
-                if (rule.condition.includes('team_id') || rule.condition.includes('team.name')) {
+                if (rule.condition.includes('team_id') || rule.condition.includes('team.name') || 
+                    rule.condition.includes('category') || rule.condition.includes('impact')) {
                     visualMode.checked = true;
                     document.getElementById('visualConditionEditor').style.display = 'block';
                     document.getElementById('codeConditionEditor').style.display = 'none';
@@ -2137,7 +2145,10 @@
                         if (parts.length >= 3) {
                             document.querySelector('.field-select').value = parts[0].trim();
                             document.querySelector('.operator-select').value = parts[1].trim();
-                            document.querySelector('.value-input').value = parts[2].trim().replace(/['"]/g, '');
+                            
+                            // Убираем кавычки для отображения в поле ввода
+                            let rawValue = parts[2].trim().replace(/['"]/g, '');
+                            document.querySelector('.value-input').value = rawValue;
                         }
                         updateConditionPreview();
                     } catch (e) {
@@ -2159,8 +2170,6 @@
                 editingRuleId = id;
                 document.querySelector('.card h2:nth-of-type(1)').textContent = 'Редактировать правило';
                 document.querySelector('#ruleForm button[type="submit"]').textContent = 'Обновить правило';
-
-                // Scroll to form
                 document.getElementById('ruleForm').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
@@ -2368,7 +2377,6 @@
                 
                 if (response.ok) {
                     showAlert('addAlert', 'Глобальный токен успешно сохранен', 'success');
-                    // Mask the token in the UI
                     document.getElementById('globalBotToken').value = '***********';
                 } else {
                     const error = await response.json();
