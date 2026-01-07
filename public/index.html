@@ -775,10 +775,9 @@
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             };
-        function updateWebhookUrl() {
-            const url = `${window.location.origin}/webhook`;
-            document.getElementById('webhookUrl').textContent = url;
         }
+
+        function updateWebhookUrl() {
             const url = `${window.location.origin}/webhook`;
             document.getElementById('webhookUrl').textContent = url;
         }
@@ -829,10 +828,11 @@
             const ruleName = document.getElementById('ruleName').value;
             const condition = document.getElementById('condition').value;
             const chatId = document.getElementById('chatId').value;
+            const botToken = document.getElementById('botToken').value;
             const messageTemplate = document.getElementById('messageTemplate').value;
             const enabled = document.getElementById('enabled').checked;
 
-            if (!ruleName || !condition || !chatId) {
+            if (!ruleName || !condition || !chatId || !botToken) {
                 showAlert('addAlert', 'Заполните все обязательные поля', 'error');
                 return;
             }
@@ -850,7 +850,7 @@
                         name: ruleName,
                         condition: condition,
                         chatId: chatId,
-                        botToken: botToken || '',
+                        botToken: botToken,
                         messageTemplate: messageTemplate || null,
                         enabled: enabled
                     })
