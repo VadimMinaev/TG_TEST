@@ -9,7 +9,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
-let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
+// Убрали глобальный TELEGRAM_BOT_TOKEN, токен теперь только в правилах
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const CRED_USER = 'vadmin';
@@ -179,8 +179,6 @@ app.post('/api/test-send', auth, async (req, res) => {
   } catch (error) {
     res.status(400).json({ success: false, error: error.response?.data || error.message });
   }
-});
-
 app.get('/api/rules', auth, async (req, res) => {
   if (process.env.DATABASE_URL) {
     try {
@@ -203,14 +201,16 @@ app.post('/api/rules', auth, async (req, res) => {
   try {
     const { botToken, ...ruleData } = req.body;
     
-    if (botToken && typeof botToken === 'string' && botToken.trim()) {
-      const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
-      if (!response.data.ok) {
-        return res.status(400).json({ error: 'Invalid bot token' });
-      }
+    if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
+      return res.status(400).json({ error: 'Bot token is required' });
     }
     
-    const newRule = { id: Date.now(), ...ruleData, botToken: (typeof botToken === 'string' ? botToken : '') || '', enabled: req.body.enabled !== false };
+    const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
+    if (!response.data.ok) {
+      return res.status(400).json({ error: 'Invalid bot token' });
+    }
+    
+    const newRule = { id: Date.now(), ...ruleData, botToken, enabled: req.body.enabled !== false };
     if (process.env.DATABASE_URL) {
       await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
       res.json(newRule);
@@ -236,18 +236,21 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       const existing = result.rows[0].data;
       const { botToken, ...ruleData } = req.body;
       
-      if ('botToken' in req.body && botToken && typeof botToken === 'string' && botToken.trim()) {
+      if ('botToken' in req.body) {
+        if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
+          return res.status(400).json({ error: 'Bot token is required' });
+        }
         const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
         if (!response.data.ok) {
           return res.status(400).json({ error: 'Invalid bot token' });
         }
-      }
-      
-      if ('botToken' in req.body) {
-        ruleData.botToken = (typeof botToken === 'string' ? botToken : '') || '';
+        ruleData.botToken = botToken;
       }
       
       const updated = { ...existing, ...ruleData };
+      if (!updated.botToken) {
+        return res.status(400).json({ error: 'Bot token is required' });
+      }
       await db.query('UPDATE rules SET data = $1 WHERE id = $2', [updated, ruleId]);
       res.json(updated);
     } else {
@@ -255,18 +258,23 @@ app.put('/api/rules/:id', auth, async (req, res) => {
       if (idx >= 0) {
         const { botToken, ...ruleData } = req.body;
         
-        if ('botToken' in req.body && botToken && typeof botToken === 'string' && botToken.trim()) {
+        if ('botToken' in req.body) {
+          if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
+            return res.status(400).json({ error: 'Bot token is required' });
+          }
           const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
           if (!response.data.ok) {
             return res.status(400).json({ error: 'Invalid bot token' });
           }
-        }
-        
-        if ('botToken' in req.body) {
           ruleData.botToken = botToken;
         }
         
-        db.rules[idx] = { ...db.rules[idx], ...ruleData };
+        const updated = { ...db.rules[idx], ...ruleData };
+        if (!updated.botToken) {
+          return res.status(400).json({ error: 'Bot token is required' });
+        }
+        
+        db.rules[idx] = updated;
         saveRules(); // Сохраняем в файл
         res.json(db.rules[idx]);
       } else {
@@ -433,9 +441,9 @@ app.post('/webhook', async (req, res) => {
       }
       if (ruleMatches) {
         matched++; // Увеличиваем счетчик совпадений
-        const token = rule.botToken || TELEGRAM_BOT_TOKEN; // Используем токен из правила или глобальный
+        const token = rule.botToken; // Токен обязателен в правиле
         if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
-          telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
+          telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured in rule' });
           continue;
         }
 

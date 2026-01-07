@@ -490,55 +490,6 @@
             font-family: 'Courier New', monospace;
         }
 
-        .bot-token-section {
-            background: #f0f9ff;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 20px;
-            border-left: 4px solid #2196F3;
-        }
-
-        .bot-token-status {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-
-        .token-status-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: white;
-            border-radius: 5px;
-            font-size: 0.9em;
-            font-weight: 600;
-        }
-
-        .token-status-badge.set {
-            color: #27ae60;
-        }
-
-        .token-status-badge.not-set {
-            color: #e74c3c;
-        }
-
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            display: inline-block;
-        }
-
-        .token-status-badge.set .status-dot {
-            background: #27ae60;
-        }
-
-        .token-status-badge.not-set .status-dot {
-            background: #e74c3c;
-        }
-
         @media (max-width: 768px) {
             .content {
                 grid-template-columns: 1fr;
@@ -610,35 +561,6 @@
                 <div class="card">
                     <h2>⚙️ Конфигурация</h2>
                     
-                    <div class="bot-token-section">
-                        <div class="bot-token-status">
-                            <label>Токен Telegram бота</label>
-                            <span id="tokenStatusBadge" class="token-status-badge not-set">
-                                <span class="status-dot"></span>
-                                <span id="tokenStatusText">Не установлен</span>
-                            </span>
-                        </div>
-                        <div class="form-group">
-                            <input type="text" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Получите от @BotFather в Telegram</small>
-                        </div>
-                        <button class="btn-primary" onclick="saveBotToken()">Сохранить токен</button>
-                    </div>
-
-                    <div class="test-send-section" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid hsl(var(--border));">
-                        <h3>🧪 Тест отправки</h3>
-                        <div class="form-group">
-                            <label for="testChatId">Chat ID</label>
-                            <input type="text" id="testChatId" placeholder="-1001234567890">
-                        </div>
-                        <div class="form-group">
-                            <label for="testMessage">Сообщение</label>
-                            <input type="text" id="testMessage" placeholder="Тестовое сообщение">
-                        </div>
-                        <button class="btn-secondary" onclick="testSend()">Отправить тест</button>
-                        <div id="testResult" style="margin-top: 0.5rem;"></div>
-                    </div>
-
                     <h2>Создать правило</h2>
                     
                     <div id="addAlert" class="alert"></div>
@@ -662,9 +584,9 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="botToken">Токен Telegram бота (опционально)</label>
-                            <input type="text" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
-                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Если не указано, используется общий токен</small>
+                            <label for="botToken">Токен Telegram бота (обязательно)</label>
+                            <input type="text" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Получите от @BotFather в Telegram</small>
                         </div>
 
                         <div class="form-group">
@@ -823,7 +745,6 @@
             document.getElementById('loginContainer').classList.add('hidden');
             document.getElementById('mainApp').style.display = 'block';
             updateWebhookUrl();
-            loadBotTokenStatus();
             loadRules();
             loadWebhookLogs();
         }
@@ -854,88 +775,10 @@
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${authToken}`
             };
-        }
-
-        async function loadBotTokenStatus() {
-            try {
-                const response = await fetch(`${API_BASE}/bot-token`, {
-                    headers: getHeaders()
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    document.getElementById('botToken').value = data.botToken;
-
-                    const badge = document.getElementById('tokenStatusBadge');
-                    const text = document.getElementById('tokenStatusText');
-
-                    if (data.isSet) {
-                        badge.className = 'token-status-badge set';
-                        text.textContent = 'Установлен';
-                    } else {
-                        badge.className = 'token-status-badge not-set';
-                        text.textContent = 'Не установлен';
-                    }
-                }
-            } catch (error) {
-                console.error('Error loading bot token status:', error);
-            }
-        }
-
-        async function saveBotToken() {
-            const token = document.getElementById('botToken').value;
-
-            if (!token) {
-                showAlert('addAlert', 'Введите токен бота', 'error');
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/bot-token`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ botToken: token })
-                });
-
-                if (response.ok) {
-                    showAlert('addAlert', 'Токен сохранен', 'success');
-                    loadBotTokenStatus();
-                } else {
-                    const error = await response.json();
-                    showAlert('addAlert', 'Ошибка: ' + error.error, 'error');
-                }
-            } catch (error) {
-                showAlert('addAlert', 'Ошибка при сохранении: ' + error.message, 'error');
-            }
-        }
-
-        async function testSend() {
-            const chatId = document.getElementById('testChatId').value;
-            const message = document.getElementById('testMessage').value;
-
-            if (!chatId || !message) {
-                document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--destructive));">Введите Chat ID и сообщение</span>';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_BASE}/test-send`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ chatId, message })
-                });
-
-                const result = await response.json();
-                if (result.success) {
-                    document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--primary));">Сообщение отправлено успешно!</span>';
-                } else {
-                    document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--destructive));">Ошибка: ' + JSON.stringify(result.error) + '</span>';
-                }
-            } catch (error) {
-                document.getElementById('testResult').innerHTML = '<span style="color: hsl(var(--destructive));">Ошибка: ' + error.message + '</span>';
-            }
-        }
-
         function updateWebhookUrl() {
+            const url = `${window.location.origin}/webhook`;
+            document.getElementById('webhookUrl').textContent = url;
+        }
             const url = `${window.location.origin}/webhook`;
             document.getElementById('webhookUrl').textContent = url;
         }
