@@ -222,6 +222,31 @@ app.put('/api/rules/:id', auth, async (req, res) => {
 });
 
 app.delete('/api/rules/:id', auth, async (req, res) => {
+  try {
+    const ruleId = parseInt(req.params.id);
+    if (process.env.DATABASE_URL) {
+      const result = await db.query('DELETE FROM rules WHERE id = $1', [ruleId]);
+      if (result.rowCount > 0) {
+        res.json({ status: 'deleted' });
+      } else {
+        res.status(404).json({ error: 'Rule not found' });
+      }
+    } else {
+      const idx = db.rules.findIndex(r => r.id == ruleId);
+      if (idx >= 0) {
+        db.rules.splice(idx, 1);
+        res.json({ status: 'deleted' });
+      } else {
+        res.status(404).json({ error: 'Rule not found' });
+      }
+    }
+  } catch (error) {
+    console.error('Error in /api/rules DELETE:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/webhook', async (req, res) => {
   // Handle webhook verification
   if (req.body.event === 'webhook.verify') {
     const callbackUrl = req.body.payload?.callback;
