@@ -11,6 +11,7 @@ app.use(express.static('public'));
 const PORT = process.env.PORT || 3000;
 let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
+const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
 const sessions = new Set(); // Хранение активных сессий
@@ -21,6 +22,7 @@ const translations = {
   'Subject': 'Тема',
   'category': 'Категория',
   'impact': 'Влияние',
+  'team': 'Команда',
   'Requested by': 'Инициатор запроса',
   'Notes': 'Комментарий',
   'ID': 'ID',
@@ -46,6 +48,45 @@ if (process.env.DATABASE_URL) {
       // Keep in-memory fallback
     }
   })();
+} else {
+  // Загружаем данные из файлов, если нет базы
+  try {
+    if (fs.existsSync(RULES_FILE)) {
+      db.rules = JSON.parse(fs.readFileSync(RULES_FILE, 'utf8'));
+      console.log('Rules loaded from file');
+    }
+  } catch (e) {
+    console.error('Error loading rules from file:', e);
+  }
+  try {
+    if (fs.existsSync(LOGS_FILE)) {
+      db.logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8'));
+      console.log('Logs loaded from file');
+    }
+  } catch (e) {
+    console.error('Error loading logs from file:', e);
+  }
+}
+
+// Функции для сохранения данных в файлы (если нет базы)
+function saveRules() {
+  if (!process.env.DATABASE_URL) {
+    try {
+      fs.writeFileSync(RULES_FILE, JSON.stringify(db.rules, null, 2));
+    } catch (e) {
+      console.error('Error saving rules to file:', e);
+    }
+  }
+}
+
+function saveLogs() {
+  if (!process.env.DATABASE_URL) {
+    try {
+      fs.writeFileSync(LOGS_FILE, JSON.stringify(db.logs, null, 2));
+    } catch (e) {
+      console.error('Error saving logs to file:', e);
+    }
+  }
 }
 
 // Ensure data directory exists
@@ -73,6 +114,7 @@ function logWebhook(payload, matched, rules_count, telegram_results = []) {
     } else {
       db.logs.unshift(logEntry);
       if (db.logs.length > 100) db.logs = db.logs.slice(0, 100);
+      saveLogs(); // Сохраняем в файл
     }
   } catch (e) {
     console.error('Log error:', e.message);
@@ -174,6 +216,7 @@ app.post('/api/rules', auth, async (req, res) => {
       res.json(newRule);
     } else {
       db.rules.push(newRule);
+      saveRules(); // Сохраняем в файл
       res.json(newRule);
     }
   } catch (error) {
@@ -224,6 +267,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
         }
         
         db.rules[idx] = { ...db.rules[idx], ...ruleData };
+        saveRules(); // Сохраняем в файл
         res.json(db.rules[idx]);
       } else {
         res.status(404).json({ error: 'not found' });
@@ -249,6 +293,7 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
       const idx = db.rules.findIndex(r => r.id == ruleId);
       if (idx >= 0) {
         db.rules.splice(idx, 1);
+        saveRules(); // Сохраняем в файл
         res.json({ status: 'deleted' });
       } else {
         res.status(404).json({ error: 'Rule not found' });
@@ -456,6 +501,7 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
     }
   } else {
     db.logs = [];
+    saveLogs(); // Сохраняем пустой массив в файл
     res.json({ status: 'ok' });
   }
 });
