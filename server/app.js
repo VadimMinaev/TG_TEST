@@ -13,6 +13,8 @@ let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
+const sessions = new Set(); // Хранение активных сессий
+
 // Функция для перевода ключевых слов на русский
 // Расширяйте объект translations для добавления новых переводов
 const translations = {
