@@ -362,7 +362,7 @@ app.post('/webhook', async (req, res) => {
   let incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
 
   // Р”РµРєРѕРґРёСЂСѓРµРј С‚РµРєСЃС‚ РёР· CP1251 РІ UTF-8, РµСЃР»Рё РЅРµРѕР±С…РѕРґРёРјРѕ
-  incomingPayload = decodeObject(incomingPayload);
+  //incomingPayload = decodeObject(incomingPayload);
 
   // Р—Р°РіСЂСѓР·РєР° РїСЂР°РІРёР» РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С… РёР»Рё in-memory
   let rules = [];
