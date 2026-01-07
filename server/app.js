@@ -19,8 +19,8 @@ const sessions = new Set(); // Хранение активных сессий
 // Расширяйте объект translations для добавления новых переводов
 const translations = {
   'Subject': 'Тема',
-  'Category': 'Категория',
-  'Impact': 'Влияние',
+  'category': 'Категория',
+  'impact': 'Влияние',
   'Requested by': 'Инициатор запроса',
   'Notes': 'Комментарий',
   'ID': 'ID',
