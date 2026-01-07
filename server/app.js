@@ -284,43 +284,67 @@ app.post('/webhook', async (req, res) => {
 
   const formatMessage = (fullBody, payload, rule) => {
     try {
-      // Handle notes array (as in the example)
-      if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
-        const note = payload.note[payload.note.length - 1]; // Last note
-        const author = note.person?.name || note.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
-        const account = note.account?.name || note.person?.account?.name || payload.requested_by?.account?.name || '';
-        const text = note.text || '';
-        const subject = payload.subject ? ` (Subject: ${payload.subject})` : '';
-        return `${author}${account ? ' @' + account : ''}: ${text}${subject}`;
+      let messageParts = [];
+
+      // Add subject if present
+      if (payload.subject) {
+        messageParts.push(`📋 Subject: ${payload.subject}`);
       }
+
+      // Add requested by if present
+      if (payload.requested_by?.name) {
+        const account = payload.requested_by.account?.name || '';
+        messageParts.push(`👤 Requested by: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
+      }
+
+      // Handle notes array
+      if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
+        messageParts.push('📝 Notes:');
+        payload.note.forEach((note, index) => {
+          const author = note.person?.name || note.person_name || 'Unknown';
+          const account = note.account?.name || note.person?.account?.name || '';
+          const text = note.text || '';
+          const timestamp = note.created_at ? new Date(note.created_at).toLocaleString('ru-RU') : '';
+          messageParts.push(`${index + 1}. ${author}${account ? ' @' + account : ''}${timestamp ? ' (' + timestamp + ')' : ''}: ${text}`);
+        });
+      }
+
       // Handle direct text/message fields
-      if (payload && (payload.text || payload.message)) {
+      if (payload && (payload.text || payload.message) && !Array.isArray(payload.note)) {
         const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
         const account = payload.account?.name || payload.requested_by?.account?.name || '';
         const text = payload.text || payload.message;
-        const subject = payload.subject ? ` (Subject: ${payload.subject})` : '';
-        return `${author}${account ? ' @' + account : ''}: ${text}${subject}`;
+        messageParts.push(`💬 Message: ${author}${account ? ' @' + account : ''}: ${text}`);
       }
+
       // Handle command/comment structure (legacy)
-      if (payload && payload.command && payload.comment) {
+      if (payload && payload.command && payload.comment && !Array.isArray(payload.note) && !payload.text && !payload.message) {
         const author = payload.author || fullBody.person_name || 'Unknown';
-        return `${author}: ${payload.command} - ${payload.comment}`;
+        messageParts.push(`⚙️ Command: ${author}: ${payload.command} - ${payload.comment}`);
       }
-      // Generic fallback with key fields
-      const parts = [];
-      if (fullBody.event) parts.push(`Event: ${fullBody.event}`);
-      if (fullBody.object_id) parts.push(`Object ID: ${fullBody.object_id}`);
-      if (payload.subject) parts.push(`Subject: ${payload.subject}`);
-      if (payload.requested_by?.name) parts.push(`By: ${payload.requested_by.name}`);
-      if (payload.id) parts.push(`ID: ${payload.id}`);
-      if (parts.length > 0) {
-        return parts.join(' | ');
+
+      // Add ID if present
+      if (payload.id) {
+        messageParts.push(`🆔 ID: ${payload.id}`);
       }
-      // Last resort: stringify payload
-      return JSON.stringify(payload || fullBody).slice(0, 4000);
+
+      // If no specific content, add generic info
+      if (messageParts.length === 0) {
+        const parts = [];
+        if (fullBody.event) parts.push(`Event: ${fullBody.event}`);
+        if (fullBody.object_id) parts.push(`Object ID: ${fullBody.object_id}`);
+        if (fullBody.person_name) parts.push(`By: ${fullBody.person_name}`);
+        if (parts.length > 0) {
+          messageParts.push('ℹ️ Info: ' + parts.join(' | '));
+        } else {
+          messageParts.push('📦 Payload: ' + JSON.stringify(payload || fullBody).slice(0, 4000));
+        }
+      }
+
+      return messageParts.join('\n\n');
     } catch (e) {
       console.error('Format message error:', e.message);
-      return JSON.stringify(payload || fullBody).slice(0, 4000);
+      return '❌ Error formatting message: ' + JSON.stringify(payload || fullBody).slice(0, 4000);
     }
   };
 
