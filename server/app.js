@@ -5,7 +5,7 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-app.use(express.json({ limit: '10mb' })); // Увеличенный лимит для больших пайлоадов
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
 
 const PORT = process.env.PORT || 3000;
@@ -15,35 +15,66 @@ const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
-const sessions = new Set(); // Хранение активных сессий
+const sessions = new Set();
 
-const translations = {
-  'Subject': 'Тема',
-  'category': 'Категория',
-  'impact': 'Влияние',
-  'team': 'Команда',
-  'Requested by': 'Инициатор запроса',
-  'Notes': 'Комментарий',
-  'ID': 'ID',
-  'Status': 'Статус',
-  'Event': 'Событие',
-  'Object ID': 'ID объекта',
-  'By': 'Автор',
-  'Info': 'Информация',
-  'Error formatting message': 'Ошибка форматирования сообщения',
-  'Payload': 'Данные',
-  'Message': 'Сообщение',
-  'Command': 'Команда'
+// УЛУЧШЕННАЯ СИСТЕМА ПЕРЕВОДОВ - ОДИН ЦЕНТРАЛИЗОВАННЫЙ БЛОК
+const fieldTranslations = {
+  // Основные поля
+  id: 'ID',
+  subject: 'Тема',
+  status: 'Статус',
+  team: 'Команда',
+  category: 'Категория',
+  impact: 'Влияние',
+  priority: 'Приоритет',
+  urgency: 'Срочность',
+  
+  // Связанные с пользователем поля
+  requested_by: {
+    name: 'Инициатор запроса',
+    account: {
+      name: 'Организация'
+    }
+  },
+  person: {
+    name: 'Автор',
+    account: {
+      name: 'Организация'
+    }
+  },
+  
+  // Поля в заметках
+  note: 'Комментарий',
+  text: 'Текст',
+  message: 'Сообщение',
+  created_at: 'Дата создания',
+  
+  // Другие поля
+  command: 'Команда',
+  comment: 'Комментарий',
+  
+  // Системные поля
+  event: 'Событие',
+  object_id: 'ID объекта',
+  account: 'Аккаунт',
+  payload: 'Данные'
 };
 
-function translate(key) {
-  return translations[key] || key;
-}
-
-// ПРОБЛЕМА ТУТ: данные уже приходят в UTF-8, не нужно дополнительное декодирование
-// Эта функция больше не нужна для текущего интеграционного сервиса
-function decodeObject(obj) {
-  return obj; // Просто возвращаем объект как есть
+// Функция для получения перевода с поддержкой вложенных полей
+function getFieldTranslation(path) {
+  const parts = path.split('.');
+  let current = fieldTranslations;
+  
+  for (const part of parts) {
+    if (current && current[part] !== undefined) {
+      current = current[part];
+    } else {
+      // Если нет перевода для полного пути, возвращаем последний сегмент
+      return fieldTranslations[part] || part;
+    }
+  }
+  
+  return typeof current === 'string' ? current : path;
 }
 
 let db = { rules: [], logs: [] };
@@ -135,6 +166,7 @@ const auth = (req, res, next) => {
   res.status(401).json({ error: 'Unauthorized' });
 };
 
+// AUTH ROUTES
 app.post('/api/login', (req, res) => {
   if (req.body.username === CRED_USER && req.body.password === CRED_PASS) {
     const token = Date.now().toString();
@@ -155,6 +187,7 @@ app.get('/api/auth-status', (req, res) => {
   res.json({ authenticated: token && sessions.has(token) });
 });
 
+// TELEGRAM BOT ROUTES
 app.post('/api/bot-token', auth, (req, res) => {
   const newToken = req.body.botToken;
   if (!newToken || newToken === 'YOUR_TOKEN') {
@@ -187,6 +220,7 @@ app.post('/api/test-send', auth, async (req, res) => {
   }
 });
 
+// RULES MANAGEMENT
 app.get('/api/rules', auth, async (req, res) => {
   if (process.env.DATABASE_URL) {
     try {
@@ -218,7 +252,7 @@ app.post('/api/rules', auth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid bot token' });
     }
     
-    const newRule = { id: Date.now(), ...ruleData, botToken, enabled: req.body.enabled !== false, encoding: 'utf8' }; // Добавляем параметр кодировки
+    const newRule = { id: Date.now(), ...ruleData, botToken, enabled: req.body.enabled !== false, encoding: 'utf8' };
     if (process.env.DATABASE_URL) {
       await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
       res.json(newRule);
@@ -321,6 +355,7 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
   }
 });
 
+// WEBHOOK HANDLER
 app.post('/webhook', async (req, res) => {
   // Обработка верификации webhook
   if (req.body.event === 'webhook.verify') {
@@ -339,8 +374,7 @@ app.post('/webhook', async (req, res) => {
 
   let incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
 
-  // ГЛАВНОЕ ИСПРАВЛЕНИЕ: УБРАНО ПРИНУДИТЕЛЬНОЕ ДЕКОДИРОВАНИЕ
-  // incomingPayload уже в правильной кодировке UTF-8
+  // УБРАНО ПРИНУДИТЕЛЬНОЕ ДЕКОДИРОВАНИЕ - ДАННЫЕ УЖЕ В UTF-8
   // incomingPayload = decodeObject(incomingPayload);
 
   let rules = [];
@@ -359,37 +393,43 @@ app.post('/webhook', async (req, res) => {
   let matched = 0;
   let telegram_results = [];
 
-  const formatMessage = (fullBody, payload, rule) => {
+  // УЛУЧШЕННАЯ ФУНКЦИЯ ФОРМАТИРОВАНИЯ СООБЩЕНИЙ
+  const formatMessage = (fullBody, payload) => {
     try {
-      let messageParts = [];
-
+      const messageParts = [];
+      
+      // 1. Основная информация
       if (payload.id) {
-        messageParts.push(`🆔 ${translate('ID')}: ${payload.id}`);
+        messageParts.push(`🆔 ${getFieldTranslation('id')}: ${payload.id}`);
       }
-
+      
       if (payload.subject) {
-        messageParts.push(`📋 ${translate('Subject')}: ${payload.subject}`);
+        messageParts.push(`📋 ${getFieldTranslation('subject')}: ${payload.subject}`);
       }
-
+      
       if (payload.requested_by?.name) {
         const account = payload.requested_by.account?.name || '';
-        messageParts.push(`👤 ${translate('Requested by')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
+        messageParts.push(`👤 ${getFieldTranslation('requested_by.name')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
       }
-
+      
+      // 2. Статус и дополнительные поля
       if (payload.status) {
-        messageParts.push(`📊 ${translate('Status')}: ${payload.status}`);
+        messageParts.push(`📊 ${getFieldTranslation('status')}: ${payload.status}`);
       }
-
-      const processedKeys = ['id', 'subject', 'requested_by', 'note', 'text', 'message', 'command', 'team', 'comment', 'status'];
-      for (const [key, value] of Object.entries(payload)) {
-        if (!processedKeys.includes(key) && value !== null && value !== undefined && typeof value !== 'object' && !Array.isArray(value)) {
-          messageParts.push(`${translate(key) || key}: ${value}`);
+      
+      // Дополнительные поля команды, категории, влияния
+      const additionalFields = ['team', 'category', 'impact', 'priority', 'urgency'];
+      for (const field of additionalFields) {
+        if (payload[field] && payload[field] !== null) {
+          messageParts.push(`${getFieldTranslation(field)}: ${payload[field]}`);
         }
       }
-
-      if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
-        messageParts.push(`📝 ${translate('Notes')}:`);
-        payload.note.forEach((note, index) => {
+      
+      // 3. Заметки/комментарии - ПОДДЕРЖКА И ОДИНОЧНОГО ОБЪЕКТА, И МАССИВА
+      const notes = payload.note ? (Array.isArray(payload.note) ? payload.note : [payload.note]) : [];
+      if (notes.length > 0) {
+        messageParts.push(`📝 ${getFieldTranslation('note')}:`);
+        notes.forEach((note, index) => {
           const author = note.person?.name || note.person_name || 'Unknown';
           const account = note.account?.name || note.person?.account?.name || '';
           const text = note.text || '';
@@ -397,35 +437,33 @@ app.post('/webhook', async (req, res) => {
           messageParts.push(`${index + 1}. ${author}${account ? ' @' + account : ''}${timestamp ? ' (' + timestamp + ')' : ''}: ${text}`);
         });
       }
-
-      if (payload && (payload.text || payload.message) && !Array.isArray(payload.note)) {
+      
+      // 4. Прямые сообщения (если нет заметок)
+      if (payload && (payload.text || payload.message) && !payload.note) {
         const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
         const account = payload.account?.name || payload.requested_by?.account?.name || '';
         const text = payload.text || payload.message;
-        messageParts.push(`💬 ${translate('Message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
+        messageParts.push(`💬 ${getFieldTranslation('message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
       }
-
-      if (payload && payload.team && payload.comment && !Array.isArray(payload.note) && !payload.text && !payload.message) {
-        const author = payload.author || fullBody.person_name || 'Unknown';
-        messageParts.push(`⚙️ ${translate('Team')}: ${author}: ${payload.team} - ${payload.comment}`);
-      }
-
+      
+      // 5. Резервный вариант
       if (messageParts.length === 0) {
-        const parts = [];
-        if (fullBody.event) parts.push(`${translate('Event')}: ${fullBody.event}`);
-        if (fullBody.object_id) parts.push(`${translate('Object ID')}: ${fullBody.object_id}`);
-        if (fullBody.person_name) parts.push(`${translate('By')}: ${fullBody.person_name}`);
-        if (parts.length > 0) {
-          messageParts.push(`ℹ️ ${translate('Info')}: ` + parts.join(' | '));
+        const infoParts = [];
+        if (fullBody.event) infoParts.push(`Событие: ${fullBody.event}`);
+        if (fullBody.object_id) infoParts.push(`ID объекта: ${fullBody.object_id}`);
+        if (fullBody.person_name) infoParts.push(`Автор: ${fullBody.person_name}`);
+        
+        if (infoParts.length > 0) {
+          messageParts.push(`ℹ️ Информация: ${infoParts.join(' | ')}`);
         } else {
-          messageParts.push(`📦 ${translate('Payload')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000));
+          messageParts.push(`📦 Данные: ${JSON.stringify(payload || fullBody).slice(0, 4000)}`);
         }
       }
-
+      
       return messageParts.join('\n\n');
     } catch (e) {
       console.error('Format message error:', e.message);
-      return `❌ ${translate('Error formatting message')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000);
+      return `❌ Ошибка форматирования сообщения: ${e.message}`;
     }
   };
 
@@ -453,7 +491,7 @@ app.post('/webhook', async (req, res) => {
           continue;
         }
 
-        const messageText = formatMessage(req.body, incomingPayload, rule);
+        const messageText = formatMessage(req.body, incomingPayload);
 
         for (const chat of chatIds) {
           try {
@@ -479,6 +517,7 @@ app.post('/webhook', async (req, res) => {
   res.json({ matched, sent, telegram_results });
 });
 
+// HEALTH CHECK & LOGS
 app.get('/health', (req, res) => res.json({ ok: true }));
 
 app.get('/api/webhook-logs', auth, async (req, res) => {
