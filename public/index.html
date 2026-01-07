@@ -26,10 +26,42 @@
             --input: 214.3 31.8% 91.4%;
             --ring: 221.2 83.2% 53.3%;
             --radius: 0.5rem;
+            --shadow: 222.2 84% 4.9%;
+            --success: 120 99% 38%;
+            --warning: 45 100% 50%;
+            --info: 210 100% 50%;
+        }
+
+        :root.dark-theme {
+            --background: 222.2 84% 4.9%;
+            --foreground: 210 40% 98%;
+            --card: 216 12% 17%;
+            --card-foreground: 210 40% 98%;
+            --popover: 216 12% 17%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 221.2 83.2% 53.3%;
+            --primary-foreground: 210 40% 98%;
+            --secondary: 216 10% 25%;
+            --secondary-foreground: 210 40% 98%;
+            --muted: 216 10% 25%;
+            --muted-foreground: 215.4 16.3% 66.9%;
+            --accent: 216 10% 25%;
+            --accent-foreground: 210 40% 98%;
+            --destructive: 0 84.2% 60.2%;
+            --destructive-foreground: 210 40% 98%;
+            --border: 216 10% 30%;
+            --input: 216 10% 30%;
+            --ring: 221.2 83.2% 53.3%;
+            --shadow: 222.2 84% 4.9%;
+            --success: 120 99% 38%;
+            --warning: 45 100% 50%;
+            --info: 210 100% 50%;
         }
 
         * {
-            border-radius: var(--radius);
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
@@ -38,6 +70,7 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             min-height: 100vh;
             padding: 1rem;
+            transition: background-color 0.3s ease;
         }
 
         .login-container {
@@ -52,6 +85,7 @@
             height: 100%;
             background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
             z-index: 9999;
+            transition: background 0.3s ease;
         }
 
         .login-container.hidden {
@@ -66,6 +100,12 @@
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             width: 100%;
             max-width: 400px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .login-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
         .login-card h1 {
@@ -74,6 +114,10 @@
             text-align: center;
             font-size: 1.5rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
         }
 
         .login-card p {
@@ -103,6 +147,7 @@
             font-size: 1rem;
             background: hsl(var(--background));
             color: hsl(var(--foreground));
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .login-form-group input:focus {
@@ -141,6 +186,7 @@
 
         .login-alert.show {
             display: block;
+            animation: fadeIn 0.3s ease;
         }
 
         .container {
@@ -155,18 +201,46 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            position: relative;
         }
 
         header h1 {
             font-size: 2.5rem;
             margin: 0;
             flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
         }
 
         .header-actions {
             display: flex;
             gap: 0.75rem;
             align-items: center;
+        }
+
+        .theme-toggle {
+            position: relative;
+            z-index: 10;
+        }
+
+        .icon-btn {
+            background: hsl(var(--secondary));
+            border: 1px solid hsl(var(--border));
+            border-radius: 50%;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: hsl(var(--secondary-foreground));
+            transition: all 0.2s;
+        }
+
+        .icon-btn:hover {
+            background: hsl(var(--accent));
         }
 
         .logout-btn {
@@ -178,6 +252,9 @@
             cursor: pointer;
             transition: all 0.2s;
             font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .logout-btn:hover {
@@ -186,7 +263,7 @@
 
         .content {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr;
             gap: 2rem;
             margin-bottom: 2rem;
         }
@@ -197,6 +274,11 @@
             border-radius: var(--radius);
             padding: 2rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
         }
 
         .card h2 {
@@ -206,6 +288,9 @@
             padding-bottom: 0.5rem;
             font-size: 1.25rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .form-group {
@@ -220,6 +305,13 @@
             font-size: 0.875rem;
         }
 
+        .form-hint {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.8125rem;
+            margin-top: 0.3125rem;
+            display: block;
+        }
+
         input[type="text"],
         input[type="number"],
         input[type="password"],
@@ -232,6 +324,7 @@
             font-size: 1rem;
             background: hsl(var(--background));
             color: hsl(var(--foreground));
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         input[type="text"]:focus,
@@ -266,10 +359,12 @@
             display: flex;
             gap: 0.75rem;
             margin-top: 1.5rem;
+            flex-wrap: wrap;
         }
 
         button {
             flex: 1;
+            min-width: 120px;
             padding: 0.75rem;
             border: none;
             border-radius: var(--radius);
@@ -315,14 +410,36 @@
             background: hsl(var(--primary) / 0.9);
         }
 
+        .btn-outline {
+            background: transparent;
+            border: 1px solid hsl(var(--border));
+        }
+
         .btn-small {
             padding: 0.5rem 0.75rem;
             font-size: 0.875rem;
+            min-width: auto;
+        }
+
+        .btn-success {
+            background: hsl(var(--success));
+            color: white;
+        }
+
+        .btn-warning {
+            background: hsl(var(--warning));
+            color: white;
+        }
+
+        .btn-info {
+            background: hsl(var(--info));
+            color: white;
         }
 
         .rules-list {
             max-height: 37.5rem;
             overflow-y: auto;
+            padding: 0.5rem;
         }
 
         .rule-item {
@@ -335,11 +452,22 @@
             justify-content: space-between;
             align-items: flex-start;
             gap: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .rule-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .rule-item.disabled {
             opacity: 0.6;
             border-left-color: hsl(var(--muted-foreground));
+        }
+
+        .rule-item.disabled:hover {
+            transform: none;
+            box-shadow: none;
         }
 
         .rule-content {
@@ -350,6 +478,9 @@
             font-weight: 600;
             color: hsl(var(--foreground));
             margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .rule-condition {
@@ -361,6 +492,7 @@
             color: hsl(var(--muted-foreground));
             margin-bottom: 0.5rem;
             word-break: break-word;
+            border: 1px solid hsl(var(--border));
         }
 
         .rule-channel {
@@ -368,11 +500,17 @@
             font-size: 0.875rem;
         }
 
+        .rule-bot {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
         .rule-actions {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            min-width: 100px;
+            min-width: 120px;
         }
 
         .rule-status {
@@ -380,6 +518,7 @@
             gap: 5px;
             align-items: center;
             font-size: 0.85em;
+            margin-top: 0.5rem;
         }
 
         .status-badge {
@@ -400,6 +539,7 @@
             margin-bottom: 1rem;
             display: none;
             border: 1px solid hsl(var(--border));
+            animation: fadeIn 0.3s ease;
         }
 
         .alert.show {
@@ -407,18 +547,27 @@
         }
 
         .alert-success {
-            background: hsl(var(--muted));
-            color: hsl(var(--muted-foreground));
+            background: hsl(var(--success) / 0.15);
+            color: hsl(var(--success));
+            border-color: hsl(var(--success) / 0.3);
         }
 
         .alert-error {
             background: hsl(var(--destructive) / 0.1);
             color: hsl(var(--destructive));
+            border-color: hsl(var(--destructive) / 0.3);
         }
 
         .alert-info {
-            background: hsl(var(--accent));
-            color: hsl(var(--accent-foreground));
+            background: hsl(var(--info) / 0.1);
+            color: hsl(var(--info));
+            border-color: hsl(var(--info) / 0.3);
+        }
+
+        .alert-warning {
+            background: hsl(var(--warning) / 0.1);
+            color: hsl(var(--warning));
+            border-color: hsl(var(--warning) / 0.3);
         }
 
         .instructions {
@@ -427,12 +576,16 @@
             padding: 1.5rem;
             box-shadow: hsl(var(--shadow) / 0.1) 0px 4px 6px -1px, hsl(var(--shadow) / 0.1) 0px 2px 4px -2px;
             color: hsl(var(--foreground));
+            margin-top: 1rem;
         }
 
         .instructions h3 {
             color: hsl(var(--primary));
             margin-top: 1.25rem;
             margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .instructions h3:first-child {
@@ -444,6 +597,12 @@
             padding: 2px 6px;
             border-radius: 3px;
             font-family: 'Courier New', monospace;
+            color: #d32f2f;
+        }
+
+        .dark-theme .instructions code {
+            background: #444;
+            color: #ff7070;
         }
 
         .instructions pre {
@@ -454,6 +613,11 @@
             overflow-x: auto;
             font-family: 'Courier New', monospace;
             margin: 10px 0;
+        }
+
+        .dark-theme .instructions pre {
+            background: #1e1e1e;
+            color: #d4d4d4;
         }
 
         .instructions ul,
@@ -474,12 +638,19 @@
             word-break: break-all;
             font-family: 'Courier New', monospace;
             margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .dark-theme .webhook-url {
+            background: #333;
+            border-color: #555;
+            color: #fff;
         }
 
         .test-section {
             margin-top: 20px;
             padding-top: 20px;
-            border-top: 1px solid #ddd;
+            border-top: 1px solid hsl(var(--border));
         }
 
         .test-result {
@@ -488,21 +659,21 @@
             border-radius: 5px;
             margin-top: 10px;
             font-family: 'Courier New', monospace;
+            display: none;
+            border-left: 4px solid #6c757d;
         }
 
-        @media (max-width: 768px) {
-            .content {
-                grid-template-columns: 1fr;
-            }
+        .dark-theme .test-result {
+            background: #333;
+            color: #fff;
+        }
 
-            header {
-                flex-direction: column;
-                gap: 15px;
-            }
+        .test-result.success {
+            border-left-color: hsl(var(--success));
+        }
 
-            header h1 {
-                font-size: 2em;
-            }
+        .test-result.error {
+            border-left-color: hsl(var(--destructive));
         }
 
         .loading {
@@ -518,6 +689,497 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Tabs styles */
+        .tabs-container {
+            margin-bottom: 2rem;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 0.25rem;
+            border-bottom: 2px solid hsl(var(--border));
+            margin-bottom: 1.5rem;
+            overflow-x: auto;
+            padding-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tab {
+            padding: 0.75rem 1.5rem;
+            background: hsl(var(--secondary));
+            border: none;
+            border-radius: var(--radius) var(--radius) 0 0;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .tab:hover {
+            background: hsl(var(--accent));
+        }
+
+        .tab.active {
+            background: hsl(var(--card));
+            border-bottom: 2px solid hsl(var(--primary));
+            font-weight: 600;
+        }
+
+        .tab-content {
+            position: relative;
+        }
+
+        .tab-pane {
+            display: none;
+        }
+
+        .tab-pane.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        /* Rules toolbar styles */
+        .rules-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .rules-toolbar h2 {
+            margin-bottom: 0;
+            border: none;
+            padding: 0;
+        }
+
+        .rules-search {
+            position: relative;
+            width: 250px;
+        }
+
+        .rules-search input {
+            padding-left: 2.5rem;
+        }
+
+        .rules-search::before {
+            content: "🔍";
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: hsl(var(--muted-foreground));
+            font-size: 1rem;
+        }
+
+        /* Logs styles */
+        .logs-toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .logs-toolbar h2 {
+            margin-bottom: 0;
+            border: none;
+            padding: 0;
+        }
+
+        .logs-actions {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .logs-container {
+            max-height: 40rem;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+
+        .log-item {
+            border-bottom: 1px solid hsl(var(--border));
+            padding: 0.625rem 0;
+            color: hsl(var(--foreground));
+        }
+
+        .log-timestamp {
+            font-weight: 600;
+            color: hsl(var(--foreground));
+            margin-bottom: 0.25rem;
+        }
+
+        .log-payload {
+            background: hsl(var(--background));
+            color: hsl(var(--foreground));
+            padding: 0.5rem;
+            margin: 0.3125rem 0;
+            font-size: 0.875rem;
+            border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--border));
+            max-height: 15rem;
+            overflow: auto;
+        }
+
+        .log-match {
+            margin-top: 0.3125rem;
+            font-weight: 500;
+        }
+
+        .log-telegram {
+            margin-top: 0.3125rem;
+        }
+
+        .log-telegram-item {
+            margin: 0.25rem 0;
+            padding-left: 1.25rem;
+        }
+
+        .log-success {
+            color: hsl(var(--success));
+        }
+
+        .log-error {
+            color: hsl(var(--destructive));
+        }
+
+        /* Pagination */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid hsl(var(--border));
+        }
+
+        .page-btn {
+            background: hsl(var(--secondary));
+            border: 1px solid hsl(var(--border));
+            padding: 0.5rem 1rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .page-btn:hover:not(:disabled) {
+            background: hsl(var(--accent));
+        }
+
+        .page-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            color: hsl(var(--muted-foreground));
+            font-size: 0.875rem;
+        }
+
+        /* Condition builder */
+        .condition-builder {
+            background: hsl(var(--muted));
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .condition-mode-toggle {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .condition-mode-toggle label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .condition-groups {
+            margin-bottom: 1.5rem;
+        }
+
+        .condition-group {
+            background: hsl(var(--background));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+        }
+
+        .condition-rows {
+            margin-bottom: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .condition-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .condition-row select, 
+        .condition-row input {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .add-condition-btn {
+            background: hsl(var(--secondary));
+            border: 1px solid hsl(var(--border));
+            padding: 0.375rem 0.75rem;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .add-condition-btn:hover {
+            background: hsl(var(--accent));
+        }
+
+        .remove-condition-btn {
+            background: hsl(var(--destructive));
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 0.875rem;
+            padding: 0;
+        }
+
+        .condition-logic {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid hsl(var(--border));
+        }
+
+        .preview-section {
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
+            border-top: 2px solid hsl(var(--primary));
+        }
+
+        .preview-result {
+            background: hsl(var(--background));
+            border-radius: calc(var(--radius) - 2px);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            border: 1px solid hsl(var(--border));
+        }
+
+        .telegram-preview {
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            overflow: hidden;
+            background: #eaeaea;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        .telegram-message {
+            display: flex;
+            padding: 0.75rem;
+            background: white;
+        }
+
+        .telegram-avatar {
+            width: 40px;
+            height: 40px;
+            background: #0088cc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            margin-right: 0.75rem;
+            flex-shrink: 0;
+        }
+
+        .telegram-content {
+            flex: 1;
+        }
+
+        .telegram-sender {
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 0.25rem;
+        }
+
+        .telegram-text {
+            color: #333;
+            line-height: 1.5;
+            font-size: 0.9375rem;
+            white-space: pre-line;
+        }
+
+        .telegram-time {
+            color: #999;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+        }
+
+        .code-condition-editor {
+            margin-top: 1rem;
+        }
+
+        /* Input with button */
+        .input-with-button {
+            position: relative;
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-with-button input {
+            flex: 1;
+        }
+
+        .input-with-button button {
+            position: absolute;
+            right: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            background: transparent;
+            border: none;
+            color: hsl(var(--muted-foreground));
+            cursor: pointer;
+            padding: 0;
+        }
+
+        /* Export/import section */
+        .export-import-section {
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid hsl(var(--border));
+        }
+
+        .export-import-section h3 {
+            margin-top: 0;
+            color: hsl(var(--primary));
+            border: none;
+            padding: 0;
+        }
+
+        .input-with-button {
+            position: relative;
+        }
+
+        .input-with-button button {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: hsl(var(--muted-foreground));
+            cursor: pointer;
+            padding: 0;
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, 
+                hsl(var(--muted)) 0%, 
+                hsl(var(--muted) / 0.8) 50%, 
+                hsl(var(--muted)) 100%
+            );
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .content {
+                grid-template-columns: 1fr;
+            }
+
+            header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            header h1 {
+                font-size: 2em;
+            }
+
+            .tabs {
+                flex-wrap: wrap;
+            }
+
+            .tab {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .rules-toolbar, .logs-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .rules-search {
+                width: 100%;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .btn-small {
+                width: 100%;
+            }
+
+            .rule-item {
+                flex-direction: column;
+            }
+
+            .rule-actions {
+                flex-direction: row;
+                flex-wrap: wrap;
+            }
+
+            .condition-row {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .telegram-preview {
+                max-width: 100%;
+            }
         }
     </style>
 </head>
@@ -552,130 +1214,384 @@
             <header>
                 <h1>📱 Telegram Webhook Integration</h1>
                 <div class="header-actions">
-                    <button class="logout-btn" onclick="logout()">Выход</button>
+                    <div class="theme-toggle">
+                        <button id="themeToggle" class="icon-btn" aria-label="Переключить тему">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.43 7.508 7.508 0 0 0 1.107-3.43A9.5 9.5 0 0 1 6 12c0 2.62.676 5.067 1.868 7.083a7.5 7.5 0 0 0 3.956-11.81 7.5 7.5 0 0 0-7.452-4.273A9.5 9.5 0 0 1 12 3z"></path>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="logout-btn" onclick="logout()">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                        Выход
+                    </button>
                 </div>
             </header>
 
-            <div class="content">
-                <!-- Bot Token and Rules Form -->
-                <div class="card">
-                    <h2>⚙️ Конфигурация</h2>
-                    
-                    <h2>Создать правило</h2>
-                    
-                    <div id="addAlert" class="alert"></div>
+            <div class="tabs-container">
+                <div class="tabs">
+                    <button class="tab active" data-tab="rules">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
+                        </svg>
+                        Правила
+                    </button>
+                    <button class="tab" data-tab="test">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                        </svg>
+                        Тестирование
+                    </button>
+                    <button class="tab" data-tab="history">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                            <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                        История
+                    </button>
+                    <button class="tab" data-tab="instructions">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                        Инструкции
+                    </button>
+                </div>
+                
+                <div class="tab-content">
+                    <div id="rules-tab" class="tab-pane active">
+                        <div class="content">
+                            <div class="card">
+                                <h2>⚙️ Конфигурация правил</h2>
+                                
+                                <div id="addAlert" class="alert"></div>
 
-                    <form id="ruleForm">
-                        <div class="form-group">
-                            <label for="ruleName">Название правила</label>
-                            <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
-                        </div>
+                                <form id="ruleForm">
+                                    <div class="form-group">
+                                        <label for="ruleName">Название правила</label>
+                                        <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
+                                        <small class="form-hint">Краткое описание правила для быстрой идентификации</small>
+                                    </div>
 
-                        <div class="form-group">
-                            <label for="condition">Условие (JavaScript выражение)</label>
-                            <textarea id="condition" placeholder="Например: payload.team_id === 14" required></textarea>
-                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Доступна переменная <code>payload</code> с данными вебхука</small>
-                        </div>
+                                    <div class="form-group">
+                                        <label for="condition">Условие (JavaScript выражение)</label>
+                                        <div class="condition-builder">
+                                            <div class="condition-mode-toggle">
+                                                <label>
+                                                    <input type="radio" name="conditionMode" value="visual" checked>
+                                                    Визуальный режим
+                                                </label>
+                                                <label>
+                                                    <input type="radio" name="conditionMode" value="code">
+                                                    Ручной ввод (JavaScript)
+                                                </label>
+                                            </div>
+                                            
+                                            <div class="visual-condition-editor" id="visualConditionEditor">
+                                                <div class="condition-groups">
+                                                    <div class="condition-group">
+                                                        <div class="condition-rows">
+                                                            <div class="condition-row">
+                                                                <select class="field-select">
+                                                                    <option value="payload.team">Команда</option>
+                                                                    <option value="payload.status">Статус</option>
+                                                                    <option value="payload.category" selected>Категория</option>
+                                                                    <option value="payload.impact">Влияние</option>
+                                                                    <option value="payload.priority">Приоритет</option>
+                                                                    <option value="payload.requested_by.name">Инициатор</option>
+                                                                </select>
+                                                                <select class="operator-select">
+                                                                    <option value="===" selected>равно</option>
+                                                                    <option value="!==">не равно</option>
+                                                                    <option value=">">больше</option>
+                                                                    <option value="<">меньше</option>
+                                                                    <option value="includes">содержит</option>
+                                                                </select>
+                                                                <input type="text" class="value-input" placeholder="Значение" value="incident">
+                                                            </div>
+                                                        </div>
+                                                        <button class="add-condition-btn">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                                            </svg>
+                                                            Добавить условие
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div class="condition-logic">
+                                                    <label>
+                                                        <input type="radio" name="groupLogic" value="AND" checked>
+                                                        И (AND) - все условия должны выполняться
+                                                    </label>
+                                                    <label>
+                                                        <input type="radio" name="groupLogic" value="OR">
+                                                        ИЛИ (OR) - достаточно выполнения одного условия
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="code-condition-editor" id="codeConditionEditor" style="display: none;">
+                                                <textarea id="conditionCode" placeholder="Например: payload.category === 'incident' && payload.impact === 'high'">payload.category === 'incident'</textarea>
+                                                <small class="form-hint">Доступна переменная <code>payload</code> с данными вебхука</small>
+                                            </div>
+                                            
+                                            <div class="preview-section">
+                                                <h3>👀 Предпросмотр условия</h3>
+                                                <div class="preview-result">
+                                                    <strong>Сгенерированный код:</strong>
+                                                    <pre id="conditionPreview">payload.category === 'incident'</pre>
+                                                </div>
+                                                
+                                                <input type="hidden" id="condition" value="payload.category === 'incident'">
+                                                
+                                                <h3>📱 Предпросмотр сообщения</h3>
+                                                <div class="telegram-preview">
+                                                    <div class="telegram-message">
+                                                        <div class="telegram-avatar">🤖</div>
+                                                        <div class="telegram-content">
+                                                            <div class="telegram-sender">Webhook Bot</div>
+                                                            <div class="telegram-text" id="messagePreview">
+                                                                🆔 ID: 123<br><br>
+                                                                📋 Тема: Проблема с сервером<br><br>
+                                                                👤 Инициатор запроса: Иван Петров @Компания<br><br>
+                                                                📝 Комментарий:<br>
+                                                                1. Иван Петров @Компания (15.01.2024, 14:30): Проблема с доступом к серверу
+                                                            </div>
+                                                            <div class="telegram-time">Только что</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
 
-                        <div class="form-group">
-                            <label for="chatId">ID Telegram чата</label>
-                            <input type="text" id="chatId" placeholder="Например: -1001234567890" required>
-                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Для группы/канала используйте отрицательное число</small>
-                        </div>
+                                    <div class="form-group">
+                                        <label for="chatId">ID Telegram чата</label>
+                                        <input type="text" id="chatId" placeholder="Например: -1001234567890" required>
+                                        <small class="form-hint">Для группы/канала используйте отрицательное число. Можно указать несколько ID через запятую.</small>
+                                    </div>
 
-                        <div class="form-group">
-                            <label for="botToken">Токен Telegram бота (обязательно)</label>
-                            <input type="text" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Получите от @BotFather в Telegram</small>
-                        </div>
+                                    <div class="form-group">
+                                        <label for="botToken">Токен Telegram бота (обязательно)</label>
+                                        <div class="input-with-button">
+                                            <input type="password" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                                            <button type="button" class="toggle-password" aria-label="Показать/скрыть пароль">👁️</button>
+                                        </div>
+                                        <small class="form-hint">Получите от @BotFather в Telegram. Каждое правило может использовать своего бота.</small>
+                                    </div>
 
-                        <div class="form-group">
-                            <label for="messageTemplate">Шаблон сообщения (опционально)</label>
-                            <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
-                            <small style="color: hsl(var(--muted-foreground)); margin-top: 0.3125rem; display: block;">Используйте <code>${'{payload}'}</code> для вставки данных</small>
-                        </div>
+                                    <div class="form-group">
+                                        <label for="messageTemplate">Шаблон сообщения (опционально)</label>
+                                        <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
+                                        <small class="form-hint">Используйте <code>${'{payload}'}</code> для вставки данных. По умолчанию используется стандартный шаблон.</small>
+                                    </div>
 
-                        <div class="form-group checkbox-group">
-                            <input type="checkbox" id="enabled" checked>
-                            <label for="enabled" style="margin: 0;">Включено</label>
-                        </div>
+                                    <div class="form-group checkbox-group">
+                                        <input type="checkbox" id="enabled" checked>
+                                        <label for="enabled" style="margin: 0;">Включено</label>
+                                    </div>
 
-                        <div class="button-group">
-                            <button type="submit" class="btn-primary">Сохранить правило</button>
-                            <button type="reset" class="btn-secondary">Очистить</button>
-                        </div>
-                    </form>
+                                    <div class="button-group">
+                                        <button type="submit" class="btn-primary">Сохранить правило</button>
+                                        <button type="reset" class="btn-secondary">Очистить</button>
+                                    </div>
+                                </form>
+                            </div>
 
-                    <div class="test-section">
-                        <h3 style="margin-top: 0; color: #333;">Тест условия</h3>
-                        <div class="form-group">
-                            <label for="testCondition">Условие</label>
-                            <textarea id="testCondition" placeholder="payload.team_id === 14"></textarea>
+                            <div class="card">
+                                <div class="rules-toolbar">
+                                    <h2>📋 Мои правила</h2>
+                                    <div class="rules-search">
+                                        <input type="text" id="rulesSearch" placeholder="Поиск правил...">
+                                    </div>
+                                </div>
+                                
+                                <div id="rulesAlert" class="alert"></div>
+
+                                <div id="rulesList" class="rules-list">
+                                    <p style="color: #999; text-align: center; padding: 40px 20px;">Загрузка правил...</p>
+                                </div>
+                            </div>
                         </div>
-                        <div class="form-group">
-                            <label for="testPayload">Тестовый payload (JSON)</label>
-                            <textarea id="testPayload" placeholder='{"team_id": 14, "name": "Test"}'></textarea>
-                        </div>
-                        <button class="btn-test" onclick="testCondition()">Протестировать</button>
-                        <div id="testResult" class="test-result" style="display: none;"></div>
                     </div>
-                </div>
 
-                <!-- Rules List -->
-                <div class="card">
-                    <h2>Активные правила</h2>
-                    
-                    <div id="rulesAlert" class="alert"></div>
-
-                    <div id="rulesList" class="rules-list">
-                        <p style="color: #999; text-align: center; padding: 40px 20px;">Загрузка правил...</p>
+                    <div id="test-tab" class="tab-pane">
+                        <div class="content">
+                            <div class="card">
+                                <h2>🧪 Тестирование условий</h2>
+                                <div class="form-group">
+                                    <label for="testCondition">Условие</label>
+                                    <input type="text" id="testCondition" placeholder="payload.team_id === 14" value="payload.category === 'incident'">
+                                </div>
+                                <div class="form-group">
+                                    <label for="testPayload">Тестовый payload (JSON)</label>
+                                    <textarea id="testPayload" placeholder='{"team_id": 14, "name": "Test"}'>{
+  "category": "incident",
+  "impact": "high",
+  "team": "Astra Linux Серверы",
+  "subject": "Проблема с доступом к серверу",
+  "requested_by": {
+    "name": "Иван Петров",
+    "account": {
+      "name": "Компания"
+    }
+  },
+  "note": [
+    {
+      "text": "Проблема с доступом к серверу",
+      "person": {
+        "name": "Иван Петров"
+      },
+      "account": {
+        "name": "Компания"
+      },
+      "created_at": "2024-01-15T14:30:00Z"
+    }
+  ]
+}</textarea>
+                                    <small class="form-hint">Вставьте пример payload из истории для тестирования</small>
+                                </div>
+                                <button class="btn-test" onclick="testCondition()">Протестировать условие</button>
+                                <div id="testResult" class="test-result"></div>
+                            </div>
+                            
+                            <div class="card">
+                                <h2>📤 Тест отправки в Telegram</h2>
+                                <div class="form-group">
+                                    <label for="testChatId">ID чата</label>
+                                    <input type="text" id="testChatId" placeholder="-1001234567890">
+                                    <small class="form-hint">ID чата или канала в Telegram</small>
+                                </div>
+                                <div class="form-group">
+                                    <label for="testMessage">Тестовое сообщение</label>
+                                    <textarea id="testMessage" placeholder="Привет из веб-интерфейса!">Тестовое сообщение из webhook интеграции</textarea>
+                                </div>
+                                <button class="btn-primary" onclick="testTelegramSend()">Отправить тестовое сообщение</button>
+                                <div id="telegramTestResult" class="test-result"></div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
 
-            <!-- Webhook History -->
-            <div class="instructions">
-                <h3>📊 История вебхуков</h3>
-                <div style="margin-bottom: 20px;">
-                    <button class="btn-primary" onclick="loadWebhookLogs()" style="margin-right: 10px;">Обновить</button>
-                    <button class="btn-danger" onclick="clearWebhookLogs()">Очистить</button>
-                </div>
-                <div id="logsContainer" style="background: hsl(var(--muted)); border-radius: var(--radius); padding: 1rem; max-height: 25rem; overflow-y: auto;">
-                    <p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>
-                </div>
-            </div>
+                    <div id="history-tab" class="tab-pane">
+                        <div class="card">
+                            <div class="logs-toolbar">
+                                <h2>📊 История вебхуков</h2>
+                                <div class="logs-actions">
+                                    <button class="btn-secondary" onclick="loadWebhookLogs()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                        </svg>
+                                        Обновить
+                                    </button>
+                                    <button class="btn-danger" onclick="clearWebhookLogs()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                                        </svg>
+                                        Очистить
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div id="logsContainer" class="logs-container skeleton">
+                                <p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>
+                            </div>
+                            
+                            <div class="pagination">
+                                <button class="page-btn prev" disabled>← Пред</button>
+                                <span class="page-info">Страница 1 из 1</span>
+                                <button class="page-btn next" disabled>След →</button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="instructions-tab" class="tab-pane">
+                        <div class="content">
+                            <div class="card">
+                                <h2>🚀 Быстрый старт</h2>
+                                <ol>
+                                    <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
+                                    <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
+                                    <li>Настройте условие для фильтрации вебхуков</li>
+                                </ol>
 
-            <!-- Instructions -->
-            <div class="instructions">
-                <h3>🚀 Быстрый старт</h3>
-                <ol>
-                    <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
-                    <li>Введите токен в поле "Токен Telegram бота" и нажмите "Сохранить токен"</li>
-                    <li>Создайте правило маршрутизации выше</li>
-                </ol>
+                                <h3>📝 Примеры условий</h3>
+                                <ul>
+                                    <li><code>payload.team === 'Astra Linux Серверы'</code> - проверка команды</li>
+                                    <li><code>payload.status === 'error'</code> - проверка статуса</li>
+                                    <li><code>payload.impact === 'high'</code> - проверка влияния</li>
+                                    <li><code>payload.subject.includes('сервер')</code> - поиск в теме</li>
+                                    <li><code>payload.note && payload.note.some(n => n.text.includes('срочно'))</code> - проверка комментариев</li>
+                                    <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
+                                    <li><code>payload.category === 'incident' && payload.impact === 'high'</code> - несколько условий</li>
+                                </ul>
 
-                <h3>📝 Примеры условий</h3>
-                <ul>
-                    <li><code>payload.team_id === 14</code> - проверка ID команды</li>
-                    <li><code>payload.status === 'error'</code> - проверка статуса</li>
-                    <li><code>payload.priority > 5</code> - проверка приоритета</li>
-                    <li><code>payload.user.role === 'admin'</code> - проверка вложенного свойства</li>
-                    <li><code>payload.tags.includes('urgent')</code> - проверка массива</li>
-                    <li><code>payload.timestamp > Date.now() - 3600000</code> - проверка времени</li>
-                </ul>
+                                <h3>🔗 Webhook URL</h3>
+                                <p>Отправляйте POST запросы на этот адрес:</p>
+                                <div class="webhook-url" id="webhookUrl">http://localhost:3000/webhook</div>
+                                <button class="btn-secondary btn-small" onclick="copyWebhookUrl()" style="margin-top: 0.5rem;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    Копировать
+                                </button>
 
-                <h3>🔗 Webhook URL</h3>
-                <p>Отправляйте POST запросы на этот адрес:</p>
-                <div class="webhook-url" id="webhookUrl">http://localhost:3000/webhook</div>
-
-                <h3>📋 Пример запроса</h3>
-                <pre>curl -X POST http://localhost:3000/webhook \
+                                <h3>📋 Пример запроса</h3>
+                                <pre>curl -X POST http://localhost:3000/webhook \
   -H "Content-Type: application/json" \
   -d '{
-    "team_id": 14,
-    "status": "success",
-    "message": "Deployment completed"
+    "category": "incident",
+    "impact": "high",
+    "team": "Astra Linux Серверы",
+    "subject": "Сервер недоступен",
+    "requested_by": {
+      "name": "Иван Петров",
+      "account": {
+        "name": "Компания"
+      }
+    }
   }'</pre>
+                            </div>
+                            
+                            <div class="card">
+                                <h2>🔧 Дополнительные настройки</h2>
+                                <div class="form-group">
+                                    <label for="globalBotToken">Глобальный токен бота (резервный)</label>
+                                    <div class="input-with-button">
+                                        <input type="password" id="globalBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                                        <button type="button" class="toggle-password-global" aria-label="Показать/скрыть пароль">👁️</button>
+                                    </div>
+                                    <small class="form-hint">Используется, если в правиле не указан токен. Можно оставить пустым.</small>
+                                </div>
+                                <button class="btn-primary" onclick="saveGlobalBotToken()">Сохранить токен</button>
+                                
+                                <div class="export-import-section">
+                                    <h3>💾 Экспорт/Импорт правил</h3>
+                                    <div class="button-group">
+                                        <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
+                                        <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
+                                        <input type="file" id="importFile" accept=".json" style="display: none;">
+                                    </div>
+                                    <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -684,13 +1600,255 @@
         const API_BASE = '/api';
         let editingRuleId = null;
         let authToken = localStorage.getItem('authToken');
+        let currentPage = 1;
+        const logsPerPage = 10;
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
+            setupEventListeners();
+            loadSavedTheme();
+            updateWebhookUrl();
+        });
+
+        function setupEventListeners() {
+            // Forms and buttons
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('ruleForm').addEventListener('submit', saveRule);
-        });
+            
+            // Tab switching
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
+                });
+            });
+            
+            // Theme toggle
+            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            
+            // Condition builder
+            document.querySelectorAll('input[name="conditionMode"]').forEach(radio => {
+                radio.addEventListener('change', function() {
+                    document.getElementById('visualConditionEditor').style.display = this.value === 'visual' ? 'block' : 'none';
+                    document.getElementById('codeConditionEditor').style.display = this.value === 'code' ? 'block' : 'none';
+                    
+                    if (this.value === 'visual') {
+                        updateConditionPreview();
+                    }
+                });
+            });
+            
+            // Visual condition editor
+            document.querySelector('.field-select').addEventListener('change', updateConditionPreview);
+            document.querySelector('.operator-select').addEventListener('change', updateConditionPreview);
+            document.querySelector('.value-input').addEventListener('input', updateConditionPreview);
+            document.querySelector('.add-condition-btn').addEventListener('click', addConditionRow);
+            
+            // Code condition editor
+            document.getElementById('conditionCode').addEventListener('input', updateCodeCondition);
+            
+            // Password toggle
+            document.querySelector('.toggle-password').addEventListener('click', function() {
+                togglePasswordVisibility('#botToken', this);
+            });
+            
+            document.querySelector('.toggle-password-global').addEventListener('click', function() {
+                togglePasswordVisibility('#globalBotToken', this);
+            });
+            
+            // Rules search
+            document.getElementById('rulesSearch').addEventListener('input', function() {
+                filterRules(this.value);
+            });
+            
+            // Copy webhook URL
+            document.getElementById('webhookUrl').addEventListener('click', copyWebhookUrl);
+            
+            // Import file
+            document.getElementById('importFile').addEventListener('change', importRules);
+        }
+
+        function loadSavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark-theme');
+            }
+        }
+
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark-theme');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark-theme') ? 'dark' : 'light');
+        }
+
+        function togglePasswordVisibility(inputSelector, button) {
+            const input = document.querySelector(inputSelector);
+            if (input.type === 'password') {
+                input.type = 'text';
+                button.textContent = '🙈';
+            } else {
+                input.type = 'password';
+                button.textContent = '👁️';
+            }
+        }
+
+        function addConditionRow() {
+            const newRow = document.createElement('div');
+            newRow.className = 'condition-row';
+            newRow.innerHTML = `
+                <select class="field-select">
+                    <option value="payload.team">Команда</option>
+                    <option value="payload.status">Статус</option>
+                    <option value="payload.category">Категория</option>
+                    <option value="payload.impact">Влияние</option>
+                    <option value="payload.priority">Приоритет</option>
+                    <option value="payload.requested_by.name">Инициатор</option>
+                </select>
+                <select class="operator-select">
+                    <option value="===">равно</option>
+                    <option value="!==">не равно</option>
+                    <option value=">">больше</option>
+                    <option value="<">меньше</option>
+                    <option value="includes">содержит</option>
+                </select>
+                <input type="text" class="value-input" placeholder="Значение">
+                <button type="button" class="remove-condition-btn">-</button>
+            `;
+            
+            document.querySelector('.condition-rows').appendChild(newRow);
+            
+            // Add event listeners to new elements
+            newRow.querySelector('.field-select').addEventListener('change', updateConditionPreview);
+            newRow.querySelector('.operator-select').addEventListener('change', updateConditionPreview);
+            newRow.querySelector('.value-input').addEventListener('input', updateConditionPreview);
+            newRow.querySelector('.remove-condition-btn').addEventListener('click', function() {
+                newRow.remove();
+                updateConditionPreview();
+            });
+            
+            updateConditionPreview();
+        }
+
+        function updateConditionPreview() {
+            const field = document.querySelector('.field-select').value;
+            const operator = document.querySelector('.operator-select').value;
+            const value = document.querySelector('.value-input').value;
+            
+            let formattedValue = `'${value}'`;
+            if (!isNaN(value) && value.trim() !== '') {
+                formattedValue = value;
+            }
+            
+            const condition = `${field} ${operator} ${formattedValue}`;
+            document.getElementById('conditionPreview').textContent = condition;
+            document.getElementById('condition').value = condition;
+            document.getElementById('testCondition').value = condition;
+            updateMessagePreview(condition);
+        }
+
+        function updateCodeCondition() {
+            const condition = document.getElementById('conditionCode').value;
+            document.getElementById('condition').value = condition;
+            document.getElementById('conditionPreview').textContent = condition;
+            updateMessagePreview(condition);
+        }
+
+        function updateMessagePreview(condition) {
+            // This is a simplified preview - in real app you would evaluate the condition
+            const payload = {
+                id: 123,
+                category: 'incident',
+                impact: 'high',
+                team: 'Astra Linux Серверы',
+                subject: 'Проблема с сервером',
+                requested_by: {
+                    name: 'Иван Петров',
+                    account: {
+                        name: 'Компания'
+                    }
+                },
+                note: [{
+                    text: 'Проблема с доступом к серверу',
+                    person: {
+                        name: 'Иван Петров'
+                    },
+                    account: {
+                        name: 'Компания'
+                    },
+                    created_at: '2024-01-15T14:30:00Z'
+                }]
+            };
+            
+            let message = '';
+            
+            // ID
+            if (payload.id) {
+                message += `🆔 ID: ${payload.id}\n\n`;
+            }
+            
+            // Subject
+            if (payload.subject) {
+                message += `📋 Тема: ${payload.subject}\n\n`;
+            }
+            
+            // Requested by
+            if (payload.requested_by?.name) {
+                const account = payload.requested_by.account?.name || '';
+                message += `👤 Инициатор запроса: ${payload.requested_by.name}${account ? ' @' + account : ''}\n\n`;
+            }
+            
+            // Team, Category, Impact
+            const fields = ['team', 'category', 'impact'];
+            for (const field of fields) {
+                if (payload[field] && payload[field] !== null) {
+                    const labels = {
+                        'team': 'Команда',
+                        'category': 'Категория',
+                        'impact': 'Влияние'
+                    };
+                    message += `${labels[field]}: ${payload[field]}\n`;
+                }
+            }
+            message += '\n';
+            
+            // Notes
+            if (payload.note) {
+                message += `📝 Комментарий:\n`;
+                const notes = Array.isArray(payload.note) ? payload.note : [payload.note];
+                notes.forEach((note, index) => {
+                    const author = note.person?.name || note.person_name || 'Unknown';
+                    const account = note.account?.name || note.person?.account?.name || '';
+                    const text = note.text || '';
+                    let timestamp = '';
+                    
+                    if (note.created_at) {
+                        try {
+                            const date = new Date(note.created_at);
+                            if (!isNaN(date.getTime())) {
+                                timestamp = date.toLocaleString('ru-RU', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                });
+                            } else {
+                                timestamp = note.created_at;
+                            }
+                        } catch (e) {
+                            timestamp = note.created_at;
+                        }
+                    }
+                    
+                    message += `${index + 1}. ${author}${account ? ' @' + account : ''}${timestamp ? ' (' + timestamp + ')' : ''}: ${text}\n`;
+                });
+            }
+            
+            document.getElementById('messagePreview').innerHTML = message.replace(/\n/g, '<br>');
+        }
 
         async function checkAuthStatus() {
             try {
@@ -744,7 +1902,6 @@
         function showMainApp() {
             document.getElementById('loginContainer').classList.add('hidden');
             document.getElementById('mainApp').style.display = 'block';
-            updateWebhookUrl();
             loadRules();
             loadWebhookLogs();
         }
@@ -752,7 +1909,7 @@
         function showLoginAlert(message, type) {
             const alert = document.getElementById('loginAlert');
             alert.textContent = message;
-            alert.className = `login-alert show`;
+            alert.className = `login-alert show alert-${type}`;
         }
 
         async function logout() {
@@ -796,16 +1953,26 @@
 
         function displayRules(rules) {
             const container = document.getElementById('rulesList');
+            const searchQuery = document.getElementById('rulesSearch').value.toLowerCase();
             
-            if (rules.length === 0) {
-                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Нет созданных правил</p>';
+            const filteredRules = rules.filter(rule => 
+                rule.name.toLowerCase().includes(searchQuery) ||
+                rule.condition.toLowerCase().includes(searchQuery) ||
+                rule.chatId.toString().includes(searchQuery)
+            );
+            
+            if (filteredRules.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Правила не найдены</p>';
                 return;
             }
 
-            container.innerHTML = rules.map(rule => `
-                <div class="rule-item ${rule.enabled ? '' : 'disabled'}">
+            container.innerHTML = filteredRules.map(rule => `
+                <div class="rule-item ${rule.enabled ? '' : 'disabled'}" data-id="${rule.id}">
                     <div class="rule-content">
-                        <div class="rule-name">${escapeHtml(rule.name)}</div>
+                        <div class="rule-name">
+                            ${rule.enabled ? '✅' : '⏸️'} 
+                            ${escapeHtml(rule.name)}
+                        </div>
                         <div class="rule-condition">${escapeHtml(rule.condition)}</div>
                         <div class="rule-channel">📍 Канал: <code>${escapeHtml(rule.chatId)}</code></div>
                         ${rule.botToken && typeof rule.botToken === 'string' ? `<div class="rule-bot">🤖 Бот: <code>${escapeHtml(rule.botToken.substring(0, 10))}...</code></div>` : ''}
@@ -815,11 +1982,17 @@
                         </div>
                     </div>
                     <div class="rule-actions">
-                        <button class="btn-primary btn-small" onclick="editRule(${rule.id})">Редактировать</button>
-                        <button class="btn-danger btn-small" onclick="deleteRule(${rule.id})">Удалить</button>
+                        <button class="btn-primary btn-small" onclick="editRule(${rule.id})">✏️ Редактировать</button>
+                        <button class="btn-danger btn-small" onclick="deleteRule(${rule.id})">🗑️ Удалить</button>
                     </div>
                 </div>
             `).join('');
+        }
+
+        function filterRules(query) {
+            // This will be called when user types in search box
+            // We reload rules but with filtering applied on client side
+            loadRules(); // The displayRules function will handle filtering
         }
 
         async function saveRule(e) {
@@ -858,13 +2031,16 @@
 
                 if (!response.ok) throw new Error('Failed to save rule');
 
-                showAlert('addAlert', editingRuleId ? 'Правило обновлено' : 'Правило создано', 'success');
+                showAlert('addAlert', editingRuleId ? 'Правило успешно обновлено' : 'Правило успешно создано', 'success');
                 
                 document.getElementById('ruleForm').reset();
                 editingRuleId = null;
-                document.querySelector('.card h2:nth-of-type(2)').textContent = 'Создать правило';
+                document.querySelector('.card h2:nth-of-type(1)').textContent = 'Создать правило';
                 
                 await loadRules();
+                
+                // Scroll to rules list
+                document.getElementById('rulesList').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 showAlert('addAlert', 'Ошибка: ' + error.message, 'error');
             }
@@ -880,18 +2056,53 @@
 
                 if (!rule) return;
 
-                document.getElementById('ruleName').value = rule.name;
-                document.getElementById('condition').value = rule.condition;
-                document.getElementById('chatId').value = rule.chatId;
+                document.getElementById('ruleName').value = rule.name || '';
+                document.getElementById('chatId').value = rule.chatId || '';
                 document.getElementById('botToken').value = rule.botToken || '';
                 document.getElementById('messageTemplate').value = rule.messageTemplate || '';
-                document.getElementById('enabled').checked = rule.enabled;
+                document.getElementById('enabled').checked = rule.enabled !== false;
 
+                // Handle condition mode
+                const visualMode = document.querySelector('input[name="conditionMode"][value="visual"]');
+                const codeMode = document.querySelector('input[name="conditionMode"][value="code"]');
+                
+                // Try to parse condition for visual mode
+                if (rule.condition.includes('===') || rule.condition.includes('!==')) {
+                    visualMode.checked = true;
+                    document.getElementById('visualConditionEditor').style.display = 'block';
+                    document.getElementById('codeConditionEditor').style.display = 'none';
+                    
+                    try {
+                        // Simple parsing for demo purposes
+                        const parts = rule.condition.split(/\s*(===|!==|>|<|includes)\s*/);
+                        if (parts.length >= 3) {
+                            document.querySelector('.field-select').value = parts[0].trim();
+                            document.querySelector('.operator-select').value = parts[1].trim();
+                            document.querySelector('.value-input').value = parts[2].trim().replace(/['"]/g, '');
+                        }
+                        updateConditionPreview();
+                    } catch (e) {
+                        // Fallback to code mode
+                        codeMode.checked = true;
+                        document.getElementById('visualConditionEditor').style.display = 'none';
+                        document.getElementById('codeConditionEditor').style.display = 'block';
+                        document.getElementById('conditionCode').value = rule.condition;
+                    }
+                } else {
+                    codeMode.checked = true;
+                    document.getElementById('visualConditionEditor').style.display = 'none';
+                    document.getElementById('codeConditionEditor').style.display = 'block';
+                    document.getElementById('conditionCode').value = rule.condition;
+                }
+                
+                document.getElementById('condition').value = rule.condition;
+                
                 editingRuleId = id;
-                document.querySelector('.card h2:nth-of-type(2)').textContent = 'Редактировать правило';
+                document.querySelector('.card h2:nth-of-type(1)').textContent = 'Редактировать правило';
                 document.querySelector('#ruleForm button[type="submit"]').textContent = 'Обновить правило';
 
-                document.getElementById('ruleName').focus();
+                // Scroll to form
+                document.getElementById('ruleForm').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
             }
@@ -907,7 +2118,7 @@
                 });
                 if (!response.ok) throw new Error('Failed to delete rule');
 
-                showAlert('rulesAlert', 'Правило удалено', 'success');
+                showAlert('rulesAlert', 'Правило успешно удалено', 'success');
                 await loadRules();
             } catch (error) {
                 showAlert('rulesAlert', 'Ошибка при удалении: ' + error.message, 'error');
@@ -925,68 +2136,141 @@
 
             try {
                 const payload = JSON.parse(payloadStr);
-                const response = await fetch(`${API_BASE}/test-rule`, {
-                    method: 'POST',
-                    headers: getHeaders(),
-                    body: JSON.stringify({ condition, payload })
-                });
-
-                const result = await response.json();
                 const resultDiv = document.getElementById('testResult');
-                
-                if (response.ok) {
-                    resultDiv.innerHTML = `<strong>✓ Результат:</strong> <strong>${result.result ? 'TRUE' : 'FALSE'}</strong>`;
-                    resultDiv.style.background = result.result ? '#d4edda' : '#fff3cd';
-                } else {
-                    resultDiv.innerHTML = `<strong>✗ Ошибка:</strong> ${escapeHtml(result.error)}`;
-                    resultDiv.style.background = '#f8d7da';
-                }
-                
+                resultDiv.innerHTML = `<div class="loading"></div> Тестируем условие...`;
                 resultDiv.style.display = 'block';
+                resultDiv.className = 'test-result';
+
+                // Evaluate condition locally for testing
+                try {
+                    const fn = new Function('payload', `return ${condition}`);
+                    const result = fn(payload);
+                    
+                    resultDiv.innerHTML = `<strong>✓ Результат:</strong> <strong>${result ? 'TRUE' : 'FALSE'}</strong><br><small>Условие: ${escapeHtml(condition)}</small>`;
+                    resultDiv.className = `test-result ${result ? 'success' : 'error'}`;
+                } catch (evalError) {
+                    resultDiv.innerHTML = `<strong>✗ Ошибка в условии:</strong> ${escapeHtml(evalError.message)}`;
+                    resultDiv.className = 'test-result error';
+                }
             } catch (error) {
-                alert('Ошибка: ' + error.message);
+                const resultDiv = document.getElementById('testResult');
+                resultDiv.innerHTML = `<strong>✗ Ошибка:</strong> Неверный JSON в payload: ${error.message}`;
+                resultDiv.className = 'test-result error';
+                resultDiv.style.display = 'block';
             }
         }
 
-        async function loadWebhookLogs() {
+        async function testTelegramSend() {
+            const chatId = document.getElementById('testChatId').value;
+            const message = document.getElementById('testMessage').value;
+            
+            if (!chatId || !message) {
+                alert('Заполните ID чата и сообщение');
+                return;
+            }
+            
+            const resultDiv = document.getElementById('telegramTestResult');
+            resultDiv.innerHTML = '<div class="loading"></div> Отправка тестового сообщения...';
+            resultDiv.style.display = 'block';
+            resultDiv.className = 'test-result';
+            
+            try {
+                const response = await fetch('/api/test-send', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ chatId, message })
+                });
+                
+                const result = await response.json();
+                if (result.success) {
+                    resultDiv.innerHTML = `✅ <strong>Отправлено!</strong> Сообщение доставлено в чат ${chatId}.<br><small>Telegram Message ID: ${result.response?.result?.message_id || 'N/A'}</small>`;
+                    resultDiv.className = 'test-result success';
+                } else {
+                    resultDiv.innerHTML = `❌ <strong>Ошибка отправки:</strong> ${result.error || 'Неизвестная ошибка'}`;
+                    resultDiv.className = 'test-result error';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `❌ <strong>Ошибка сети:</strong> ${error.message}`;
+                resultDiv.className = 'test-result error';
+            }
+        }
+
+        async function loadWebhookLogs(page = 1) {
+            currentPage = page;
+            document.getElementById('logsContainer').innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>';
+            document.getElementById('logsContainer').className = 'logs-container skeleton';
+            
             try {
                 const response = await fetch(`${API_BASE}/webhook-logs`, {
                     headers: getHeaders()
                 });
                 const logs = await response.json();
-                const container = document.getElementById('logsContainer');
-                
-                if (logs.length === 0) {
-                    container.innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center;">История пуста</p>';
-                    return;
-                }
-
-                container.innerHTML = logs.map(log => `
-                    <div style="border-bottom: 1px solid hsl(var(--border)); padding: 0.625rem 0; color: hsl(var(--foreground));">
-                        <strong style="color: hsl(var(--foreground));">${new Date(log.timestamp).toLocaleString()}</strong><br>
-                        <strong style="color: hsl(var(--foreground));">Payload:</strong> <pre style="background: hsl(var(--background)); color: hsl(var(--foreground)); padding: 0.5rem; margin: 0.3125rem 0; font-size: 0.875rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">${JSON.stringify(log.payload, null, 2)}</pre>
-                        <strong style="color: hsl(var(--foreground));">Matched Rules:</strong> ${log.matched}
-                        ${log.telegram_results && log.telegram_results.length > 0 ? `
-                        <br><strong style="color: hsl(var(--foreground));">Telegram Results:</strong>
-                        <ul style="margin: 0.3125rem 0; padding-left: 1.25rem;">
-                            ${log.telegram_results.map(result => `
-                                <li style="color: ${result.success ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'};">
-                                    Chat ID: ${result.chatId} - ${result.success ? 'Отправлено' : 'Ошибка'}
-                                    ${result.success ? ` (ID: ${result.response?.result?.message_id || 'N/A'})` : ''}
-                                    ${result.success ? `<br><small>Ответ: <code>${JSON.stringify(result.response)}</code></small>` : `<br><small>Детали: <code>${JSON.stringify(result.error)}</code></small>`}
-                                </li>
-                            `).join('')}
-                        </ul>
-                        ` : ''}
-                    </div>
-                `).join('');
+                displayWebhookLogs(logs, page);
             } catch (error) {
-                document.getElementById('logsContainer').innerHTML = '<p style="color: hsl(var(--destructive));">Ошибка загрузки истории</p>';
+                document.getElementById('logsContainer').innerHTML = `<p class="log-error">Ошибка загрузки истории: ${error.message}</p>`;
+                document.getElementById('logsContainer').className = 'logs-container';
             }
         }
 
+        function displayWebhookLogs(logs, page) {
+            const container = document.getElementById('logsContainer');
+            container.className = 'logs-container';
+            
+            const startIndex = (page - 1) * logsPerPage;
+            const endIndex = Math.min(startIndex + logsPerPage, logs.length);
+            const pageLogs = logs.slice(startIndex, endIndex);
+            
+            if (logs.length === 0) {
+                container.innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center;">История пуста</p>';
+                updatePagination(1, 1);
+                return;
+            }
+            
+            container.innerHTML = pageLogs.map(log => `
+                <div class="log-item">
+                    <div class="log-timestamp">${new Date(log.timestamp).toLocaleString('ru-RU')}</div>
+                    <strong>Вебхук ID:</strong> <code>${log.id}</code> | 
+                    <strong>Совпавшие правила:</strong> ${log.matched} из ${log.total_rules}<br>
+                    <strong>Статус:</strong> <span class="${log.status === 'matched' ? 'log-success' : 'log-error'}">${log.status === 'matched' ? '✅ Найдены совпадения' : '⛔ Нет совпадений'}</span>
+                    <br><br>
+                    <strong>Данные:</strong>
+                    <pre class="log-payload">${JSON.stringify(log.payload, null, 2)}</pre>
+                    
+                    ${log.telegram_results && log.telegram_results.length > 0 ? `
+                    <div class="log-telegram">
+                        <strong>Результаты отправки в Telegram:</strong>
+                        <ul style="margin: 0.5rem 0; padding-left: 1.25rem;">
+                            ${log.telegram_results.map(result => `
+                                <li class="log-telegram-item">
+                                    <strong>Chat ID:</strong> ${result.chatId} - 
+                                    <span class="${result.success ? 'log-success' : 'log-error'}">
+                                        ${result.success ? '✅ Отправлено' : '❌ Ошибка'}
+                                    </span>
+                                    ${result.success ? `<br><small>Message ID: ${result.response?.result?.message_id || 'N/A'}</small>` : ''}
+                                    ${result.error ? `<br><small>Ошибка: ${JSON.stringify(result.error)}</small>` : ''}
+                                </li>
+                            `).join('')}
+                        </ul>
+                    </div>` : ''}
+                </div>
+            `).join('');
+            
+            const totalPages = Math.ceil(logs.length / logsPerPage);
+            updatePagination(page, totalPages);
+        }
+
+        function updatePagination(currentPage, totalPages) {
+            document.querySelector('.page-info').textContent = `Страница ${currentPage} из ${totalPages}`;
+            
+            document.querySelector('.prev').disabled = currentPage === 1;
+            document.querySelector('.next').disabled = currentPage === totalPages;
+            
+            document.querySelector('.prev').onclick = () => loadWebhookLogs(currentPage - 1);
+            document.querySelector('.next').onclick = () => loadWebhookLogs(currentPage + 1);
+        }
+
         async function clearWebhookLogs() {
-            if (!confirm('Вы уверены, что хотите очистить историю?')) return;
+            if (!confirm('Вы уверены, что хотите очистить всю историю вебхуков? Это действие нельзя отменить.')) return;
 
             try {
                 const response = await fetch(`${API_BASE}/webhook-logs`, {
@@ -995,16 +2279,149 @@
                 });
                 if (response.ok) {
                     loadWebhookLogs();
+                    showAlert('logsAlert', 'История успешно очищена', 'success');
                 } else {
-                    alert('Ошибка очистки');
+                    showAlert('logsAlert', 'Ошибка очистки истории', 'error');
                 }
             } catch (error) {
-                alert('Ошибка: ' + error.message);
+                showAlert('logsAlert', 'Ошибка: ' + error.message, 'error');
             }
+        }
+
+        async function saveGlobalBotToken() {
+            const token = document.getElementById('globalBotToken').value;
+            if (!token) {
+                showAlert('addAlert', 'Введите токен бота', 'error');
+                return;
+            }
+            
+            if (token === 'YOUR_TOKEN') {
+                showAlert('addAlert', 'Введите реальный токен бота, а не "YOUR_TOKEN"', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/bot-token', {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ botToken: token })
+                });
+                
+                if (response.ok) {
+                    showAlert('addAlert', 'Глобальный токен успешно сохранен', 'success');
+                    // Mask the token in the UI
+                    document.getElementById('globalBotToken').value = '***********';
+                } else {
+                    const error = await response.json();
+                    showAlert('addAlert', 'Ошибка: ' + (error.error || 'Не удалось сохранить токен'), 'error');
+                }
+            } catch (error) {
+                showAlert('addAlert', 'Ошибка сохранения токена: ' + error.message, 'error');
+            }
+        }
+
+        async function exportRules() {
+            try {
+                const response = await fetch('/api/rules', { headers: getHeaders() });
+                const rules = await response.json();
+                
+                if (rules.length === 0) {
+                    showAlert('addAlert', 'Нет правил для экспорта', 'warning');
+                    return;
+                }
+                
+                const dataStr = JSON.stringify(rules, null, 2);
+                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                
+                const exportFileDefaultName = `telegram-webhook-rules-${new Date().toISOString().slice(0,10)}.json`;
+                
+                const linkElement = document.createElement('a');
+                linkElement.setAttribute('href', dataUri);
+                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.click();
+                
+                showAlert('addAlert', `Экспортировано ${rules.length} правил`, 'success');
+            } catch (error) {
+                showAlert('addAlert', 'Ошибка экспорта: ' + error.message, 'error');
+            }
+        }
+
+        function importRules(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = async function(event) {
+                try {
+                    const rules = JSON.parse(event.target.result);
+                    
+                    if (!Array.isArray(rules)) {
+                        throw new Error('Неверный формат файла');
+                    }
+                    
+                    if (rules.length === 0) {
+                        throw new Error('Файл не содержит правил');
+                    }
+                    
+                    if (!confirm(`Вы уверены, что хотите импортировать ${rules.length} правил? Это заменит существующие правила.`)) {
+                        return;
+                    }
+                    
+                    // First delete all existing rules
+                    const existingRulesResponse = await fetch('/api/rules', { headers: getHeaders() });
+                    const existingRules = await existingRulesResponse.json();
+                    
+                    for (const rule of existingRules) {
+                        await fetch(`/api/rules/${rule.id}`, { 
+                            method: 'DELETE',
+                            headers: getHeaders()
+                        });
+                    }
+                    
+                    // Then add the new rules
+                    for (const rule of rules) {
+                        await fetch('/api/rules', {
+                            method: 'POST',
+                            headers: getHeaders(),
+                            body: JSON.stringify({
+                                name: rule.name,
+                                condition: rule.condition,
+                                chatId: rule.chatId,
+                                botToken: rule.botToken,
+                                messageTemplate: rule.messageTemplate || null,
+                                enabled: rule.enabled !== false
+                            })
+                        });
+                    }
+                    
+                    showAlert('addAlert', `Успешно импортировано ${rules.length} правил`, 'success');
+                    await loadRules();
+                } catch (error) {
+                    showAlert('addAlert', 'Ошибка импорта: ' + error.message, 'error');
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset the input for future imports
+            document.getElementById('importFile').value = '';
+        }
+
+        function copyWebhookUrl() {
+            const url = document.getElementById('webhookUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.querySelector('button[onclick="copyWebhookUrl()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Скопировано!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
         }
 
         function showAlert(elementId, message, type) {
             const alert = document.getElementById(elementId);
+            if (!alert) return;
+            
             alert.textContent = message;
             alert.className = `alert show alert-${type}`;
             
@@ -1014,14 +2431,10 @@
         }
 
         function escapeHtml(text) {
-            const map = {
-                '&': '&amp;',
-                '<': '&lt;',
-                '>': '&gt;',
-                '"': '&quot;',
-                "'": '&#039;'
-            };
-            return text.replace(/[&<>"']/g, m => map[m]);
+            if (typeof text !== 'string') return text;
+            return text.replace(/[&<>"']/g, m => 
+                ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])
+            );
         }
     </script>
 </body>
