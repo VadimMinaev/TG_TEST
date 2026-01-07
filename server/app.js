@@ -284,23 +284,42 @@ app.post('/webhook', async (req, res) => {
 
   const formatMessage = (fullBody, payload, rule) => {
     try {
-      // Prefer last note text when present
+      // Handle notes array (as in the example)
       if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
-        const note = payload.note[payload.note.length - 1];
-        const author = note.person?.name || note.person_name || fullBody.person_name || '';
+        const note = payload.note[payload.note.length - 1]; // Last note
+        const author = note.person?.name || note.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
+        const account = note.account?.name || note.person?.account?.name || payload.requested_by?.account?.name || '';
         const text = note.text || '';
-        const account = note.account?.name || note.account?.id || '';
-        return `${author}${account ? ' @' + account : ''}: ${text}`;
+        const subject = payload.subject ? ` (Subject: ${payload.subject})` : '';
+        return `${author}${account ? ' @' + account : ''}: ${text}${subject}`;
       }
-      // Fallback to common fields
-      if (payload && (payload.text || payload.message)) return payload.text || payload.message;
-      // Generic short summary
+      // Handle direct text/message fields
+      if (payload && (payload.text || payload.message)) {
+        const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
+        const account = payload.account?.name || payload.requested_by?.account?.name || '';
+        const text = payload.text || payload.message;
+        const subject = payload.subject ? ` (Subject: ${payload.subject})` : '';
+        return `${author}${account ? ' @' + account : ''}: ${text}${subject}`;
+      }
+      // Handle command/comment structure (legacy)
+      if (payload && payload.command && payload.comment) {
+        const author = payload.author || fullBody.person_name || 'Unknown';
+        return `${author}: ${payload.command} - ${payload.comment}`;
+      }
+      // Generic fallback with key fields
       const parts = [];
-      if (fullBody.event) parts.push(`event: ${fullBody.event}`);
-      if (fullBody.object_id) parts.push(`object_id: ${fullBody.object_id}`);
-      if (fullBody.person_name) parts.push(`by: ${fullBody.person_name}`);
-      return parts.length > 0 ? parts.join(' | ') : JSON.stringify(payload || fullBody).slice(0, 4000);
+      if (fullBody.event) parts.push(`Event: ${fullBody.event}`);
+      if (fullBody.object_id) parts.push(`Object ID: ${fullBody.object_id}`);
+      if (payload.subject) parts.push(`Subject: ${payload.subject}`);
+      if (payload.requested_by?.name) parts.push(`By: ${payload.requested_by.name}`);
+      if (payload.id) parts.push(`ID: ${payload.id}`);
+      if (parts.length > 0) {
+        return parts.join(' | ');
+      }
+      // Last resort: stringify payload
+      return JSON.stringify(payload || fullBody).slice(0, 4000);
     } catch (e) {
+      console.error('Format message error:', e.message);
       return JSON.stringify(payload || fullBody).slice(0, 4000);
     }
   };
