@@ -272,25 +272,52 @@
             background: hsl(var(--card));
             border: 1px solid hsl(var(--border));
             border-radius: var(--radius);
-            padding: 2rem;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             transition: transform 0.3s ease;
+            overflow: hidden;
         }
 
         .card:hover {
             transform: translateY(-2px);
         }
 
-        .card h2 {
-            color: hsl(var(--foreground));
-            margin-bottom: 1.5rem;
+        .card-header {
+            padding: 1.5rem;
             border-bottom: 2px solid hsl(var(--primary));
-            padding-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .card-header h2 {
+            color: hsl(var(--foreground));
+            margin: 0;
             font-size: 1.25rem;
             font-weight: 600;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+        }
+
+        .card-header-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .card-header.collapsed .card-header-icon {
+            transform: rotate(-90deg);
+        }
+
+        .card-content {
+            padding: 0 2rem;
+            max-height: 1000px;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .card-content.collapsed {
+            max-height: 0;
+            padding: 0;
         }
 
         .form-group {
@@ -756,6 +783,7 @@
             margin-bottom: 1rem;
             flex-wrap: wrap;
             gap: 1rem;
+            padding: 0 1rem;
         }
 
         .rules-toolbar h2 {
@@ -781,6 +809,28 @@
             transform: translateY(-50%);
             color: hsl(var(--muted-foreground));
             font-size: 1rem;
+        }
+
+        /* Create rule button */
+        .create-rule-btn {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .create-rule-btn:hover {
+            background: hsl(var(--primary) / 0.9);
+            transform: translateY(-1px);
         }
 
         /* Logs styles */
@@ -1164,6 +1214,10 @@
             .telegram-preview {
                 max-width: 100%;
             }
+            
+            .create-rule-btn {
+                width: 100%;
+            }
         }
     </style>
 </head>
@@ -1254,147 +1308,161 @@
                 <div class="tab-content">
                     <div id="rules-tab" class="tab-pane active">
                         <div class="content">
+                            <!-- Collapsible card for rule creation -->
                             <div class="card">
-                                <h2>⚙️ Конфигурация правил</h2>
-                                
-                                <div id="addAlert" class="alert"></div>
+                                <div class="card-header" id="createRuleHeader">
+                                    <h2>
+                                        <svg class="card-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                        Создать новое правило
+                                    </h2>
+                                    <button class="btn-primary" id="toggleCreateRule">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class="card-content collapsed" id="createRuleContent">
+                                    <div id="addAlert" class="alert"></div>
 
-                                <form id="ruleForm">
-                                    <div class="form-group">
-                                        <label for="ruleName">Название правила</label>
-                                        <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
-                                        <small class="form-hint">Краткое описание правила для быстрой идентификации</small>
-                                    </div>
+                                    <form id="ruleForm">
+                                        <div class="form-group">
+                                            <label for="ruleName">Название правила</label>
+                                            <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
+                                            <small class="form-hint">Краткое описание правила для быстрой идентификации</small>
+                                        </div>
 
-                                    <div class="form-group">
-                                        <label for="condition">Условие (JavaScript выражение)</label>
-                                        <div class="condition-builder">
-                                            <div class="condition-mode-toggle">
-                                                <label>
-                                                    <input type="radio" name="conditionMode" value="visual" checked>
-                                                    Визуальный режим
-                                                </label>
-                                                <label>
-                                                    <input type="radio" name="conditionMode" value="code">
-                                                    Ручной ввод (JavaScript)
-                                                </label>
-                                            </div>
-                                            
-                                            <div class="visual-condition-editor" id="visualConditionEditor">
-                                                <div class="condition-groups">
-                                                    <div class="condition-group">
-                                                        <div class="condition-rows">
-                                                            <div class="condition-row">
-                                                                <select class="field-select">
-                                                                    <option value="payload.team_id">ID команды</option>
-                                                                    <option value="payload.team.name">Название команды</option>
-                                                                    <option value="payload.status">Статус</option>
-                                                                    <option value="payload.category" selected>Категория</option>
-                                                                    <option value="payload.impact">Влияние</option>
-                                                                    <option value="payload.priority">Приоритет</option>
-                                                                    <option value="payload.requested_by.name">Инициатор</option>
-                                                                </select>
-                                                                <select class="operator-select">
-                                                                    <option value="===" selected>равно</option>
-                                                                    <option value="!==">не равно</option>
-                                                                    <option value=">">больше</option>
-                                                                    <option value="<">меньше</option>
-                                                                    <option value="includes">содержит</option>
-                                                                </select>
-                                                                <!-- ИСПРАВЛЕНО: Значение по умолчанию на английском с двойными кавычками -->
-                                                                <input type="text" class="value-input" placeholder="Значение" value="incident">
+                                        <div class="form-group">
+                                            <label for="condition">Условие (JavaScript выражение)</label>
+                                            <div class="condition-builder">
+                                                <div class="condition-mode-toggle">
+                                                    <label>
+                                                        <input type="radio" name="conditionMode" value="visual" checked>
+                                                        Визуальный режим
+                                                    </label>
+                                                    <label>
+                                                        <input type="radio" name="conditionMode" value="code">
+                                                        Ручной ввод (JavaScript)
+                                                    </label>
+                                                </div>
+                                                
+                                                <div class="visual-condition-editor" id="visualConditionEditor">
+                                                    <div class="condition-groups">
+                                                        <div class="condition-group">
+                                                            <div class="condition-rows">
+                                                                <div class="condition-row">
+                                                                    <select class="field-select">
+                                                                        <option value="payload.team_id">ID команды</option>
+                                                                        <option value="payload.team.name">Название команды</option>
+                                                                        <option value="payload.status">Статус</option>
+                                                                        <option value="payload.category" selected>Категория</option>
+                                                                        <option value="payload.impact">Влияние</option>
+                                                                        <option value="payload.priority">Приоритет</option>
+                                                                        <option value="payload.requested_by.name">Инициатор</option>
+                                                                    </select>
+                                                                    <select class="operator-select">
+                                                                        <option value="===" selected>равно</option>
+                                                                        <option value="!==">не равно</option>
+                                                                        <option value=">">больше</option>
+                                                                        <option value="<">меньше</option>
+                                                                        <option value="includes">содержит</option>
+                                                                    </select>
+                                                                    <input type="text" class="value-input" placeholder="Значение" value="incident">
+                                                                </div>
                                                             </div>
+                                                            <button class="add-condition-btn">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                                                </svg>
+                                                                Добавить условие
+                                                            </button>
                                                         </div>
-                                                        <button class="add-condition-btn">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                                                            </svg>
-                                                            Добавить условие
-                                                        </button>
+                                                    </div>
+                                                    <div class="condition-logic">
+                                                        <label>
+                                                            <input type="radio" name="groupLogic" value="AND" checked>
+                                                            И (AND) - все условия должны выполняться
+                                                        </label>
+                                                        <label>
+                                                            <input type="radio" name="groupLogic" value="OR">
+                                                            ИЛИ (OR) - достаточно выполнения одного условия
+                                                        </label>
                                                     </div>
                                                 </div>
-                                                <div class="condition-logic">
-                                                    <label>
-                                                        <input type="radio" name="groupLogic" value="AND" checked>
-                                                        И (AND) - все условия должны выполняться
-                                                    </label>
-                                                    <label>
-                                                        <input type="radio" name="groupLogic" value="OR">
-                                                        ИЛИ (OR) - достаточно выполнения одного условия
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="code-condition-editor" id="codeConditionEditor" style="display: none;">
-                                                <textarea id="conditionCode" placeholder='Например: payload.category === "incident" && payload.impact === "high"'>payload.category === "incident"</textarea>
-                                                <small class="form-hint">Доступна переменная <code>payload</code> с данными вебхука</small>
-                                            </div>
-                                            
-                                            <div class="preview-section">
-                                                <h3>👀 Предпросмотр условия</h3>
-                                                <div class="preview-result">
-                                                    <strong>Сгенерированный код:</strong>
-                                                    <pre id="conditionPreview">payload.category === "incident"</pre>
+                                                
+                                                <div class="code-condition-editor" id="codeConditionEditor" style="display: none;">
+                                                    <textarea id="conditionCode" placeholder='Например: payload.category === "incident" && payload.impact === "high"'>payload.category === "incident"</textarea>
+                                                    <small class="form-hint">Доступна переменная <code>payload</code> с данными вебхука</small>
                                                 </div>
                                                 
-                                                <input type="hidden" id="condition" value='payload.category === "incident"'>
-                                                
-                                                <h3>📱 Предпросмотр сообщения</h3>
-                                                <div class="telegram-preview">
-                                                    <div class="telegram-message">
-                                                        <div class="telegram-avatar">🤖</div>
-                                                        <div class="telegram-content">
-                                                            <div class="telegram-sender">Webhook Bot</div>
-                                                            <div class="telegram-text" id="messagePreview">
-                                                                🆔 ID: 141<br><br>
-                                                                📋 Тема: Ноутбук CMP00035 больше не загружается<br><br>
-                                                                👤 Инициатор запроса: Мокосеева Ксения @АО ПроПродукт<br><br>
-                                                                Команда: Поддержка конечных пользователей<br>
-                                                                Категория: incident<br>
-                                                                Влияние: medium<br><br>
-                                                                📝 Комментарий:<br>
-                                                                1. Афанасенко Валерий @АО ПроПродукт (07.01.2026, 16:36): avwqrgw
+                                                <div class="preview-section">
+                                                    <h3>👀 Предпросмотр условия</h3>
+                                                    <div class="preview-result">
+                                                        <strong>Сгенерированный код:</strong>
+                                                        <pre id="conditionPreview">payload.category === "incident"</pre>
+                                                    </div>
+                                                    
+                                                    <input type="hidden" id="condition" value='payload.category === "incident"'>
+                                                    
+                                                    <h3>📱 Предпросмотр сообщения</h3>
+                                                    <div class="telegram-preview">
+                                                        <div class="telegram-message">
+                                                            <div class="telegram-avatar">🤖</div>
+                                                            <div class="telegram-content">
+                                                                <div class="telegram-sender">Webhook Bot</div>
+                                                                <div class="telegram-text" id="messagePreview">
+                                                                    🆔 ID: 141<br><br>
+                                                                    📋 Тема: Ноутбук CMP00035 больше не загружается<br><br>
+                                                                    👤 Инициатор запроса: Мокосеева Ксения @АО ПроПродукт<br><br>
+                                                                    Команда: Поддержка конечных пользователей<br>
+                                                                    Категория: incident<br>
+                                                                    Влияние: medium<br><br>
+                                                                    📝 Комментарий:<br>
+                                                                    1. Афанасенко Валерий @АО ПроПродукт (07.01.2026, 16:36): avwqrgw
+                                                                </div>
+                                                                <div class="telegram-time">Только что</div>
                                                             </div>
-                                                            <div class="telegram-time">Только что</div>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div class="form-group">
-                                        <label for="chatId">ID Telegram чата</label>
-                                        <input type="text" id="chatId" placeholder="Например: -1001234567890" required>
-                                        <small class="form-hint">Для группы/канала используйте отрицательное число. Можно указать несколько ID через запятую.</small>
-                                    </div>
-
-                                    <div class="form-group">
-                                        <label for="botToken">Токен Telegram бота (обязательно)</label>
-                                        <div class="input-with-button">
-                                            <input type="password" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                                            <button type="button" class="toggle-password" aria-label="Показать/скрыть пароль">👁️</button>
+                                        <div class="form-group">
+                                            <label for="chatId">ID Telegram чата</label>
+                                            <input type="text" id="chatId" placeholder="Например: -1001234567890" required>
+                                            <small class="form-hint">Для группы/канала используйте отрицательное число. Можно указать несколько ID через запятую.</small>
                                         </div>
-                                        <small class="form-hint">Получите от @BotFather в Telegram. Каждое правило может использовать своего бота.</small>
-                                    </div>
 
-                                    <div class="form-group">
-                                        <label for="messageTemplate">Шаблон сообщения (опционально)</label>
-                                        <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
-                                        <small class="form-hint">Используйте <code>${'{payload}'}</code> для вставки данных. По умолчанию используется стандартный шаблон.</small>
-                                    </div>
+                                        <div class="form-group">
+                                            <label for="botToken">Токен Telegram бота (обязательно)</label>
+                                            <div class="input-with-button">
+                                                <input type="password" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                                                <button type="button" class="toggle-password" aria-label="Показать/скрыть пароль">👁️</button>
+                                            </div>
+                                            <small class="form-hint">Получите от @BotFather в Telegram. Каждое правило может использовать своего бота.</small>
+                                        </div>
 
-                                    <div class="form-group checkbox-group">
-                                        <input type="checkbox" id="enabled" checked>
-                                        <label for="enabled" style="margin: 0;">Включено</label>
-                                    </div>
+                                        <div class="form-group">
+                                            <label for="messageTemplate">Шаблон сообщения (опционально)</label>
+                                            <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
+                                            <small class="form-hint">Используйте <code>${'{payload}'}</code> для вставки данных. По умолчанию используется стандартный шаблон.</small>
+                                        </div>
 
-                                    <div class="button-group">
-                                        <button type="submit" class="btn-primary">Сохранить правило</button>
-                                        <button type="reset" class="btn-secondary">Очистить</button>
-                                    </div>
-                                </form>
+                                        <div class="form-group checkbox-group">
+                                            <input type="checkbox" id="enabled" checked>
+                                            <label for="enabled" style="margin: 0;">Включено</label>
+                                        </div>
+
+                                        <div class="button-group">
+                                            <button type="submit" class="btn-primary">Сохранить правило</button>
+                                            <button type="reset" class="btn-secondary">Очистить</button>
+                                        </div>
+                                    </form>
+                                </div>
                             </div>
 
                             <div class="card">
@@ -1616,6 +1684,10 @@
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('ruleForm').addEventListener('submit', saveRule);
             
+            // Toggle create rule form
+            document.getElementById('toggleCreateRule').addEventListener('click', toggleCreateRuleForm);
+            document.getElementById('createRuleHeader').addEventListener('click', toggleCreateRuleForm);
+            
             // Tab switching
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -1670,6 +1742,31 @@
             
             // Import file
             document.getElementById('importFile').addEventListener('change', importRules);
+        }
+
+        function toggleCreateRuleForm() {
+            const content = document.getElementById('createRuleContent');
+            const icon = document.querySelector('#createRuleHeader .card-header-icon');
+            const button = document.getElementById('toggleCreateRule');
+            const arrowSvg = button.querySelector('svg');
+            
+            if (content.classList.contains('collapsed')) {
+                // Раскрываем форму
+                content.classList.remove('collapsed');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                icon.style.transform = 'rotate(0deg)';
+                arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+            } else {
+                // Сворачиваем форму
+                content.style.maxHeight = content.scrollHeight + 'px';
+                content.offsetHeight; // trigger reflow
+                content.style.maxHeight = '0';
+                content.classList.add('collapsed');
+                icon.style.transform = 'rotate(-90deg)';
+                arrowSvg.innerHTML = '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
+                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+            }
         }
 
         function loadSavedTheme() {
@@ -1733,7 +1830,6 @@
             updateConditionPreview();
         }
 
-        // ИСПРАВЛЕНО: Умное форматирование значений с правильными кавычками
         function updateConditionPreview() {
             const field = document.querySelector('.field-select').value;
             const operator = document.querySelector('.operator-select').value;
@@ -2103,16 +2199,38 @@
                 
                 document.getElementById('ruleForm').reset();
                 editingRuleId = null;
-                document.querySelector('.card h2:nth-of-type(1)').textContent = 'Создать правило';
+                document.querySelector('.card-header h2').textContent = 'Создать новое правило';
+                document.querySelector('#createRuleHeader #toggleCreateRule svg').innerHTML =
+                    '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
+                document.getElementById('createRuleContent').classList.add('collapsed');
+                document.getElementById('createRuleContent').style.maxHeight = '0';
+                document.querySelector('#createRuleHeader .card-header-icon').style.transform = 'rotate(-90deg)';
                 
                 await loadRules();
-                document.getElementById('rulesList').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 showAlert('addAlert', 'Ошибка: ' + error.message, 'error');
             }
         }
 
         async function editRule(id) {
+            // Сначала раскрываем форму создания/редактирования
+            const content = document.getElementById('createRuleContent');
+            const icon = document.querySelector('#createRuleHeader .card-header-icon');
+            const button = document.getElementById('toggleCreateRule');
+            const arrowSvg = button.querySelector('svg');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                icon.style.transform = 'rotate(0deg)';
+                arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                
+                // Прокручиваем вверх для удобства
+                const ruleForm = document.getElementById('ruleForm');
+                ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            
             try {
                 const response = await fetch(`${API_BASE}/rules`, {
                     headers: getHeaders()
@@ -2168,8 +2286,7 @@
                 document.getElementById('condition').value = rule.condition;
                 
                 editingRuleId = id;
-                document.querySelector('.card h2:nth-of-type(1)').textContent = 'Редактировать правило';
-                document.querySelector('#ruleForm button[type="submit"]').textContent = 'Обновить правило';
+                document.querySelector('#createRuleHeader h2').textContent = '✏️ Редактировать правило';
                 document.getElementById('ruleForm').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
