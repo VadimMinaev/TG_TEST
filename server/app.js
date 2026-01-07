@@ -13,9 +13,27 @@ let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
-const sessions = new Set();
+// Функция для перевода ключевых слов на русский
+// Расширяйте объект translations для добавления новых переводов
+const translations = {
+  'Subject': 'Тема',
+  'Requested by': 'Инициатор запроса',
+  'Notes': 'Комментарий',
+  'Message': 'Сообщение',
+  'Command': 'Команда',
+  'Info': 'Информация',
+  'ID': 'ID',
+  'Status': 'Статус',
+  'Event': 'Событие',
+  'Object ID': 'ID объекта',
+  'By': 'От',
+  'Payload': 'Полезная нагрузка',
+  'Error formatting message': 'Ошибка форматирования сообщения'
+};
 
-// Database setup
+function translate(key) {
+  return translations[key] || key; // Возвращает перевод или оригинал, если перевода нет
+}
 let db = { rules: [], logs: [] }; // Default to in-memory
 if (process.env.DATABASE_URL) {
   const { Client } = require('pg');
@@ -247,7 +265,7 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
 });
 
 app.post('/webhook', async (req, res) => {
-  // Handle webhook verification
+  // Обработка верификации webhook
   if (req.body.event === 'webhook.verify') {
     const callbackUrl = req.body.payload?.callback;
     if (callbackUrl) {
@@ -262,10 +280,10 @@ app.post('/webhook', async (req, res) => {
     return;
   }
 
-  // Determine the actual payload passed to rule conditions
+  // Определение payload: используем req.body.payload, если есть, иначе весь req.body
   const incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
 
-  // Load rules
+  // Загрузка правил из базы данных или in-memory
   let rules = [];
   if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
     try {
@@ -286,20 +304,25 @@ app.post('/webhook', async (req, res) => {
     try {
       let messageParts = [];
 
-      // Add subject if present
-      if (payload.subject) {
-        messageParts.push(`📋 Subject: ${payload.subject}`);
+      // Сначала добавляем ID, если есть
+      if (payload.id) {
+        messageParts.push(`🆔 ${translate('ID')}: ${payload.id}`);
       }
 
-      // Add requested by if present
+      // Затем Subject
+      if (payload.subject) {
+        messageParts.push(`📋 ${translate('Subject')}: ${payload.subject}`);
+      }
+
+      // Requested by
       if (payload.requested_by?.name) {
         const account = payload.requested_by.account?.name || '';
-        messageParts.push(`👤 Requested by: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
+        messageParts.push(`👤 ${translate('Requested by')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
       }
 
-      // Handle notes array
+      // Обработка массива заметок (notes)
       if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
-        messageParts.push('📝 Notes:');
+        messageParts.push(`📝 ${translate('Notes')}:`);
         payload.note.forEach((note, index) => {
           const author = note.person?.name || note.person_name || 'Unknown';
           const account = note.account?.name || note.person?.account?.name || '';
@@ -309,72 +332,70 @@ app.post('/webhook', async (req, res) => {
         });
       }
 
-      // Handle direct text/message fields
+      // Обработка прямых полей text/message (если нет массива note)
       if (payload && (payload.text || payload.message) && !Array.isArray(payload.note)) {
         const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
         const account = payload.account?.name || payload.requested_by?.account?.name || '';
         const text = payload.text || payload.message;
-        messageParts.push(`💬 Message: ${author}${account ? ' @' + account : ''}: ${text}`);
+        messageParts.push(`💬 ${translate('Message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
       }
 
-      // Handle command/comment structure (legacy)
+      // Обработка структуры command/comment (legacy, если нет других данных)
       if (payload && payload.command && payload.comment && !Array.isArray(payload.note) && !payload.text && !payload.message) {
         const author = payload.author || fullBody.person_name || 'Unknown';
-        messageParts.push(`⚙️ Command: ${author}: ${payload.command} - ${payload.comment}`);
+        messageParts.push(`⚙️ ${translate('Command')}: ${author}: ${payload.command} - ${payload.comment}`);
       }
 
-      // Add ID if present
-      if (payload.id) {
-        messageParts.push(`🆔 ID: ${payload.id}`);
-      }
-
-      // If no specific content, add generic info
+      // Если нет специфичного контента, добавляем общую информацию
       if (messageParts.length === 0) {
         const parts = [];
-        if (fullBody.event) parts.push(`Event: ${fullBody.event}`);
-        if (fullBody.object_id) parts.push(`Object ID: ${fullBody.object_id}`);
-        if (fullBody.person_name) parts.push(`By: ${fullBody.person_name}`);
+        if (fullBody.event) parts.push(`${translate('Event')}: ${fullBody.event}`);
+        if (fullBody.object_id) parts.push(`${translate('Object ID')}: ${fullBody.object_id}`);
+        if (fullBody.person_name) parts.push(`${translate('By')}: ${fullBody.person_name}`);
         if (parts.length > 0) {
-          messageParts.push('ℹ️ Info: ' + parts.join(' | '));
+          messageParts.push(`ℹ️ ${translate('Info')}: ` + parts.join(' | '));
         } else {
-          messageParts.push('📦 Payload: ' + JSON.stringify(payload || fullBody).slice(0, 4000));
+          messageParts.push(`📦 ${translate('Payload')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000));
         }
       }
 
       return messageParts.join('\n\n');
     } catch (e) {
       console.error('Format message error:', e.message);
-      return '❌ Error formatting message: ' + JSON.stringify(payload || fullBody).slice(0, 4000);
+      return `❌ ${translate('Error formatting message')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000);
     }
   };
 
   for (const rule of rules) {
-    if (!rule || rule.enabled === false) continue;
+    if (!rule || rule.enabled === false) continue; // Пропускаем отключенные правила
     try {
+      // Оцениваем условие правила с помощью Function (динамический JS код)
       const fn = new Function('payload', `return ${rule.condition}`);
       let ruleMatches = false;
       try {
-        ruleMatches = !!fn(incomingPayload);
+        ruleMatches = !!fn(incomingPayload); // Выполняем условие и приводим к boolean
       } catch (evalErr) {
         console.error('Rule evaluation error for rule', rule.id || '(no id):', evalErr.message);
       }
       if (ruleMatches) {
-        matched++;
-        const token = rule.botToken || TELEGRAM_BOT_TOKEN;
+        matched++; // Увеличиваем счетчик совпадений
+        const token = rule.botToken || TELEGRAM_BOT_TOKEN; // Используем токен из правила или глобальный
         if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
           telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
           continue;
         }
 
-        // Support single chatId or array of chatIds
+        // Поддержка одного chatId или массива chatIds
         const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
         if (chatIds.length === 0) {
           telegram_results.push({ chatId: null, success: false, error: 'No chatId configured for rule' });
           continue;
         }
 
+        // Форматируем сообщение для отправки
         const messageText = formatMessage(req.body, incomingPayload, rule);
 
+        // Отправляем в каждый чат
         for (const chat of chatIds) {
           try {
             const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -394,9 +415,9 @@ app.post('/webhook', async (req, res) => {
     }
   }
 
-  const sent = telegram_results.filter(r => r.success).length;
-  logWebhook(req.body, matched, rules.length, telegram_results);
-  res.json({ matched, sent, telegram_results });
+  const sent = telegram_results.filter(r => r.success).length; // Количество успешно отправленных сообщений
+  logWebhook(req.body, matched, rules.length, telegram_results); // Логируем webhook
+  res.json({ matched, sent, telegram_results }); // Возвращаем результат
 });
 
 app.get('/health', (req, res) => res.json({ ok: true }));
