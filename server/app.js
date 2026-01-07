@@ -32,6 +32,33 @@ const translations = {
 function translate(key) {
   return translations[key] || key; // Р’РѕР·РІСЂР°С‰Р°РµС‚ РїРµСЂРµРІРѕРґ РёР»Рё РѕСЂРёРіРёРЅР°Р», РµСЃР»Рё РїРµСЂРµРІРѕРґР° РЅРµС‚
 }
+
+// Р¤СѓРЅРєС†РёСЏ РґР»СЏ РґРµРєРѕРґРёСЂРѕРІР°РЅРёСЏ С‚РµРєСЃС‚Р° РёР· CP1251 РІ UTF-8
+function decodeText(str) {
+  if (typeof str !== 'string') return str;
+  try {
+    // РџСЂРµРґРїРѕР»Р°РіР°РµРј, С‡С‚Рѕ С‚РµРєСЃС‚ РІ CP1251, РґРµРєРѕРґРёСЂСѓРµРј
+    return Buffer.from(str, 'latin1').toString('utf8');
+  } catch (e) {
+    return str; // Р•СЃР»Рё РЅРµ СѓРґР°Р»РѕСЃСЊ, РІРѕР·РІСЂР°С‰Р°РµРј РєР°Рє РµСЃС‚СЊ
+  }
+}
+
+// Р РµРєСѓСЂСЃРёРІРЅР°СЏ РґРµРєРѕРґРёСЂРѕРІРєР° РѕР±СЉРµРєС‚Р°
+function decodeObject(obj) {
+  if (typeof obj === 'string') {
+    return decodeText(obj);
+  } else if (Array.isArray(obj)) {
+    return obj.map(decodeObject);
+  } else if (obj && typeof obj === 'object') {
+    const decoded = {};
+    for (const [key, value] of Object.entries(obj)) {
+      decoded[key] = decodeObject(value);
+    }
+    return decoded;
+  }
+  return obj;
+}
 let db = { rules: [], logs: [] }; // Default to in-memory
 if (process.env.DATABASE_URL) {
   const { Client } = require('pg');
@@ -332,7 +359,10 @@ app.post('/webhook', async (req, res) => {
   }
 
   // РћРїСЂРµРґРµР»РµРЅРёРµ payload: РёСЃРїРѕР»СЊР·СѓРµРј req.body.payload, РµСЃР»Рё РµСЃС‚СЊ, РёРЅР°С‡Рµ РІРµСЃСЊ req.body
-  const incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
+  let incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
+
+  // Р”РµРєРѕРґРёСЂСѓРµРј С‚РµРєСЃС‚ РёР· CP1251 РІ UTF-8, РµСЃР»Рё РЅРµРѕР±С…РѕРґРёРјРѕ
+  incomingPayload = decodeObject(incomingPayload);
 
   // Р—Р°РіСЂСѓР·РєР° РїСЂР°РІРёР» РёР· Р±Р°Р·С‹ РґР°РЅРЅС‹С… РёР»Рё in-memory
   let rules = [];
