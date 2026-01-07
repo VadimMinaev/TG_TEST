@@ -316,6 +316,19 @@ app.post('/webhook', async (req, res) => {
         messageParts.push(`👤 ${translate('Requested by')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
       }
 
+      // Status
+      if (payload.status) {
+        messageParts.push(`📊 ${translate('Status')}: ${payload.status}`);
+      }
+
+      // Дополнительные простые поля из payload (не объекты/массивы)
+      const processedKeys = ['id', 'subject', 'requested_by', 'note', 'text', 'message', 'command', 'comment', 'status'];
+      for (const [key, value] of Object.entries(payload)) {
+        if (!processedKeys.includes(key) && value !== null && value !== undefined && typeof value !== 'object' && !Array.isArray(value)) {
+          messageParts.push(`${translate(key) || key}: ${value}`);
+        }
+      }
+
       // Обработка массива заметок (notes)
       if (payload && Array.isArray(payload.note) && payload.note.length > 0) {
         messageParts.push(`📝 ${translate('Notes')}:`);
@@ -342,16 +355,13 @@ app.post('/webhook', async (req, res) => {
         messageParts.push(`⚙️ ${translate('Command')}: ${author}: ${payload.command} - ${payload.comment}`);
       }
 
-      // Если нет специфичного контента, добавляем общую информацию
-      if (messageParts.length === 0) {
-        const parts = [];
-        if (fullBody.event) parts.push(`${translate('Event')}: ${fullBody.event}`);
-        if (fullBody.object_id) parts.push(`${translate('Object ID')}: ${fullBody.object_id}`);
-        if (fullBody.person_name) parts.push(`${translate('By')}: ${fullBody.person_name}`);
-        if (parts.length > 0) {
-          messageParts.push(`ℹ️ ${translate('Info')}: ` + parts.join(' | '));
+      // Если есть хоть какой-то контент, добавляем полный payload для полноты
+      if (messageParts.length > 0) {
+        const fullPayloadStr = JSON.stringify(payload, null, 2);
+        if (fullPayloadStr.length <= 2000) { // Ограничиваем, чтобы не превысить лимит Telegram
+          messageParts.push(`\n📦 ${translate('Payload')}:\n${fullPayloadStr}`);
         } else {
-          messageParts.push(`📦 ${translate('Payload')}: ` + JSON.stringify(payload || fullBody).slice(0, 4000));
+          messageParts.push(`\n📦 ${translate('Payload')} (укорочено):\n${fullPayloadStr.slice(0, 2000)}...`);
         }
       }
 
