@@ -1801,6 +1801,7 @@
     <script>
         const API_BASE = '/api';
         let editingRuleId = null;
+        let isEditingRuleLoading = false; // Флаг загрузки данных для редактирования
         let authToken = localStorage.getItem('authToken');
         let currentPage = 1;
         const logsPerPage = 10;
@@ -1883,7 +1884,12 @@
             document.getElementById('importFile').addEventListener('change', importRules);
         }
 
-        function toggleCreateRuleForm() {
+        function toggleCreateRuleForm(event) {
+            // Предотвращаем срабатывание если клик был на кнопке редактирования (event propagation)
+            if (event && event.target && event.target.closest('.rule-actions')) {
+                return;
+            }
+            
             const content = document.getElementById('createRuleContent');
             const icon = document.querySelector('#createRuleHeader .card-header-icon');
             const button = document.getElementById('toggleCreateRule');
@@ -1898,17 +1904,20 @@
                 button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
                 
                 // Если форма открывается через toggle и не в режиме редактирования, сбрасываем режим создания
-                if (!editingRuleId) {
-                    document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
-                    document.getElementById('ruleForm').reset();
-                    // Сбрасываем режимы редактора условий
-                    document.querySelector('input[name="conditionMode"][value="visual"]').checked = true;
-                    document.getElementById('visualConditionEditor').style.display = 'block';
-                    document.getElementById('codeConditionEditor').style.display = 'none';
-                    document.getElementById('condition').value = '';
-                    document.getElementById('conditionCode').value = '';
-                    updateConditionPreview();
-                }
+                // Не сбрасываем если идет загрузка данных для редактирования
+                setTimeout(() => {
+                    if (!editingRuleId && !isEditingRuleLoading) {
+                        document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
+                        document.getElementById('ruleForm').reset();
+                        // Сбрасываем режимы редактора условий
+                        document.querySelector('input[name="conditionMode"][value="visual"]').checked = true;
+                        document.getElementById('visualConditionEditor').style.display = 'block';
+                        document.getElementById('codeConditionEditor').style.display = 'none';
+                        document.getElementById('condition').value = '';
+                        document.getElementById('conditionCode').value = '';
+                        updateConditionPreview();
+                    }
+                }, 100); // Увеличиваем задержку до 100мс для надежности
             } else {
                 // Сворачиваем форму - сбрасываем режим редактирования если он был активен
                 if (editingRuleId) {
@@ -2320,8 +2329,8 @@
                         </div>
                     </div>
                     <div class="rule-actions">
-                        <button class="btn-primary btn-small" onclick="editRule(${rule.id})">✏️ Редактировать</button>
-                        <button class="btn-danger btn-small" onclick="deleteRule(${rule.id})">🗑️ Удалить</button>
+                        <button class="btn-primary btn-small" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>
+                        <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>
                     </div>
                 </div>
             `;
@@ -2466,9 +2475,13 @@
         }
 
         async function editRule(id) {
-            // Сразу устанавливаем режим редактирования
+            // Сразу устанавливаем режим редактирования - это важно сделать ДО любых других операций
             editingRuleId = id;
-            document.querySelector('#createRuleHeader h2').textContent = '✏️ Редактировать правило';
+            isEditingRuleLoading = true; // Устанавливаем флаг загрузки
+            const header = document.querySelector('#createRuleHeader h2');
+            if (header) {
+                header.textContent = '✏️ Редактировать правило';
+            }
             
             // Сначала раскрываем форму создания/редактирования
             const content = document.getElementById('createRuleContent');
@@ -2476,16 +2489,24 @@
             const button = document.getElementById('toggleCreateRule');
             const arrowSvg = button.querySelector('svg');
             
-            if (content.classList.contains('collapsed')) {
+            // Раскрываем форму если она свернута
+            if (content && content.classList.contains('collapsed')) {
                 content.classList.remove('collapsed');
                 content.style.maxHeight = content.scrollHeight + 'px';
-                icon.style.transform = 'rotate(0deg)';
-                arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
-                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                if (icon) icon.style.transform = 'rotate(0deg)';
+                if (arrowSvg) arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
+                if (button) button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
                 
                 // Прокручиваем вверх для удобства
                 const ruleForm = document.getElementById('ruleForm');
-                ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (ruleForm) {
+                    ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } else if (content && !content.classList.contains('collapsed')) {
+                // Если форма уже открыта, убеждаемся что режим редактирования установлен
+                if (header) {
+                    header.textContent = '✏️ Редактировать правило';
+                }
             }
             
             try {
@@ -2507,7 +2528,10 @@
                 
                 const rule = await response.json();
 
-                if (!rule) return;
+                if (!rule) {
+                    isEditingRuleLoading = false;
+                    return;
+                }
 
                 // Заполняем все поля формы данными из БД
                 document.getElementById('ruleName').value = rule.name || '';
@@ -2564,10 +2588,12 @@
                 }
                 
                 // editingRuleId и заголовок уже установлены в начале функции
+                isEditingRuleLoading = false; // Сбрасываем флаг после загрузки
                 document.getElementById('ruleForm').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 // При ошибке сбрасываем режим редактирования
                 editingRuleId = null;
+                isEditingRuleLoading = false;
                 document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
                 showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
             }
