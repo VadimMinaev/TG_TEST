@@ -1619,6 +1619,15 @@
                             <div class="card">
                                 <h2>📤 Тест отправки в Telegram</h2>
                                 <div class="form-group">
+                                    <label for="testBotToken">Токен бота для тестирования</label>
+                                    <div class="input-with-button">
+                                        <input type="password" id="testBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                                        <button type="button" class="toggle-password-test" aria-label="Показать/скрыть пароль">👁️</button>
+                                    </div>
+                                    <small class="form-hint">Токен бота для отправки тестового сообщения. Можно сохранить для использования в глобальных настройках.</small>
+                                    <button class="btn-secondary btn-small" onclick="saveTestBotToken()" style="margin-top: 0.5rem;">💾 Сохранить как глобальный токен</button>
+                                </div>
+                                <div class="form-group">
                                     <label for="testChatId">ID чата</label>
                                     <input type="text" id="testChatId" placeholder="-1001234567890">
                                     <small class="form-hint">ID чата или канала в Telegram</small>
@@ -1725,16 +1734,6 @@
                             
                             <div class="card">
                                 <h2>🔧 Дополнительные настройки</h2>
-                                <div class="form-group">
-                                    <label for="globalBotToken">Глобальный токен бота (резервный)</label>
-                                    <div class="input-with-button">
-                                        <input type="password" id="globalBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
-                                        <button type="button" class="toggle-password-global" aria-label="Показать/скрыть пароль">👁️</button>
-                                    </div>
-                                    <small class="form-hint">Используется, если в правиле не указан токен. Можно оставить пустым.</small>
-                                </div>
-                                <button class="btn-primary" onclick="saveGlobalBotToken()">Сохранить токен</button>
-                                
                                 <div class="export-import-section">
                                     <h3>💾 Экспорт/Импорт правил</h3>
                                     <div class="button-group">
@@ -1868,8 +1867,8 @@
                 togglePasswordVisibility('#botToken', this);
             });
             
-            document.querySelector('.toggle-password-global').addEventListener('click', function() {
-                togglePasswordVisibility('#globalBotToken', this);
+            document.querySelector('.toggle-password-test').addEventListener('click', function() {
+                togglePasswordVisibility('#testBotToken', this);
             });
             
             // Rules search
@@ -2654,6 +2653,7 @@
         async function testTelegramSend() {
             const chatId = document.getElementById('testChatId').value;
             const message = document.getElementById('testMessage').value;
+            const botToken = document.getElementById('testBotToken').value.trim();
             
             if (!chatId || !message) {
                 alert('Заполните ID чата и сообщение');
@@ -2669,12 +2669,16 @@
                 const response = await fetch('/api/test-send', {
                     method: 'POST',
                     headers: getHeaders(),
-                    body: JSON.stringify({ chatId, message })
+                    body: JSON.stringify({ chatId, message, botToken: botToken || undefined })
                 });
                 
                 const result = await response.json();
                 if (result.success) {
-                    resultDiv.innerHTML = `✅ <strong>Отправлено!</strong> Сообщение доставлено в чат ${chatId}.<br><small>Telegram Message ID: ${result.response?.result?.message_id || 'N/A'}</small>`;
+                    let message = `✅ <strong>Отправлено!</strong> Сообщение доставлено в чат ${chatId}.<br><small>Telegram Message ID: ${result.response?.result?.message_id || 'N/A'}</small>`;
+                    if (botToken) {
+                        message += '<br><small style="color: #667eea;">💡 Использован токен из поля тестирования</small>';
+                    }
+                    resultDiv.innerHTML = message;
                     resultDiv.className = 'test-result success';
                 } else {
                     resultDiv.innerHTML = `❌ <strong>Ошибка отправки:</strong> ${result.error || 'Неизвестная ошибка'}`;
@@ -2779,16 +2783,22 @@
             }
         }
 
-        async function saveGlobalBotToken() {
-            const token = document.getElementById('globalBotToken').value;
+        async function saveTestBotToken() {
+            const token = document.getElementById('testBotToken').value.trim();
             if (!token) {
-                showAlert('addAlert', 'Введите токен бота', 'error');
-                return;
+                const resultDiv = document.getElementById('telegramTestResult');
+                resultDiv.innerHTML = `❌ <strong>Ошибка:</strong> Введите токен бота`;
+                resultDiv.className = 'test-result error';
+                resultDiv.style.display = 'block';
+                return false;
             }
             
             if (token === 'YOUR_TOKEN') {
-                showAlert('addAlert', 'Введите реальный токен бота, а не "YOUR_TOKEN"', 'error');
-                return;
+                const resultDiv = document.getElementById('telegramTestResult');
+                resultDiv.innerHTML = `❌ <strong>Ошибка:</strong> Введите реальный токен бота, а не "YOUR_TOKEN"`;
+                resultDiv.className = 'test-result error';
+                resultDiv.style.display = 'block';
+                return false;
             }
             
             try {
@@ -2799,14 +2809,25 @@
                 });
                 
                 if (response.ok) {
-                    showAlert('addAlert', 'Глобальный токен успешно сохранен', 'success');
-                    document.getElementById('globalBotToken').value = '***********';
+                    const resultDiv = document.getElementById('telegramTestResult');
+                    resultDiv.innerHTML = `✅ <strong>Токен сохранен!</strong> Глобальный токен бота успешно сохранен. Он будет использован для правил без собственного токена.`;
+                    resultDiv.className = 'test-result success';
+                    resultDiv.style.display = 'block';
+                    return true;
                 } else {
                     const error = await response.json();
-                    showAlert('addAlert', 'Ошибка: ' + (error.error || 'Не удалось сохранить токен'), 'error');
+                    const resultDiv = document.getElementById('telegramTestResult');
+                    resultDiv.innerHTML = `❌ <strong>Ошибка сохранения:</strong> ${error.error || 'Не удалось сохранить токен'}`;
+                    resultDiv.className = 'test-result error';
+                    resultDiv.style.display = 'block';
+                    return false;
                 }
             } catch (error) {
-                showAlert('addAlert', 'Ошибка сохранения токена: ' + error.message, 'error');
+                const resultDiv = document.getElementById('telegramTestResult');
+                resultDiv.innerHTML = `❌ <strong>Ошибка:</strong> ${error.message}`;
+                resultDiv.className = 'test-result error';
+                resultDiv.style.display = 'block';
+                return false;
             }
         }
 

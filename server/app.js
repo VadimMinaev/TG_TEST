@@ -378,12 +378,17 @@ app.get('/api/bot-token', auth, (req, res) => {
 });
 
 app.post('/api/test-send', auth, async (req, res) => {
-  const { chatId, message } = req.body;
+  const { chatId, message, botToken } = req.body;
   if (!chatId || !message) {
     return res.status(400).json({ error: 'chatId and message required' });
   }
+  // Используем токен из запроса, если указан, иначе глобальный токен
+  const token = botToken || TELEGRAM_BOT_TOKEN;
+  if (!token || token === 'YOUR_TOKEN') {
+    return res.status(400).json({ success: false, error: 'Bot token is required' });
+  }
   try {
-    const response = await axios.post(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+    const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
       chat_id: chatId,
       text: message
     });
@@ -712,10 +717,15 @@ app.post('/webhook', async (req, res) => {
       }
       if (ruleMatches) {
         matched++;
-        const token = rule.botToken;
+        // Используем токен из правила, если он есть, иначе используем глобальный резервный токен
+        let token = rule.botToken;
         if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
-          telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured in rule' });
-          continue;
+          // Используем глобальный резервный токен
+          token = TELEGRAM_BOT_TOKEN;
+          if (!token || token === 'YOUR_TOKEN') {
+            telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured in rule and no global token set' });
+            continue;
+          }
         }
 
         const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
