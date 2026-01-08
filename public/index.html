@@ -1404,163 +1404,6 @@
                 <div class="tab-content">
                     <div id="rules-tab" class="tab-pane active">
                         <div class="content">
-                            <!-- Collapsible card for rule creation -->
-                            <div class="card">
-                                <div class="card-header" id="createRuleHeader">
-                                    <h2>
-                                        <svg class="card-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <polyline points="6 9 12 15 18 9"></polyline>
-                                        </svg>
-                                        Создать новое правило
-                                    </h2>
-                                    <button class="btn-primary" id="toggleCreateRule">
-                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <line x1="12" y1="5" x2="12" y2="19"></line>
-                                            <line x1="5" y1="12" x2="19" y2="12"></line>
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div class="card-content collapsed" id="createRuleContent">
-                                    <div id="addAlert" class="alert"></div>
-
-                                    <form id="ruleForm">
-                                        <div class="form-group">
-                                            <label for="ruleName">Название правила</label>
-                                            <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
-                                            <small class="form-hint">Краткое описание правила для быстрой идентификации</small>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="condition">Условие (JavaScript выражение)</label>
-                                            <div class="condition-builder">
-                                                <div class="condition-mode-toggle">
-                                                    <label>
-                                                        <input type="radio" name="conditionMode" value="visual" checked>
-                                                        Визуальный режим
-                                                    </label>
-                                                    <label>
-                                                        <input type="radio" name="conditionMode" value="code">
-                                                        Ручной ввод (JavaScript)
-                                                    </label>
-                                                </div>
-                                                
-                                                <div class="visual-condition-editor" id="visualConditionEditor">
-                                                    <div class="condition-groups">
-                                                        <div class="condition-group">
-                                                            <div class="condition-rows">
-                                                                <div class="condition-row">
-                                                                    <select class="field-select">
-                                                                        <option value="payload.team_id">ID команды</option>
-                                                                        <option value="payload.team.name">Название команды</option>
-                                                                        <option value="payload.status">Статус</option>
-                                                                        <option value="payload.category" selected>Категория</option>
-                                                                        <option value="payload.impact">Влияние</option>
-                                                                        <option value="payload.priority">Приоритет</option>
-                                                                        <option value="payload.requested_by.name">Инициатор</option>
-                                                                    </select>
-                                                                    <select class="operator-select">
-                                                                        <option value="===" selected>равно</option>
-                                                                        <option value="!==">не равно</option>
-                                                                        <option value=">">больше</option>
-                                                                        <option value="<">меньше</option>
-                                                                        <option value="includes">содержит</option>
-                                                                    </select>
-                                                                    <input type="text" class="value-input" placeholder="Значение" value="incident">
-                                                                </div>
-                                                            </div>
-                                                            <button class="add-condition-btn">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                                    <line x1="12" y1="5" x2="12" y2="19"></line>
-                                                                    <line x1="5" y1="12" x2="19" y2="12"></line>
-                                                                </svg>
-                                                                Добавить условие
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                    <div class="condition-logic">
-                                                        <label>
-                                                            <input type="radio" name="groupLogic" value="AND" checked>
-                                                            И (AND) - все условия должны выполняться
-                                                        </label>
-                                                        <label>
-                                                            <input type="radio" name="groupLogic" value="OR">
-                                                            ИЛИ (OR) - достаточно выполнения одного условия
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                
-                                                <div class="code-condition-editor" id="codeConditionEditor" style="display: none;">
-                                                    <textarea id="conditionCode" placeholder='Например: payload.category === "incident" && payload.impact === "high"'>payload.category === "incident"</textarea>
-                                                    <small class="form-hint">Доступна переменная <code>payload</code> с данными вебхука</small>
-                                                </div>
-                                                
-                                                <div class="preview-section">
-                                                    <h3>👀 Предпросмотр условия</h3>
-                                                    <div class="preview-result">
-                                                        <strong>Сгенерированный код:</strong>
-                                                        <pre id="conditionPreview">payload.category === "incident"</pre>
-                                                    </div>
-                                                    
-                                                    <input type="hidden" id="condition" value='payload.category === "incident"'>
-                                                    
-                                                    <h3>📱 Предпросмотр сообщения</h3>
-                                                    <div class="telegram-preview">
-                                                        <div class="telegram-message">
-                                                            <div class="telegram-avatar">🤖</div>
-                                                            <div class="telegram-content">
-                                                                <div class="telegram-sender">Webhook Bot</div>
-                                                                <div class="telegram-text" id="messagePreview">
-                                                                    🆔 ID: 141<br><br>
-                                                                    📋 Тема: Ноутбук CMP00035 больше не загружается<br><br>
-                                                                    👤 Инициатор запроса: Мокосеева Ксения @АО ПроПродукт<br><br>
-                                                                    Команда: Поддержка конечных пользователей<br>
-                                                                    Категория: incident<br>
-                                                                    Влияние: medium<br><br>
-                                                                    📝 Комментарий:<br>
-                                                                    1. Афанасенко Валерий @АО ПроПродукт (07.01.2026, 16:36): avwqrgw
-                                                                </div>
-                                                                <div class="telegram-time">Только что</div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="chatId">ID Telegram чата</label>
-                                            <input type="text" id="chatId" placeholder="Например: -1001234567890" required>
-                                            <small class="form-hint">Для группы/канала используйте отрицательное число. Можно указать несколько ID через запятую.</small>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="botToken">Токен Telegram бота (обязательно)</label>
-                                            <div class="input-with-button">
-                                                <input type="password" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
-                                                <button type="button" class="toggle-password" aria-label="Показать/скрыть пароль">👁️</button>
-                                            </div>
-                                            <small class="form-hint">Получите от @BotFather в Telegram. Каждое правило может использовать своего бота.</small>
-                                        </div>
-
-                                        <div class="form-group">
-                                            <label for="messageTemplate">Шаблон сообщения (опционально)</label>
-                                            <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
-                                            <small class="form-hint">Используйте <code>${'{payload}'}</code> для вставки данных. По умолчанию используется стандартный шаблон.</small>
-                                        </div>
-
-                                        <div class="form-group checkbox-group">
-                                            <input type="checkbox" id="enabled" checked>
-                                            <label for="enabled" style="margin: 0;">Включено</label>
-                                        </div>
-
-                                        <div class="button-group">
-                                            <button type="submit" class="btn-primary">Сохранить правило</button>
-                                            <button type="reset" class="btn-secondary">Очистить</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-
                             <div class="card">
                                 <div class="rules-toolbar">
                                     <h2>📋 Правила</h2>
@@ -1580,11 +1423,152 @@
                                     
                                     <div class="rules-details-column" style="flex: 1; padding-left: 1rem;">
                                         <div id="ruleDetails" style="display: none;">
-                                            <h3 style="margin-top: 0;">Детали правила</h3>
-                                            <div id="ruleDetailsContent"></div>
+                                            <div id="addAlert" class="alert"></div>
+                                            <form id="ruleForm">
+                                                <div class="form-group">
+                                                    <label for="ruleName">Название правила</label>
+                                                    <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
+                                                    <small class="form-hint">Краткое описание правила для быстрой идентификации</small>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="condition">Условие (JavaScript выражение)</label>
+                                                    <div class="condition-builder">
+                                                        <div class="condition-mode-toggle">
+                                                            <label>
+                                                                <input type="radio" name="conditionMode" value="visual" checked>
+                                                                Визуальный режим
+                                                            </label>
+                                                            <label>
+                                                                <input type="radio" name="conditionMode" value="code">
+                                                                Ручной ввод (JavaScript)
+                                                            </label>
+                                                        </div>
+                                                        
+                                                        <div class="visual-condition-editor" id="visualConditionEditor">
+                                                            <div class="condition-groups">
+                                                                <div class="condition-group">
+                                                                    <div class="condition-rows">
+                                                                        <div class="condition-row">
+                                                                            <select class="field-select">
+                                                                                <option value="payload.team_id">ID команды</option>
+                                                                                <option value="payload.team.name">Название команды</option>
+                                                                                <option value="payload.status">Статус</option>
+                                                                                <option value="payload.category" selected>Категория</option>
+                                                                                <option value="payload.impact">Влияние</option>
+                                                                                <option value="payload.priority">Приоритет</option>
+                                                                                <option value="payload.requested_by.name">Инициатор</option>
+                                                                            </select>
+                                                                            <select class="operator-select">
+                                                                                <option value="===" selected>равно</option>
+                                                                                <option value="!==">не равно</option>
+                                                                                <option value=">">больше</option>
+                                                                                <option value="<">меньше</option>
+                                                                                <option value="includes">содержит</option>
+                                                                            </select>
+                                                                            <input type="text" class="value-input" placeholder="Значение" value="incident">
+                                                                        </div>
+                                                                    </div>
+                                                                    <button class="add-condition-btn">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                                                                        </svg>
+                                                                        Добавить условие
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                            <div class="condition-logic">
+                                                                <label>
+                                                                    <input type="radio" name="groupLogic" value="AND" checked>
+                                                                    И (AND) - все условия должны выполняться
+                                                                </label>
+                                                                <label>
+                                                                    <input type="radio" name="groupLogic" value="OR">
+                                                                    ИЛИ (OR) - достаточно выполнения одного условия
+                                                                </label>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <div class="code-condition-editor" id="codeConditionEditor" style="display: none;">
+                                                            <textarea id="conditionCode" placeholder='Например: payload.category === "incident" && payload.impact === "high"'>payload.category === "incident"</textarea>
+                                                            <small class="form-hint">Доступна переменная <code>payload</code> с данными вебхука</small>
+                                                        </div>
+                                                        
+                                                        <div class="preview-section">
+                                                            <h3>👀 Предпросмотр условия</h3>
+                                                            <div class="preview-result">
+                                                                <strong>Сгенерированный код:</strong>
+                                                                <pre id="conditionPreview">payload.category === "incident"</pre>
+                                                            </div>
+                                                            
+                                                            <input type="hidden" id="condition" value='payload.category === "incident"'>
+                                                            
+                                                            <h3>📱 Предпросмотр сообщения</h3>
+                                                            <div class="telegram-preview">
+                                                                <div class="telegram-message">
+                                                                    <div class="telegram-avatar">🤖</div>
+                                                                    <div class="telegram-content">
+                                                                        <div class="telegram-sender">Webhook Bot</div>
+                                                                        <div class="telegram-text" id="messagePreview">
+                                                                            🆔 ID: 141<br><br>
+                                                                            📋 Тема: Ноутбук CMP00035 больше не загружается<br><br>
+                                                                            👤 Инициатор запроса: Мокосеева Ксения @АО ПроПродукт<br><br>
+                                                                            Команда: Поддержка конечных пользователей<br>
+                                                                            Категория: incident<br>
+                                                                            Влияние: medium<br><br>
+                                                                            📝 Комментарий:<br>
+                                                                            1. Афанасенко Валерий @АО ПроПродукт (07.01.2026, 16:36): avwqrgw
+                                                                        </div>
+                                                                        <div class="telegram-time">Только что</div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="chatId">ID Telegram чата</label>
+                                                    <input type="text" id="chatId" placeholder="Например: -1001234567890" required>
+                                                    <small class="form-hint">Для группы/канала используйте отрицательное число. Можно указать несколько ID через запятую.</small>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="botToken">Токен Telegram бота (обязательно)</label>
+                                                    <div class="input-with-button">
+                                                        <input type="password" id="botToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" required>
+                                                        <button type="button" class="toggle-password" aria-label="Показать/скрыть пароль">👁️</button>
+                                                    </div>
+                                                    <small class="form-hint">Получите от @BotFather в Telegram. Каждое правило может использовать своего бота.</small>
+                                                </div>
+
+                                                <div class="form-group">
+                                                    <label for="messageTemplate">Шаблон сообщения (опционально)</label>
+                                                    <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
+                                                    <small class="form-hint">Используйте <code>${'{payload}'}</code> для вставки данных. По умолчанию используется стандартный шаблон.</small>
+                                                </div>
+
+                                                <div class="form-group checkbox-group">
+                                                    <input type="checkbox" id="enabled" checked>
+                                                    <label for="enabled" style="margin: 0;">Включено</label>
+                                                </div>
+
+                                                <div class="button-group">
+                                                    <button type="submit" class="btn-primary">Сохранить правило</button>
+                                                    <button type="reset" class="btn-secondary">Очистить</button>
+                                                </div>
+                                            </form>
                                         </div>
                                         <div id="ruleDetailsPlaceholder" style="color: hsl(var(--muted-foreground)); text-align: center; padding: 2rem;">
-                                            Выберите правило из списка слева для просмотра деталей
+                                            <p style="margin-bottom: 1rem;">Выберите правило из списка слева для редактирования</p>
+                                            <button class="btn-primary" onclick="createNewRule()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                                </svg>
+                                                Создать новое правило
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -1856,10 +1840,6 @@
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('ruleForm').addEventListener('submit', saveRule);
             
-            // Toggle create rule form
-            document.getElementById('toggleCreateRule').addEventListener('click', toggleCreateRuleForm);
-            document.getElementById('createRuleHeader').addEventListener('click', toggleCreateRuleForm);
-            
             // Tab switching
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
@@ -1923,56 +1903,6 @@
             document.getElementById('importFile').addEventListener('change', importRules);
         }
 
-        function toggleCreateRuleForm(event) {
-            // Предотвращаем срабатывание если клик был на кнопке редактирования (event propagation)
-            if (event && event.target && event.target.closest('.rule-actions')) {
-                return;
-            }
-            
-            const content = document.getElementById('createRuleContent');
-            const icon = document.querySelector('#createRuleHeader .card-header-icon');
-            const button = document.getElementById('toggleCreateRule');
-            const arrowSvg = button.querySelector('svg');
-            
-            if (content.classList.contains('collapsed')) {
-                // Раскрываем форму
-                content.classList.remove('collapsed');
-                content.style.maxHeight = content.scrollHeight + 'px';
-                icon.style.transform = 'rotate(0deg)';
-                arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
-                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-                
-                // Если форма открывается через toggle и не в режиме редактирования, сбрасываем режим создания
-                // Не сбрасываем если идет загрузка данных для редактирования
-                setTimeout(() => {
-                    if (!editingRuleId && !isEditingRuleLoading) {
-                        document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
-                        document.getElementById('ruleForm').reset();
-                        // Сбрасываем режимы редактора условий
-                        document.querySelector('input[name="conditionMode"][value="visual"]').checked = true;
-                        document.getElementById('visualConditionEditor').style.display = 'block';
-                        document.getElementById('codeConditionEditor').style.display = 'none';
-                        document.getElementById('condition').value = '';
-                        document.getElementById('conditionCode').value = '';
-                        updateConditionPreview();
-                    }
-                }, 100); // Увеличиваем задержку до 100мс для надежности
-            } else {
-                // Сворачиваем форму - сбрасываем режим редактирования если он был активен
-                if (editingRuleId) {
-                    editingRuleId = null;
-                    document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
-                    document.getElementById('ruleForm').reset();
-                }
-                content.style.maxHeight = content.scrollHeight + 'px';
-                content.offsetHeight; // trigger reflow
-                content.style.maxHeight = '0';
-                content.classList.add('collapsed');
-                icon.style.transform = 'rotate(-90deg)';
-                arrowSvg.innerHTML = '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
-                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
-            }
-        }
 
         function loadSavedTheme() {
             const savedTheme = localStorage.getItem('theme');
@@ -2480,95 +2410,38 @@
         }
 
         async function loadRuleDetails(ruleId) {
-            const detailsContainer = document.getElementById('ruleDetailsContent');
+            // При клике на правило показываем форму редактирования
+            await editRule(ruleId);
+        }
+
+        function createNewRule() {
+            // Сбрасываем режим редактирования
+            editingRuleId = null;
+            
+            // Показываем панель с формой и скрываем placeholder
             const detailsPanel = document.getElementById('ruleDetails');
             const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            if (detailsPanel && placeholder) {
+                detailsPanel.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
             
-            // Показываем панель деталей и скрываем placeholder
-            detailsPanel.style.display = 'block';
-            placeholder.style.display = 'none';
+            // Сбрасываем форму
+            document.getElementById('ruleForm').reset();
+            document.getElementById('addAlert').innerHTML = '';
             
-            // Убираем выделение с других строк и выделяем текущую
+            // Сбрасываем режимы редактора условий
+            document.querySelector('input[name="conditionMode"][value="visual"]').checked = true;
+            document.getElementById('visualConditionEditor').style.display = 'block';
+            document.getElementById('codeConditionEditor').style.display = 'none';
+            document.getElementById('condition').value = 'payload.category === "incident"';
+            document.getElementById('conditionCode').value = '';
+            updateConditionPreview();
+            
+            // Убираем выделение со всех строк
             document.querySelectorAll('.rule-row').forEach(row => {
                 row.style.background = 'transparent';
-                if (parseInt(row.dataset.ruleId) === ruleId) {
-                    row.style.background = 'hsl(var(--accent))';
-                }
             });
-            
-            // Показываем загрузку
-            detailsContainer.innerHTML = '<div class="loading"></div> Загрузка деталей...';
-            
-            try {
-                const response = await fetch(`${API_BASE}/rules/${ruleId}`, {
-                    headers: getHeaders()
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Не удалось загрузить детали правила');
-                }
-                
-                const rule = await response.json();
-                
-                // Отображаем детали
-                detailsContainer.innerHTML = `
-                    <div style="margin-bottom: 1rem;">
-                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Информация о правиле</h4>
-                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
-                            <div style="margin-bottom: 0.75rem;">
-                                <strong>ID:</strong> <code>${rule.id}</code>
-                            </div>
-                            <div style="margin-bottom: 0.75rem;">
-                                <strong>Название:</strong> ${escapeHtml(rule.name || '')}
-                            </div>
-                            <div style="margin-bottom: 0.75rem;">
-                                <strong>Статус:</strong> 
-                                <span class="${rule.enabled !== false ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px;">
-                                    ${rule.enabled !== false ? '✅ Включено' : '⏸️ Отключено'}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Условие</h4>
-                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto;">
-                            <code style="font-size: 0.875rem; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(rule.condition || '')}</code>
-                        </div>
-                    </div>
-                    
-                    <div style="margin-bottom: 1rem;">
-                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Настройки отправки</h4>
-                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
-                            <div style="margin-bottom: 0.75rem;">
-                                <strong>ID канала/чата:</strong> <code>${escapeHtml(rule.chatId || '')}</code>
-                            </div>
-                            ${rule.botToken && typeof rule.botToken === 'string' ? `
-                                <div style="margin-bottom: 0.75rem;">
-                                    <strong>Токен бота:</strong> <code>${escapeHtml(rule.botToken.substring(0, 10))}...</code>
-                                </div>
-                            ` : ''}
-                            ${rule.messageTemplate ? `
-                                <div style="margin-bottom: 0.75rem;">
-                                    <strong>Шаблон сообщения:</strong>
-                                    <div style="margin-top: 0.5rem; padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 4px; white-space: pre-wrap; font-size: 0.875rem;">${escapeHtml(rule.messageTemplate)}</div>
-                                </div>
-                            ` : '<div style="margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Используется шаблон по умолчанию</div>'}
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>
-                        <button class="btn-danger" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>
-                    </div>
-                `;
-            } catch (error) {
-                detailsContainer.innerHTML = `
-                    <div style="color: hsl(var(--destructive)); padding: 1rem; background: hsl(var(--destructive) / 0.1); border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--destructive) / 0.3);">
-                        <strong>Ошибка загрузки деталей:</strong> ${error.message}
-                    </div>
-                `;
-            }
         }
 
         function filterRules(query) {
@@ -2625,27 +2498,19 @@
 
                 showAlert('addAlert', editingRuleId ? 'Правило успешно обновлено' : 'Правило успешно создано', 'success');
                 
-                if (editingRuleId) {
+                const wasEditing = editingRuleId;
+                const savedRuleId = savedRule.id;
+                
+                if (wasEditing) {
                     // При обновлении - обновляем только конкретную строку в таблице
                     updateRuleCard(savedRule);
-                    // Обновляем детали, если они открыты
-                    const detailsPanel = document.getElementById('ruleDetails');
-                    if (detailsPanel && detailsPanel.style.display !== 'none') {
-                        await loadRuleDetails(savedRule.id);
-                    }
                 } else {
                     // При создании - перезагружаем весь список
                     await loadRules();
                 }
                 
-                document.getElementById('ruleForm').reset();
-                editingRuleId = null;
-                document.querySelector('.card-header h2').textContent = 'Создать новое правило';
-                document.querySelector('#createRuleHeader #toggleCreateRule svg').innerHTML =
-                    '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
-                document.getElementById('createRuleContent').classList.add('collapsed');
-                document.getElementById('createRuleContent').style.maxHeight = '0';
-                document.querySelector('#createRuleHeader .card-header-icon').style.transform = 'rotate(-90deg)';
+                // Показываем форму редактирования для сохраненного правила
+                await editRule(savedRuleId);
             } catch (error) {
                 showAlert('addAlert', 'Ошибка: ' + error.message, 'error');
             }
@@ -2656,44 +2521,21 @@
             editingRuleId = id;
             isEditingRuleLoading = true; // Устанавливаем флаг загрузки
             
-            // Закрываем панель деталей при редактировании
+            // Показываем панель с формой и скрываем placeholder
             const detailsPanel = document.getElementById('ruleDetails');
             const placeholder = document.getElementById('ruleDetailsPlaceholder');
             if (detailsPanel && placeholder) {
-                detailsPanel.style.display = 'none';
-                placeholder.style.display = 'block';
+                detailsPanel.style.display = 'block';
+                placeholder.style.display = 'none';
             }
             
-            const header = document.querySelector('#createRuleHeader h2');
-            if (header) {
-                header.textContent = '✏️ Редактировать правило';
-            }
-            
-            // Сначала раскрываем форму создания/редактирования
-            const content = document.getElementById('createRuleContent');
-            const icon = document.querySelector('#createRuleHeader .card-header-icon');
-            const button = document.getElementById('toggleCreateRule');
-            const arrowSvg = button.querySelector('svg');
-            
-            // Раскрываем форму если она свернута
-            if (content && content.classList.contains('collapsed')) {
-                content.classList.remove('collapsed');
-                content.style.maxHeight = content.scrollHeight + 'px';
-                if (icon) icon.style.transform = 'rotate(0deg)';
-                if (arrowSvg) arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
-                if (button) button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
-                
-                // Прокручиваем вверх для удобства
-                const ruleForm = document.getElementById('ruleForm');
-                if (ruleForm) {
-                    ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            // Убираем выделение с других строк и выделяем текущую
+            document.querySelectorAll('.rule-row').forEach(row => {
+                row.style.background = 'transparent';
+                if (parseInt(row.dataset.ruleId) === id) {
+                    row.style.background = 'hsl(var(--accent))';
                 }
-            } else if (content && !content.classList.contains('collapsed')) {
-                // Если форма уже открыта, убеждаемся что режим редактирования установлен
-                if (header) {
-                    header.textContent = '✏️ Редактировать правило';
-                }
-            }
+            });
             
             try {
                 // Загружаем конкретное правило по ID для получения полных данных
@@ -2705,7 +2547,6 @@
                     if (response.status === 404) {
                         showAlert('addAlert', 'Правило не найдено', 'error');
                         editingRuleId = null;
-                        document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
                     } else {
                         throw new Error('Failed to load rule');
                     }
@@ -2780,7 +2621,6 @@
                 // При ошибке сбрасываем режим редактирования
                 editingRuleId = null;
                 isEditingRuleLoading = false;
-                document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
                 showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
             }
         }
@@ -2796,6 +2636,18 @@
                 if (!response.ok) throw new Error('Failed to delete rule');
 
                 showAlert('rulesAlert', 'Правило успешно удалено', 'success');
+                
+                // Если удаляемое правило было открыто в форме редактирования, скрываем панель
+                if (editingRuleId === id) {
+                    editingRuleId = null;
+                    const detailsPanel = document.getElementById('ruleDetails');
+                    const placeholder = document.getElementById('ruleDetailsPlaceholder');
+                    if (detailsPanel && placeholder) {
+                        detailsPanel.style.display = 'none';
+                        placeholder.style.display = 'block';
+                    }
+                }
+                
                 await loadRules();
             } catch (error) {
                 showAlert('rulesAlert', 'Ошибка при удалении: ' + error.message, 'error');
