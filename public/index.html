@@ -1757,8 +1757,26 @@
                 icon.style.transform = 'rotate(0deg)';
                 arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
                 button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                
+                // Если форма открывается через toggle и не в режиме редактирования, сбрасываем режим создания
+                if (!editingRuleId) {
+                    document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
+                    document.getElementById('ruleForm').reset();
+                    // Сбрасываем режимы редактора условий
+                    document.querySelector('input[name="conditionMode"][value="visual"]').checked = true;
+                    document.getElementById('visualConditionEditor').style.display = 'block';
+                    document.getElementById('codeConditionEditor').style.display = 'none';
+                    document.getElementById('condition').value = '';
+                    document.getElementById('conditionCode').value = '';
+                    updateConditionPreview();
+                }
             } else {
-                // Сворачиваем форму
+                // Сворачиваем форму - сбрасываем режим редактирования если он был активен
+                if (editingRuleId) {
+                    editingRuleId = null;
+                    document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
+                    document.getElementById('ruleForm').reset();
+                }
                 content.style.maxHeight = content.scrollHeight + 'px';
                 content.offsetHeight; // trigger reflow
                 content.style.maxHeight = '0';
@@ -2213,6 +2231,10 @@
         }
 
         async function editRule(id) {
+            // Сразу устанавливаем режим редактирования
+            editingRuleId = id;
+            document.querySelector('#createRuleHeader h2').textContent = '✏️ Редактировать правило';
+            
             // Сначала раскрываем форму создания/редактирования
             const content = document.getElementById('createRuleContent');
             const icon = document.querySelector('#createRuleHeader .card-header-icon');
@@ -2285,10 +2307,12 @@
                 
                 document.getElementById('condition').value = rule.condition;
                 
-                editingRuleId = id;
-                document.querySelector('#createRuleHeader h2').textContent = '✏️ Редактировать правило';
+                // editingRuleId и заголовок уже установлены в начале функции
                 document.getElementById('ruleForm').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
+                // При ошибке сбрасываем режим редактирования
+                editingRuleId = null;
+                document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
                 showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
             }
         }
