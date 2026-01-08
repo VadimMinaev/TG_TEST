@@ -14,6 +14,7 @@ let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
+const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
 const sessions = new Map(); // token -> { username, timestamp }
@@ -82,6 +83,25 @@ if (process.env.DATABASE_URL) {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS settings (
+          key VARCHAR(255) PRIMARY KEY,
+          value TEXT NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+      
+      // Загружаем глобальный токен из БД при старте
+      try {
+        const result = await client.query('SELECT value FROM settings WHERE key = $1', ['global_bot_token']);
+        if (result.rows.length > 0 && result.rows[0].value && result.rows[0].value !== 'YOUR_TOKEN') {
+          TELEGRAM_BOT_TOKEN = result.rows[0].value;
+          console.log('Global bot token loaded from database');
+        }
+      } catch (err) {
+        console.error('Error loading global bot token from database:', err);
+      }
+      
       db = client;
       console.log('DB connected and tables created');
     } catch (err) {
@@ -123,6 +143,17 @@ function saveLogs() {
       fs.writeFileSync(LOGS_FILE, JSON.stringify(db.logs, null, 2), 'utf8');
     } catch (e) {
       console.error('Error saving logs to file:', e);
+    }
+  }
+}
+
+function saveSettings() {
+  if (!process.env.DATABASE_URL) {
+    try {
+      const settings = { global_bot_token: TELEGRAM_BOT_TOKEN };
+      fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
+    } catch (e) {
+      console.error('Error saving settings to file:', e);
     }
   }
 }
@@ -363,12 +394,42 @@ app.delete('/api/users/:id', auth, vadminOnly, async (req, res) => {
 });
 
 // TELEGRAM BOT ROUTES
-app.post('/api/bot-token', auth, (req, res) => {
+app.post('/api/bot-token', auth, async (req, res) => {
   const newToken = req.body.botToken;
   if (!newToken || newToken === 'YOUR_TOKEN') {
     return res.status(400).json({ error: 'Invalid token' });
   }
+  
+  // Валидация токена
+  try {
+    const response = await axios.get(`https://api.telegram.org/bot${newToken}/getMe`);
+    if (!response.data.ok) {
+      return res.status(400).json({ error: 'Invalid bot token' });
+    }
+  } catch (error) {
+    return res.status(400).json({ error: 'Invalid bot token' });
+  }
+  
   TELEGRAM_BOT_TOKEN = newToken;
+  
+  // Сохраняем токен в БД или файл
+  if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+    try {
+      await db.query(
+        'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
+        ['global_bot_token', newToken]
+      );
+      console.log('Global bot token saved to database');
+    } catch (err) {
+      console.error('Error saving bot token to database:', err);
+      // Продолжаем выполнение даже если не удалось сохранить в БД
+    }
+  } else {
+    // Сохраняем в файл для файлового режима
+    saveSettings();
+    console.log('Global bot token saved to file');
+  }
+  
   res.json({ status: 'ok' });
 });
 
