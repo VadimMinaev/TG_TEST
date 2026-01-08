@@ -1674,14 +1674,30 @@
                                 </div>
                             </div>
                             
-                            <div id="logsContainer" class="logs-container skeleton">
-                                <p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>
-                            </div>
+                            <div id="logsAlert" class="alert"></div>
                             
-                            <div class="pagination">
-                                <button class="page-btn prev" disabled>← Пред</button>
-                                <span class="page-info">Страница 1 из 1</span>
-                                <button class="page-btn next" disabled>След →</button>
+                            <div class="logs-layout" style="display: flex; gap: 1rem; min-height: 500px;">
+                                <div class="logs-list" style="flex: 0 0 400px; border-right: 1px solid hsl(var(--border)); padding-right: 1rem;">
+                                    <div id="logsContainer" class="logs-container skeleton" style="max-height: calc(100vh - 300px); overflow-y: auto;">
+                                        <p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>
+                                    </div>
+                                    
+                                    <div class="pagination" style="margin-top: 1rem;">
+                                        <button class="page-btn prev" disabled>← Пред</button>
+                                        <span class="page-info">Страница 1 из 1</span>
+                                        <button class="page-btn next" disabled>След →</button>
+                                    </div>
+                                </div>
+                                
+                                <div class="logs-details" style="flex: 1; padding-left: 1rem;">
+                                    <div id="logDetails" style="display: none;">
+                                        <h3 style="margin-top: 0;">Детали выполнения</h3>
+                                        <div id="logDetailsContent"></div>
+                                    </div>
+                                    <div id="logDetailsPlaceholder" style="color: hsl(var(--muted-foreground)); text-align: center; padding: 2rem;">
+                                        Выберите выполнение из списка слева для просмотра деталей
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1839,9 +1855,11 @@
                     tab.classList.add('active');
                     document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');
                     
-                    // Загружаем пользователей при переключении на вкладку
+                    // Загружаем данные при переключении на вкладку
                     if (tab.dataset.tab === 'users') {
                         loadUsers();
+                    } else if (tab.dataset.tab === 'history') {
+                        loadWebhookLogs();
                     }
                 });
             });
@@ -2700,6 +2718,12 @@
 
         async function loadWebhookLogs(page = 1) {
             currentPage = page;
+            
+            // Сбрасываем детали при загрузке нового списка
+            document.getElementById('logDetails').style.display = 'none';
+            document.getElementById('logDetailsPlaceholder').style.display = 'block';
+            document.getElementById('logDetailsContent').innerHTML = '';
+            
             document.getElementById('logsContainer').innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>';
             document.getElementById('logsContainer').className = 'logs-container skeleton';
             
@@ -2729,34 +2753,36 @@
                 return;
             }
             
-            container.innerHTML = pageLogs.map(log => `
-                <div class="log-item">
-                    <div class="log-timestamp">${new Date(log.timestamp).toLocaleString('ru-RU')}</div>
-                    <strong>Вебхук ID:</strong> <code>${log.id}</code> | 
-                    <strong>Совпавшие правила:</strong> ${log.matched} из ${log.total_rules}<br>
-                    <strong>Статус:</strong> <span class="${log.status === 'matched' ? 'log-success' : 'log-error'}">${log.status === 'matched' ? '✅ Найдены совпадения' : '⛔ Нет совпадений'}</span>
-                    <br><br>
-                    <strong>Данные:</strong>
-                    <pre class="log-payload">${JSON.stringify(log.payload, null, 2)}</pre>
-                    
-                    ${log.telegram_results && log.telegram_results.length > 0 ? `
-                    <div class="log-telegram">
-                        <strong>Результаты отправки в Telegram:</strong>
-                        <ul style="margin: 0.5rem 0; padding-left: 1.25rem;">
-                            ${log.telegram_results.map(result => `
-                                <li class="log-telegram-item">
-                                    <strong>Chat ID:</strong> ${result.chatId} - 
-                                    <span class="${result.success ? 'log-success' : 'log-error'}">
-                                        ${result.success ? '✅ Отправлено' : '❌ Ошибка'}
+            // Отображаем только краткую информацию в виде таблицы
+            container.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid hsl(var(--border)); text-align: left;">
+                            <th style="padding: 0.5rem; font-weight: 600;">Дата/Время</th>
+                            <th style="padding: 0.5rem; font-weight: 600;">ID</th>
+                            <th style="padding: 0.5rem; font-weight: 600;">Статус</th>
+                            <th style="padding: 0.5rem; font-weight: 600;">Совпадения</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${pageLogs.map(log => `
+                            <tr class="log-row" data-log-id="${log.id}" style="border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 0.2s;" 
+                                onmouseover="this.style.background='hsl(var(--accent))'" 
+                                onmouseout="this.style.background='transparent'"
+                                onclick="loadLogDetails(${log.id})">
+                                <td style="padding: 0.75rem 0.5rem;">${new Date(log.timestamp).toLocaleString('ru-RU')}</td>
+                                <td style="padding: 0.75rem 0.5rem;"><code>${log.id}</code></td>
+                                <td style="padding: 0.75rem 0.5rem;">
+                                    <span class="${log.status === 'matched' ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
+                                        ${log.status === 'matched' ? '✅ Совпадения' : '⛔ Нет совпадений'}
                                     </span>
-                                    ${result.success ? `<br><small>Message ID: ${result.response?.result?.message_id || 'N/A'}</small>` : ''}
-                                    ${result.error ? `<br><small>Ошибка: ${JSON.stringify(result.error)}</small>` : ''}
-                                </li>
-                            `).join('')}
-                        </ul>
-                    </div>` : ''}
-                </div>
-            `).join('');
+                                </td>
+                                <td style="padding: 0.75rem 0.5rem;">${log.matched}/${log.total_rules}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
             
             const totalPages = Math.ceil(logs.length / logsPerPage);
             updatePagination(page, totalPages);
@@ -2772,6 +2798,102 @@
             document.querySelector('.next').onclick = () => loadWebhookLogs(currentPage + 1);
         }
 
+        async function loadLogDetails(logId) {
+            const detailsContainer = document.getElementById('logDetailsContent');
+            const detailsPanel = document.getElementById('logDetails');
+            const placeholder = document.getElementById('logDetailsPlaceholder');
+            
+            // Показываем панель деталей и скрываем placeholder
+            detailsPanel.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            // Убираем выделение с других строк и выделяем текущую
+            document.querySelectorAll('.log-row').forEach(row => {
+                row.style.background = 'transparent';
+                if (parseInt(row.dataset.logId) === logId) {
+                    row.style.background = 'hsl(var(--accent))';
+                }
+            });
+            
+            // Показываем загрузку
+            detailsContainer.innerHTML = '<div class="loading"></div> Загрузка деталей...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/webhook-logs/${logId}`, {
+                    headers: getHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Не удалось загрузить детали');
+                }
+                
+                const log = await response.json();
+                
+                // Отображаем детали
+                detailsContainer.innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Информация о выполнении</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                            <div style="margin-bottom: 0.75rem;"><strong>ID:</strong> <code>${log.id}</code></div>
+                            <div style="margin-bottom: 0.75rem;"><strong>Дата/Время:</strong> ${new Date(log.timestamp).toLocaleString('ru-RU')}</div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>Статус:</strong> 
+                                <span class="${log.status === 'matched' ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                    ${log.status === 'matched' ? '✅ Найдены совпадения' : '⛔ Нет совпадений'}
+                                </span>
+                            </div>
+                            <div style="margin-bottom: 0.75rem;"><strong>Совпавшие правила:</strong> ${log.matched} из ${log.total_rules}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Payload (Данные вебхука)</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto;">
+                            <pre style="margin: 0; white-space: pre-wrap; word-wrap: break-word; font-size: 0.875rem;">${JSON.stringify(log.payload, null, 2)}</pre>
+                        </div>
+                    </div>
+                    
+                    ${log.telegram_results && log.telegram_results.length > 0 ? `
+                    <div>
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Результаты отправки в Telegram</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                            ${log.telegram_results.map((result, idx) => `
+                                <div style="margin-bottom: ${idx < log.telegram_results.length - 1 ? '1rem' : '0'}; padding-bottom: ${idx < log.telegram_results.length - 1 ? '1rem' : '0'}; border-bottom: ${idx < log.telegram_results.length - 1 ? '1px solid hsl(var(--border))' : 'none'};">
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <strong>Chat ID:</strong> <code>${result.chatId || 'N/A'}</code>
+                                    </div>
+                                    <div style="margin-bottom: 0.5rem;">
+                                        <strong>Статус:</strong> 
+                                        <span class="${result.success ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                            ${result.success ? '✅ Отправлено успешно' : '❌ Ошибка отправки'}
+                                        </span>
+                                    </div>
+                                    ${result.success && result.response?.result?.message_id ? `
+                                        <div style="margin-bottom: 0.5rem;">
+                                            <strong>Message ID:</strong> <code>${result.response.result.message_id}</code>
+                                        </div>
+                                    ` : ''}
+                                    ${result.error ? `
+                                        <div>
+                                            <strong>Ошибка:</strong>
+                                            <pre style="margin: 0.5rem 0 0 0; padding: 0.5rem; background: hsl(var(--destructive) / 0.1); border-radius: 4px; font-size: 0.875rem; overflow-x: auto;">${JSON.stringify(result.error, null, 2)}</pre>
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    ` : '<div style="color: hsl(var(--muted-foreground));">Результатов отправки в Telegram нет</div>'}
+                `;
+            } catch (error) {
+                detailsContainer.innerHTML = `
+                    <div style="color: hsl(var(--destructive)); padding: 1rem; background: hsl(var(--destructive) / 0.1); border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--destructive) / 0.3);">
+                        <strong>Ошибка загрузки деталей:</strong> ${error.message}
+                    </div>
+                `;
+            }
+        }
+
         async function clearWebhookLogs() {
             if (!confirm('Вы уверены, что хотите очистить всю историю вебхуков? Это действие нельзя отменить.')) return;
 
@@ -2781,6 +2903,11 @@
                     headers: getHeaders()
                 });
                 if (response.ok) {
+                    // Сбрасываем детали
+                    document.getElementById('logDetails').style.display = 'none';
+                    document.getElementById('logDetailsPlaceholder').style.display = 'block';
+                    document.getElementById('logDetailsContent').innerHTML = '';
+                    
                     loadWebhookLogs();
                     showAlert('logsAlert', 'История успешно очищена', 'success');
                 } else {

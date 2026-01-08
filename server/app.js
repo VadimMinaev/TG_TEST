@@ -838,6 +838,28 @@ app.get('/api/webhook-logs', auth, async (req, res) => {
   }
 });
 
+app.get('/api/webhook-logs/:id', auth, async (req, res) => {
+  const logId = parseInt(req.params.id);
+  if (process.env.DATABASE_URL) {
+    try {
+      const result = await db.query('SELECT data FROM logs WHERE (data->>\'id\')::bigint = $1', [logId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Log not found' });
+      }
+      res.json(result.rows[0].data);
+    } catch (err) {
+      console.error('Logs DB error:', err);
+      res.status(500).json({ error: 'DB error' });
+    }
+  } else {
+    const log = db.logs.find(l => l.id === logId);
+    if (!log) {
+      return res.status(404).json({ error: 'Log not found' });
+    }
+    res.json(log);
+  }
+});
+
 app.delete('/api/webhook-logs', auth, async (req, res) => {
   if (process.env.DATABASE_URL) {
     try {
