@@ -2,6 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const bcrypt = require('bcrypt');
 require('dotenv').config();
 
 const app = express();
@@ -15,7 +16,7 @@ const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
-const sessions = new Set();
+const sessions = new Map(); // token -> { username, timestamp }
 
 // ЦЕНТРАЛИЗОВАННАЯ СИСТЕМА ПЕРЕВОДОВ
 const fieldTranslations = {
@@ -72,6 +73,15 @@ if (process.env.DATABASE_URL) {
       await client.connect();
       await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
       await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(255) UNIQUE NOT NULL,
+          password_hash VARCHAR(255) NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
       db = client;
       console.log('DB connected and tables created');
     } catch (err) {
@@ -148,17 +158,49 @@ function logWebhook(payload, matched, rules_count, telegram_results = []) {
 
 const auth = (req, res, next) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  if (token && sessions.has(token)) return next();
+  if (token && sessions.has(token)) {
+    req.user = sessions.get(token);
+    return next();
+  }
   res.status(401).json({ error: 'Unauthorized' });
 };
 
-// AUTH ROUTES
-app.post('/api/login', (req, res) => {
-  if (req.body.username === CRED_USER && req.body.password === CRED_PASS) {
-    const token = Date.now().toString();
-    sessions.add(token);
-    return res.json({ token, status: 'success' });
+const vadminOnly = (req, res, next) => {
+  if (req.user && req.user.username === 'vadmin') {
+    return next();
   }
+  res.status(403).json({ error: 'Forbidden: Only vadmin can perform this action' });
+};
+
+// AUTH ROUTES
+app.post('/api/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  // Проверка vadmin
+  if (username === CRED_USER && password === CRED_PASS) {
+    const token = Date.now().toString();
+    sessions.set(token, { username: CRED_USER, timestamp: Date.now() });
+    return res.json({ token, status: 'success', username: CRED_USER });
+  }
+  
+  // Проверка пользователей из БД
+  if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+    try {
+      const result = await db.query('SELECT id, username, password_hash FROM users WHERE username = $1', [username]);
+      if (result.rows.length > 0) {
+        const user = result.rows[0];
+        const match = await bcrypt.compare(password, user.password_hash);
+        if (match) {
+          const token = Date.now().toString();
+          sessions.set(token, { username: user.username, userId: user.id, timestamp: Date.now() });
+          return res.json({ token, status: 'success', username: user.username });
+        }
+      }
+    } catch (err) {
+      console.error('DB login error:', err);
+    }
+  }
+  
   res.status(401).json({ error: 'Invalid credentials' });
 });
 
@@ -168,9 +210,156 @@ app.post('/api/logout', auth, (req, res) => {
   res.json({ status: 'ok' });
 });
 
+app.get('/api/me', auth, (req, res) => {
+  res.json({ 
+    username: req.user.username,
+    userId: req.user.userId || null
+  });
+});
+
 app.get('/api/auth-status', (req, res) => {
   const token = req.headers.authorization?.replace('Bearer ', '');
-  res.json({ authenticated: token && sessions.has(token) });
+  const session = token ? sessions.get(token) : null;
+  res.json({ 
+    authenticated: !!session,
+    username: session ? session.username : null
+  });
+});
+
+// USER MANAGEMENT ROUTES
+app.get('/api/users', auth, async (req, res) => {
+  if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+    try {
+      const result = await db.query('SELECT id, username, created_at, updated_at FROM users ORDER BY created_at DESC');
+      res.json(result.rows);
+    } catch (err) {
+      console.error('DB error:', err);
+      res.status(500).json({ error: 'DB error' });
+    }
+  } else {
+    res.json([]); // В файловом режиме пользователи не поддерживаются
+  }
+});
+
+app.post('/api/users', auth, vadminOnly, async (req, res) => {
+  const { username, password } = req.body;
+  
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+  
+  if (username === 'vadmin') {
+    return res.status(400).json({ error: 'Cannot create vadmin user' });
+  }
+  
+  if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+    try {
+      // Проверка существования пользователя
+      const existing = await db.query('SELECT id FROM users WHERE username = $1', [username]);
+      if (existing.rows.length > 0) {
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+      
+      // Хеширование пароля
+      const passwordHash = await bcrypt.hash(password, 10);
+      
+      // Создание пользователя
+      const result = await db.query(
+        'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, created_at, updated_at',
+        [username, passwordHash]
+      );
+      
+      res.status(201).json(result.rows[0]);
+    } catch (err) {
+      console.error('DB error:', err);
+      if (err.code === '23505') { // Unique violation
+        return res.status(400).json({ error: 'Username already exists' });
+      }
+      res.status(500).json({ error: 'DB error' });
+    }
+  } else {
+    res.status(400).json({ error: 'User management requires database' });
+  }
+});
+
+app.put('/api/users/:id/password', auth, async (req, res) => {
+  const userId = parseInt(req.params.id);
+  const { password, oldPassword } = req.body;
+  
+  if (!password) {
+    return res.status(400).json({ error: 'Password is required' });
+  }
+  
+  if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+    try {
+      // Проверка что пользователь меняет свой пароль или это vadmin
+      const isVadmin = req.user.username === 'vadmin';
+      
+      if (!isVadmin) {
+        // Если не vadmin, проверяем что пользователь меняет свой пароль
+        if (req.user.userId !== userId) {
+          return res.status(403).json({ error: 'You can only change your own password' });
+        }
+        
+        // Проверяем старый пароль
+        if (!oldPassword) {
+          return res.status(400).json({ error: 'Old password is required' });
+        }
+        
+        const userResult = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+        if (userResult.rows.length === 0) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+        
+        const match = await bcrypt.compare(oldPassword, userResult.rows[0].password_hash);
+        if (!match) {
+          return res.status(401).json({ error: 'Invalid old password' });
+        }
+      } else {
+        // vadmin может менять пароль без старого
+        const userResult = await db.query('SELECT id FROM users WHERE id = $1', [userId]);
+        if (userResult.rows.length === 0) {
+          return res.status(404).json({ error: 'User not found' });
+        }
+      }
+      
+      // Хеширование нового пароля
+      const passwordHash = await bcrypt.hash(password, 10);
+      
+      // Обновление пароля
+      await db.query(
+        'UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',
+        [passwordHash, userId]
+      );
+      
+      res.json({ status: 'ok' });
+    } catch (err) {
+      console.error('DB error:', err);
+      res.status(500).json({ error: 'DB error' });
+    }
+  } else {
+    res.status(400).json({ error: 'User management requires database' });
+  }
+});
+
+app.delete('/api/users/:id', auth, vadminOnly, async (req, res) => {
+  const userId = parseInt(req.params.id);
+  
+  if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+    try {
+      const result = await db.query('DELETE FROM users WHERE id = $1', [userId]);
+      if (result.rowCount > 0) {
+        res.json({ status: 'deleted' });
+      } else {
+        res.status(404).json({ error: 'User not found' });
+      }
+    } catch (err) {
+      console.error('DB error:', err);
+      res.status(500).json({ error: 'DB error' });
+    }
+  } else {
+    res.status(400).json({ error: 'User management requires database' });
+  }
 });
 
 // TELEGRAM BOT ROUTES
