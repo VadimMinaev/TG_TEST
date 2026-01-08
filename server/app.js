@@ -413,6 +413,30 @@ app.get('/api/rules', auth, async (req, res) => {
   }
 });
 
+app.get('/api/rules/:id', auth, async (req, res) => {
+  try {
+    const ruleId = parseInt(req.params.id);
+    if (process.env.DATABASE_URL) {
+      const result = await db.query('SELECT id, data FROM rules WHERE id = $1', [ruleId]);
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Rule not found' });
+      }
+      const rule = { ...result.rows[0].data, id: result.rows[0].id };
+      // Возвращаем полный botToken для редактирования
+      res.json(rule);
+    } else {
+      const rule = db.rules.find(r => r.id == ruleId);
+      if (!rule) {
+        return res.status(404).json({ error: 'Rule not found' });
+      }
+      res.json(rule);
+    }
+  } catch (err) {
+    console.error('DB error:', err);
+    res.status(500).json({ error: 'DB error' });
+  }
+});
+
 app.post('/api/rules', auth, async (req, res) => {
   try {
     const { botToken, ...ruleData } = req.body;

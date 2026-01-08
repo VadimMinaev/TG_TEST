@@ -2348,16 +2348,26 @@
         async function saveRule(e) {
             e.preventDefault();
 
-            const ruleName = document.getElementById('ruleName').value;
-            const condition = document.getElementById('condition').value;
-            const chatId = document.getElementById('chatId').value;
-            const botToken = document.getElementById('botToken').value;
-            const messageTemplate = document.getElementById('messageTemplate').value;
+            const ruleName = document.getElementById('ruleName').value.trim();
+            const condition = document.getElementById('condition').value.trim();
+            const chatId = document.getElementById('chatId').value.trim();
+            const botToken = document.getElementById('botToken').value.trim();
+            const messageTemplate = document.getElementById('messageTemplate').value.trim();
             const enabled = document.getElementById('enabled').checked;
 
-            if (!ruleName || !condition || !chatId || !botToken) {
-                showAlert('addAlert', 'Заполните все обязательные поля', 'error');
-                return;
+            // При редактировании проверяем только измененные поля или все для нового правила
+            if (!editingRuleId) {
+                // При создании нового правила все поля обязательны
+                if (!ruleName || !condition || !chatId || !botToken) {
+                    showAlert('addAlert', 'Заполните все обязательные поля: Название, Условие, ID канала, Токен бота', 'error');
+                    return;
+                }
+            } else {
+                // При редактировании проверяем только что обязательные поля не пустые
+                if (!ruleName || !condition || !chatId || !botToken) {
+                    showAlert('addAlert', 'Обязательные поля не могут быть пустыми: Название, Условие, ID канала, Токен бота', 'error');
+                    return;
+                }
             }
 
             try {
@@ -2422,19 +2432,37 @@
             }
             
             try {
-                const response = await fetch(`${API_BASE}/rules`, {
+                // Загружаем конкретное правило по ID для получения полных данных
+                const response = await fetch(`${API_BASE}/rules/${id}`, {
                     headers: getHeaders()
                 });
-                const rules = await response.json();
-                const rule = rules.find(r => r.id === id);
+                
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        showAlert('addAlert', 'Правило не найдено', 'error');
+                        editingRuleId = null;
+                        document.querySelector('#createRuleHeader h2').textContent = 'Создать новое правило';
+                    } else {
+                        throw new Error('Failed to load rule');
+                    }
+                    return;
+                }
+                
+                const rule = await response.json();
 
                 if (!rule) return;
 
+                // Заполняем все поля формы данными из БД
                 document.getElementById('ruleName').value = rule.name || '';
                 document.getElementById('chatId').value = rule.chatId || '';
                 document.getElementById('botToken').value = rule.botToken || '';
                 document.getElementById('messageTemplate').value = rule.messageTemplate || '';
                 document.getElementById('enabled').checked = rule.enabled !== false;
+                
+                // Убеждаемся, что поле condition заполнено
+                if (rule.condition) {
+                    document.getElementById('condition').value = rule.condition;
+                }
 
                 // Handle condition mode
                 const visualMode = document.querySelector('input[name="conditionMode"][value="visual"]');
@@ -2470,10 +2498,13 @@
                     codeMode.checked = true;
                     document.getElementById('visualConditionEditor').style.display = 'none';
                     document.getElementById('codeConditionEditor').style.display = 'block';
-                    document.getElementById('conditionCode').value = rule.condition;
+                    document.getElementById('conditionCode').value = rule.condition || '';
                 }
                 
-                document.getElementById('condition').value = rule.condition;
+                // Всегда устанавливаем condition в скрытое поле для отправки формы
+                if (rule.condition) {
+                    document.getElementById('condition').value = rule.condition;
+                }
                 
                 // editingRuleId и заголовок уже установлены в начале функции
                 document.getElementById('ruleForm').scrollIntoView({ behavior: 'smooth' });
