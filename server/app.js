@@ -737,7 +737,25 @@ app.post('/api/test-send', auth, async (req, res) => {
     res.json({ success: true, response: response.data });
   } catch (error) {
     console.error('Telegram send error:', error.response?.data || error.message);
-    res.status(400).json({ success: false, error: error.response?.data || error.message });
+    
+    // Извлекаем читаемое сообщение об ошибке из ответа Telegram API
+    let errorMessage = 'Неизвестная ошибка';
+    if (error.response?.data) {
+      const telegramError = error.response.data;
+      if (typeof telegramError === 'string') {
+        errorMessage = telegramError;
+      } else if (telegramError.description) {
+        errorMessage = telegramError.description;
+      } else if (telegramError.error_code) {
+        errorMessage = `Ошибка ${telegramError.error_code}: ${telegramError.description || 'Неизвестная ошибка Telegram API'}`;
+      } else {
+        errorMessage = JSON.stringify(telegramError);
+      }
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    res.status(400).json({ success: false, error: errorMessage });
   }
 });
 

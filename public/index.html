@@ -2969,7 +2969,20 @@
                     resultDiv.innerHTML = message;
                     resultDiv.className = 'test-result success';
                 } else {
-                    resultDiv.innerHTML = `❌ <strong>Ошибка отправки:</strong> ${result.error || 'Неизвестная ошибка'}`;
+                    // Обрабатываем ошибку - может быть строкой или объектом
+                    let errorMsg = 'Неизвестная ошибка';
+                    if (result.error) {
+                        if (typeof result.error === 'string') {
+                            errorMsg = result.error;
+                        } else if (result.error.description) {
+                            errorMsg = result.error.description;
+                        } else if (result.error.error_code) {
+                            errorMsg = `Ошибка ${result.error.error_code}: ${result.error.description || 'Неизвестная ошибка Telegram API'}`;
+                        } else {
+                            errorMsg = JSON.stringify(result.error);
+                        }
+                    }
+                    resultDiv.innerHTML = `❌ <strong>Ошибка отправки:</strong> ${escapeHtml(errorMsg)}`;
                     resultDiv.className = 'test-result error';
                 }
             } catch (error) {
