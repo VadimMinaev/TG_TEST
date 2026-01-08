@@ -1423,8 +1423,13 @@
                                     
                                     <div class="rules-details-column" style="flex: 1; padding-left: 1rem;">
                                         <div id="ruleDetails" style="display: none;">
-                                            <div id="addAlert" class="alert"></div>
-                                            <form id="ruleForm">
+                                            <div id="ruleDetailsView" style="display: none;">
+                                                <h3 style="margin-top: 0;">Детали правила</h3>
+                                                <div id="ruleDetailsContent"></div>
+                                            </div>
+                                            <div id="ruleFormContainer" style="display: none;">
+                                                <div id="addAlert" class="alert"></div>
+                                                <form id="ruleForm">
                                                 <div class="form-group">
                                                     <label for="ruleName">Название правила</label>
                                                     <input type="text" id="ruleName" placeholder="Например: Отправить в основной чат" required>
@@ -1559,6 +1564,7 @@
                                                     <button type="reset" class="btn-secondary">Очистить</button>
                                                 </div>
                                             </form>
+                                            </div>
                                         </div>
                                         <div id="ruleDetailsPlaceholder" style="color: hsl(var(--muted-foreground)); text-align: center; padding: 2rem;">
                                             <p style="margin-bottom: 1rem;">Выберите правило из списка слева для редактирования</p>
@@ -2273,9 +2279,20 @@
             // Сбрасываем детали при загрузке нового списка
             const detailsPanel = document.getElementById('ruleDetails');
             const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            const detailsView = document.getElementById('ruleDetailsView');
+            const formContainer = document.getElementById('ruleFormContainer');
+            
             if (detailsPanel && placeholder) {
                 detailsPanel.style.display = 'none';
                 placeholder.style.display = 'block';
+            }
+            
+            // Скрываем и просмотр, и форму
+            if (detailsView) {
+                detailsView.style.display = 'none';
+            }
+            if (formContainer) {
+                formContainer.style.display = 'none';
             }
             
             try {
@@ -2414,7 +2431,9 @@
                 
                 // Если это правило сейчас открыто в деталях, обновляем детали тоже
                 const detailsPanel = document.getElementById('ruleDetails');
-                if (detailsPanel.style.display !== 'none') {
+                const detailsView = document.getElementById('ruleDetailsView');
+                if (detailsPanel && detailsPanel.style.display !== 'none' && 
+                    detailsView && detailsView.style.display !== 'none') {
                     loadRuleDetails(updatedRule.id);
                 }
             } else {
@@ -2430,8 +2449,109 @@
         }
 
         async function loadRuleDetails(ruleId) {
-            // При клике на правило показываем форму редактирования
-            await editRule(ruleId);
+            const detailsPanel = document.getElementById('ruleDetails');
+            const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            const detailsView = document.getElementById('ruleDetailsView');
+            const formContainer = document.getElementById('ruleFormContainer');
+            
+            // Показываем панель деталей и скрываем placeholder
+            if (detailsPanel && placeholder) {
+                detailsPanel.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
+            
+            // Показываем просмотр, скрываем форму
+            if (detailsView) {
+                detailsView.style.display = 'block';
+            }
+            if (formContainer) {
+                formContainer.style.display = 'none';
+            }
+            
+            // Убираем выделение с других строк и выделяем текущую
+            document.querySelectorAll('.rule-row').forEach(row => {
+                row.style.background = 'transparent';
+                if (parseInt(row.dataset.ruleId) === ruleId) {
+                    row.style.background = 'hsl(var(--accent))';
+                }
+            });
+            
+            const detailsContainer = document.getElementById('ruleDetailsContent');
+            if (!detailsContainer) return;
+            
+            // Показываем загрузку
+            detailsContainer.innerHTML = '<div class="loading"></div> Загрузка деталей...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/rules/${ruleId}`, {
+                    headers: getHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Не удалось загрузить детали правила');
+                }
+                
+                const rule = await response.json();
+                
+                // Отображаем детали
+                detailsContainer.innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Информация о правиле</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>ID:</strong> <code>${rule.id}</code>
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>Название:</strong> ${escapeHtml(rule.name || '')}
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>Статус:</strong> 
+                                <span class="${rule.enabled !== false ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                    ${rule.enabled !== false ? '✅ Включено' : '⏸️ Отключено'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Условие</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto;">
+                            <code style="font-size: 0.875rem; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(rule.condition || '')}</code>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Настройки отправки</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>ID канала/чата:</strong> <code>${escapeHtml(rule.chatId || '')}</code>
+                            </div>
+                            ${rule.botToken && typeof rule.botToken === 'string' ? `
+                                <div style="margin-bottom: 0.75rem;">
+                                    <strong>Токен бота:</strong> <code>${escapeHtml(rule.botToken.substring(0, 10))}...</code>
+                                </div>
+                            ` : ''}
+                            ${rule.messageTemplate ? `
+                                <div style="margin-bottom: 0.75rem;">
+                                    <strong>Шаблон сообщения:</strong>
+                                    <div style="margin-top: 0.5rem; padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 4px; white-space: pre-wrap; font-size: 0.875rem;">${escapeHtml(rule.messageTemplate)}</div>
+                                </div>
+                            ` : '<div style="margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Используется шаблон по умолчанию</div>'}
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>
+                        <button class="btn-danger" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>
+                    </div>
+                `;
+            } catch (error) {
+                detailsContainer.innerHTML = `
+                    <div style="color: hsl(var(--destructive)); padding: 1rem; background: hsl(var(--destructive) / 0.1); border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--destructive) / 0.3);">
+                        <strong>Ошибка загрузки деталей:</strong> ${error.message}
+                    </div>
+                `;
+            }
         }
 
         function createNewRule() {
@@ -2441,9 +2561,20 @@
             // Показываем панель с формой и скрываем placeholder
             const detailsPanel = document.getElementById('ruleDetails');
             const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            const detailsView = document.getElementById('ruleDetailsView');
+            const formContainer = document.getElementById('ruleFormContainer');
+            
             if (detailsPanel && placeholder) {
                 detailsPanel.style.display = 'block';
                 placeholder.style.display = 'none';
+            }
+            
+            // Показываем форму, скрываем просмотр
+            if (detailsView) {
+                detailsView.style.display = 'none';
+            }
+            if (formContainer) {
+                formContainer.style.display = 'block';
             }
             
             // Сбрасываем форму
@@ -2529,8 +2660,8 @@
                     await loadRules();
                 }
                 
-                // Показываем форму редактирования для сохраненного правила
-                await editRule(savedRuleId);
+                // Показываем просмотр сохраненного правила
+                await loadRuleDetails(savedRuleId);
             } catch (error) {
                 showAlert('addAlert', 'Ошибка: ' + error.message, 'error');
             }
@@ -2544,9 +2675,20 @@
             // Показываем панель с формой и скрываем placeholder
             const detailsPanel = document.getElementById('ruleDetails');
             const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            const detailsView = document.getElementById('ruleDetailsView');
+            const formContainer = document.getElementById('ruleFormContainer');
+            
             if (detailsPanel && placeholder) {
                 detailsPanel.style.display = 'block';
                 placeholder.style.display = 'none';
+            }
+            
+            // Показываем форму, скрываем просмотр
+            if (detailsView) {
+                detailsView.style.display = 'none';
+            }
+            if (formContainer) {
+                formContainer.style.display = 'block';
             }
             
             // Убираем выделение с других строк и выделяем текущую
