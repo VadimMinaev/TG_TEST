@@ -1571,8 +1571,22 @@
                                 
                                 <div id="rulesAlert" class="alert"></div>
 
-                                <div id="rulesList" class="rules-list">
-                                    <p style="color: #999; text-align: center; padding: 40px 20px;">Загрузка правил...</p>
+                                <div class="rules-layout" style="display: flex; gap: 1rem; min-height: 500px;">
+                                    <div class="rules-list-column" style="flex: 0 0 500px; border-right: 1px solid hsl(var(--border)); padding-right: 1rem;">
+                                        <div id="rulesList" class="rules-list" style="max-height: calc(100vh - 350px); overflow-y: auto;">
+                                            <p style="color: hsl(var(--muted-foreground)); text-align: center; padding: 40px 20px;">Загрузка правил...</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="rules-details-column" style="flex: 1; padding-left: 1rem;">
+                                        <div id="ruleDetails" style="display: none;">
+                                            <h3 style="margin-top: 0;">Детали правила</h3>
+                                            <div id="ruleDetailsContent"></div>
+                                        </div>
+                                        <div id="ruleDetailsPlaceholder" style="color: hsl(var(--muted-foreground)); text-align: center; padding: 2rem;">
+                                            Выберите правило из списка слева для просмотра деталей
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2326,6 +2340,11 @@
         }
 
         async function loadRules() {
+            // Сбрасываем детали при загрузке нового списка
+            document.getElementById('ruleDetails').style.display = 'none';
+            document.getElementById('ruleDetailsPlaceholder').style.display = 'block';
+            document.getElementById('ruleDetailsContent').innerHTML = '';
+            
             try {
                 const response = await fetch(`${API_BASE}/rules`, {
                     headers: getHeaders()
@@ -2372,16 +2391,45 @@
             );
             
             if (filteredRules.length === 0) {
-                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Правила не найдены</p>';
+                container.innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center; padding: 40px 20px;">Правила не найдены</p>';
                 return;
             }
 
-            container.innerHTML = filteredRules.map(rule => renderRuleCard(rule)).join('');
+            // Отображаем только краткую информацию в виде таблицы
+            container.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="border-bottom: 2px solid hsl(var(--border)); text-align: left;">
+                            <th style="padding: 0.5rem; font-weight: 600;">Статус</th>
+                            <th style="padding: 0.5rem; font-weight: 600;">Название</th>
+                            <th style="padding: 0.5rem; font-weight: 600;">Условие</th>
+                            <th style="padding: 0.5rem; font-weight: 600;">Канал</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filteredRules.map(rule => `
+                            <tr class="rule-row" data-rule-id="${rule.id}" style="border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 0.2s;" 
+                                onmouseover="this.style.background='hsl(var(--accent))'" 
+                                onmouseout="this.style.background='transparent'"
+                                onclick="loadRuleDetails(${rule.id})">
+                                <td style="padding: 0.75rem 0.5rem;">
+                                    <span class="${rule.enabled ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
+                                        ${rule.enabled ? '✅ Вкл' : '⏸️ Выкл'}
+                                    </span>
+                                </td>
+                                <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${escapeHtml(rule.name)}</td>
+                                <td style="padding: 0.75rem 0.5rem;"><code style="font-size: 0.875rem; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(rule.condition)}</code></td>
+                                <td style="padding: 0.75rem 0.5rem;"><code>${escapeHtml(rule.chatId)}</code></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
         }
 
         function updateRuleCard(updatedRule) {
             const container = document.getElementById('rulesList');
-            const ruleElement = container.querySelector(`[data-id="${updatedRule.id}"]`);
+            const ruleRow = container.querySelector(`tr[data-rule-id="${updatedRule.id}"]`);
             
             // Проверяем, проходит ли правило через текущий фильтр
             const searchQuery = document.getElementById('rulesSearch').value.toLowerCase();
@@ -2390,37 +2438,136 @@
                 updatedRule.condition.toLowerCase().includes(searchQuery) ||
                 updatedRule.chatId.toString().includes(searchQuery);
             
-            if (!ruleElement) {
-                // Если карточка не найдена
-                if (matchesFilter) {
-                    // Если правило проходит фильтр, добавляем его в список
-                    const noRulesMsg = container.querySelector('p');
-                    if (noRulesMsg) {
-                        // Если был текст "правила не найдены", заменяем его
-                        container.innerHTML = renderRuleCard(updatedRule);
-                    } else {
-                        // Добавляем в начало списка
-                        container.insertAdjacentHTML('afterbegin', renderRuleCard(updatedRule));
-                    }
-                } else {
-                    // Если правило не проходит фильтр и не найдено, ничего не делаем
-                    // (возможно, оно было удалено ранее или еще не было создано)
-                }
+            if (!ruleRow) {
+                // Если строка не найдена - перезагружаем весь список
+                loadRules();
                 return;
             }
             
             if (matchesFilter) {
-                // Обновляем существующую карточку
-                ruleElement.outerHTML = renderRuleCard(updatedRule);
+                // Обновляем существующую строку в таблице
+                ruleRow.outerHTML = `
+                    <tr class="rule-row" data-rule-id="${updatedRule.id}" style="border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 0.2s;" 
+                        onmouseover="this.style.background='hsl(var(--accent))'" 
+                        onmouseout="this.style.background='transparent'"
+                        onclick="loadRuleDetails(${updatedRule.id})">
+                        <td style="padding: 0.75rem 0.5rem;">
+                            <span class="${updatedRule.enabled ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
+                                ${updatedRule.enabled ? '✅ Вкл' : '⏸️ Выкл'}
+                            </span>
+                        </td>
+                        <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${escapeHtml(updatedRule.name)}</td>
+                        <td style="padding: 0.75rem 0.5rem;"><code style="font-size: 0.875rem; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(updatedRule.condition)}</code></td>
+                        <td style="padding: 0.75rem 0.5rem;"><code>${escapeHtml(updatedRule.chatId)}</code></td>
+                    </tr>
+                `;
+                
+                // Если это правило сейчас открыто в деталях, обновляем детали тоже
+                const detailsPanel = document.getElementById('ruleDetails');
+                if (detailsPanel.style.display !== 'none') {
+                    loadRuleDetails(updatedRule.id);
+                }
             } else {
                 // Если правило не проходит фильтр, удаляем его из отображения
-                ruleElement.remove();
+                ruleRow.remove();
                 
                 // Проверяем, остались ли еще правила
-                const remainingRules = container.querySelectorAll('.rule-item');
-                if (remainingRules.length === 0) {
-                    container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Правила не найдены</p>';
+                const tbody = container.querySelector('tbody');
+                if (tbody && tbody.children.length === 0) {
+                    container.innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center; padding: 40px 20px;">Правила не найдены</p>';
                 }
+            }
+        }
+
+        async function loadRuleDetails(ruleId) {
+            const detailsContainer = document.getElementById('ruleDetailsContent');
+            const detailsPanel = document.getElementById('ruleDetails');
+            const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            
+            // Показываем панель деталей и скрываем placeholder
+            detailsPanel.style.display = 'block';
+            placeholder.style.display = 'none';
+            
+            // Убираем выделение с других строк и выделяем текущую
+            document.querySelectorAll('.rule-row').forEach(row => {
+                row.style.background = 'transparent';
+                if (parseInt(row.dataset.ruleId) === ruleId) {
+                    row.style.background = 'hsl(var(--accent))';
+                }
+            });
+            
+            // Показываем загрузку
+            detailsContainer.innerHTML = '<div class="loading"></div> Загрузка деталей...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/rules/${ruleId}`, {
+                    headers: getHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Не удалось загрузить детали правила');
+                }
+                
+                const rule = await response.json();
+                
+                // Отображаем детали
+                detailsContainer.innerHTML = `
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Информация о правиле</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>ID:</strong> <code>${rule.id}</code>
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>Название:</strong> ${escapeHtml(rule.name || '')}
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>Статус:</strong> 
+                                <span class="${rule.enabled !== false ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px;">
+                                    ${rule.enabled !== false ? '✅ Включено' : '⏸️ Отключено'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Условие</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto;">
+                            <code style="font-size: 0.875rem; white-space: pre-wrap; word-wrap: break-word;">${escapeHtml(rule.condition || '')}</code>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Настройки отправки</h4>
+                        <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>ID канала/чата:</strong> <code>${escapeHtml(rule.chatId || '')}</code>
+                            </div>
+                            ${rule.botToken && typeof rule.botToken === 'string' ? `
+                                <div style="margin-bottom: 0.75rem;">
+                                    <strong>Токен бота:</strong> <code>${escapeHtml(rule.botToken.substring(0, 10))}...</code>
+                                </div>
+                            ` : ''}
+                            ${rule.messageTemplate ? `
+                                <div style="margin-bottom: 0.75rem;">
+                                    <strong>Шаблон сообщения:</strong>
+                                    <div style="margin-top: 0.5rem; padding: 0.75rem; background: hsl(var(--muted) / 0.3); border-radius: 4px; white-space: pre-wrap; font-size: 0.875rem;">${escapeHtml(rule.messageTemplate)}</div>
+                                </div>
+                            ` : '<div style="margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Используется шаблон по умолчанию</div>'}
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
+                        <button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>
+                        <button class="btn-danger" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>
+                    </div>
+                `;
+            } catch (error) {
+                detailsContainer.innerHTML = `
+                    <div style="color: hsl(var(--destructive)); padding: 1rem; background: hsl(var(--destructive) / 0.1); border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--destructive) / 0.3);">
+                        <strong>Ошибка загрузки деталей:</strong> ${error.message}
+                    </div>
+                `;
             }
         }
 
@@ -2479,8 +2626,13 @@
                 showAlert('addAlert', editingRuleId ? 'Правило успешно обновлено' : 'Правило успешно создано', 'success');
                 
                 if (editingRuleId) {
-                    // При обновлении - обновляем только конкретную карточку
+                    // При обновлении - обновляем только конкретную строку в таблице
                     updateRuleCard(savedRule);
+                    // Обновляем детали, если они открыты
+                    const detailsPanel = document.getElementById('ruleDetails');
+                    if (detailsPanel && detailsPanel.style.display !== 'none') {
+                        await loadRuleDetails(savedRule.id);
+                    }
                 } else {
                     // При создании - перезагружаем весь список
                     await loadRules();
@@ -2503,6 +2655,15 @@
             // Сразу устанавливаем режим редактирования - это важно сделать ДО любых других операций
             editingRuleId = id;
             isEditingRuleLoading = true; // Устанавливаем флаг загрузки
+            
+            // Закрываем панель деталей при редактировании
+            const detailsPanel = document.getElementById('ruleDetails');
+            const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            if (detailsPanel && placeholder) {
+                detailsPanel.style.display = 'none';
+                placeholder.style.display = 'block';
+            }
+            
             const header = document.querySelector('#createRuleHeader h2');
             if (header) {
                 header.textContent = '✏️ Редактировать правило';
