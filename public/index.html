@@ -1382,6 +1382,14 @@
                         </svg>
                         История
                     </button>
+                    <button class="tab" data-tab="queue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="9" x2="15" y2="9"></line>
+                            <line x1="9" y1="15" x2="15" y2="15"></line>
+                        </svg>
+                        Очередь сообщений
+                    </button>
                     <button class="tab" data-tab="instructions">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
@@ -1706,6 +1714,74 @@
                         </div>
                     </div>
                     
+                    <div id="queue-tab" class="tab-pane">
+                        <div class="content">
+                            <div class="card">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                    <h2>📬 Очередь сообщений</h2>
+                                    <div style="display: flex; gap: 0.5rem;">
+                                        <select id="queueStatusFilter" style="padding: 0.5rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); background: hsl(var(--background));">
+                                            <option value="">Все статусы</option>
+                                            <option value="pending">Ожидает</option>
+                                            <option value="processing">Обрабатывается</option>
+                                            <option value="sent">Отправлено</option>
+                                            <option value="failed">Ошибка</option>
+                                        </select>
+                                        <button class="btn-primary" onclick="loadQueueHistory()">🔄 Обновить</button>
+                                    </div>
+                                </div>
+                                
+                                <div id="queueAlert" class="alert"></div>
+                                
+                                <div id="queueStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+                                    <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                                        <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;">Всего</div>
+                                        <div style="font-size: 1.5rem; font-weight: 600;" id="queueTotal">-</div>
+                                    </div>
+                                    <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                                        <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;">Ожидает</div>
+                                        <div style="font-size: 1.5rem; font-weight: 600; color: #f59e0b;" id="queuePending">-</div>
+                                    </div>
+                                    <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                                        <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;">Отправлено</div>
+                                        <div style="font-size: 1.5rem; font-weight: 600; color: #10b981;" id="queueSent">-</div>
+                                    </div>
+                                    <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border));">
+                                        <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground)); margin-bottom: 0.25rem;">Ошибка</div>
+                                        <div style="font-size: 1.5rem; font-weight: 600; color: #ef4444;" id="queueFailed">-</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="queueTableContainer" style="overflow-x: auto;">
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="border-bottom: 2px solid hsl(var(--border)); text-align: left;">
+                                                <th style="padding: 0.75rem; font-weight: 600;">ID</th>
+                                                <th style="padding: 0.75rem; font-weight: 600;">Статус</th>
+                                                <th style="padding: 0.75rem; font-weight: 600;">Чат ID</th>
+                                                <th style="padding: 0.75rem; font-weight: 600;">Сообщение</th>
+                                                <th style="padding: 0.75rem; font-weight: 600;">Попытки</th>
+                                                <th style="padding: 0.75rem; font-weight: 600;">Создано</th>
+                                                <th style="padding: 0.75rem; font-weight: 600;">Отправлено</th>
+                                                <th style="padding: 0.75rem; font-weight: 600;">Ошибка</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="queueTableBody">
+                                            <tr>
+                                                <td colspan="8" style="text-align: center; padding: 2rem; color: hsl(var(--muted-foreground));">
+                                                    Загрузка...
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                
+                                <div id="queuePagination" style="display: flex; justify-content: center; align-items: center; gap: 1rem; margin-top: 1.5rem;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div id="instructions-tab" class="tab-pane">
                         <div class="content">
                             <div class="card">
@@ -1860,6 +1936,9 @@
                         loadUsers();
                     } else if (tab.dataset.tab === 'history') {
                         loadWebhookLogs();
+                    } else if (tab.dataset.tab === 'queue') {
+                        loadQueueHistory();
+                        loadQueueStats();
                     }
                 });
             });
@@ -1901,6 +1980,14 @@
             document.getElementById('rulesSearch').addEventListener('input', function() {
                 filterRules(this.value);
             });
+            
+            // Queue status filter
+            const queueStatusFilter = document.getElementById('queueStatusFilter');
+            if (queueStatusFilter) {
+                queueStatusFilter.addEventListener('change', function() {
+                    loadQueueHistory(1);
+                });
+            }
             
             // Copy webhook URL
             document.getElementById('webhookUrl').addEventListener('click', copyWebhookUrl);
@@ -3066,6 +3153,146 @@
                         <strong>Ошибка загрузки деталей:</strong> ${error.message}
                     </div>
                 `;
+            }
+        }
+
+        let currentQueuePage = 1;
+        let queueStatusFilter = '';
+
+        async function loadQueueHistory(page = 1) {
+            currentQueuePage = page;
+            const status = document.getElementById('queueStatusFilter')?.value || '';
+            queueStatusFilter = status;
+            
+            const tbody = document.getElementById('queueTableBody');
+            if (tbody) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: hsl(var(--muted-foreground));">Загрузка...</td></tr>';
+            }
+            
+            try {
+                let url = `${API_BASE}/message-queue/history?page=${page}&limit=50`;
+                if (status) {
+                    url += `&status=${encodeURIComponent(status)}`;
+                }
+                
+                const response = await fetch(url, {
+                    headers: getHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                displayQueueHistory(data.messages, data.pagination);
+                loadQueueStats();
+            } catch (error) {
+                console.error('Error loading queue history:', error);
+                showAlert('queueAlert', 'Ошибка при загрузке истории очереди: ' + error.message, 'error');
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="8" style="text-align: center; padding: 2rem; color: hsl(var(--destructive));">Ошибка загрузки: ${escapeHtml(error.message)}</td></tr>`;
+                }
+            }
+        }
+
+        function displayQueueHistory(messages, pagination) {
+            const tbody = document.getElementById('queueTableBody');
+            if (!tbody) return;
+            
+            if (messages.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 2rem; color: hsl(var(--muted-foreground));">История очереди пуста</td></tr>';
+                updateQueuePagination(pagination);
+                return;
+            }
+            
+            tbody.innerHTML = messages.map(msg => {
+                const statusBadge = getStatusBadge(msg.status);
+                const createdAt = new Date(msg.createdAt).toLocaleString('ru-RU');
+                const sentAt = msg.sentAt ? new Date(msg.sentAt).toLocaleString('ru-RU') : '-';
+                const errorMsg = msg.errorMessage ? (typeof msg.errorMessage === 'string' ? msg.errorMessage.substring(0, 100) : JSON.stringify(msg.errorMessage).substring(0, 100)) : '-';
+                
+                return `
+                    <tr style="border-bottom: 1px solid hsl(var(--border));">
+                        <td style="padding: 0.75rem;"><code>${msg.id}</code></td>
+                        <td style="padding: 0.75rem;">${statusBadge}</td>
+                        <td style="padding: 0.75rem;"><code>${escapeHtml(msg.chatId)}</code></td>
+                        <td style="padding: 0.75rem; max-width: 300px;">
+                            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(msg.messageTextFull)}">
+                                ${escapeHtml(msg.messageText)}
+                            </div>
+                        </td>
+                        <td style="padding: 0.75rem;">
+                            <span style="color: ${msg.attempts >= msg.maxAttempts ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))'};">
+                                ${msg.attempts}/${msg.maxAttempts}
+                            </span>
+                        </td>
+                        <td style="padding: 0.75rem; font-size: 0.875rem;">${createdAt}</td>
+                        <td style="padding: 0.75rem; font-size: 0.875rem;">${sentAt}</td>
+                        <td style="padding: 0.75rem; font-size: 0.875rem; max-width: 200px;">
+                            ${errorMsg !== '-' ? `<div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: hsl(var(--destructive));" title="${escapeHtml(errorMsg)}">${escapeHtml(errorMsg)}</div>` : '-'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            updateQueuePagination(pagination);
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'pending': '<span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: #f59e0b; color: white; font-size: 0.875rem;">⏳ Ожидает</span>',
+                'processing': '<span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: #3b82f6; color: white; font-size: 0.875rem;">🔄 Обрабатывается</span>',
+                'sent': '<span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: #10b981; color: white; font-size: 0.875rem;">✅ Отправлено</span>',
+                'failed': '<span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: #ef4444; color: white; font-size: 0.875rem;">❌ Ошибка</span>'
+            };
+            return badges[status] || `<span style="padding: 0.25rem 0.5rem; border-radius: 4px; background: hsl(var(--muted)); font-size: 0.875rem;">${status}</span>`;
+        }
+
+        function updateQueuePagination(pagination) {
+            const paginationContainer = document.getElementById('queuePagination');
+            if (!paginationContainer) return;
+            
+            if (pagination.totalPages <= 1) {
+                paginationContainer.innerHTML = '';
+                return;
+            }
+            
+            paginationContainer.innerHTML = `
+                <button class="btn-secondary" ${pagination.page === 1 ? 'disabled' : ''} onclick="loadQueueHistory(${pagination.page - 1})">
+                    ← Назад
+                </button>
+                <span style="padding: 0 1rem;">Страница ${pagination.page} из ${pagination.totalPages} (всего: ${pagination.total})</span>
+                <button class="btn-secondary" ${pagination.page >= pagination.totalPages ? 'disabled' : ''} onclick="loadQueueHistory(${pagination.page + 1})">
+                    Вперед →
+                </button>
+            `;
+        }
+
+        async function loadQueueStats() {
+            try {
+                const response = await fetch(`${API_BASE}/message-queue/status`, {
+                    headers: getHeaders()
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const stats = await response.json();
+                
+                if (stats.available) {
+                    document.getElementById('queueTotal').textContent = stats.total || 0;
+                    document.getElementById('queuePending').textContent = stats.stats.pending || 0;
+                    document.getElementById('queueSent').textContent = stats.stats.sent || 0;
+                    document.getElementById('queueFailed').textContent = stats.stats.failed || 0;
+                } else {
+                    document.getElementById('queueTotal').textContent = '-';
+                    document.getElementById('queuePending').textContent = '-';
+                    document.getElementById('queueSent').textContent = '-';
+                    document.getElementById('queueFailed').textContent = '-';
+                }
+            } catch (error) {
+                console.error('Error loading queue stats:', error);
             }
         }
 

@@ -1154,6 +1154,86 @@ app.get('/api/message-queue/status', auth, async (req, res) => {
   }
 });
 
+// MESSAGE QUEUE HISTORY
+app.get('/api/message-queue/history', auth, async (req, res) => {
+  if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+    return res.json([]);
+  }
+  
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 50;
+    const offset = (page - 1) * limit;
+    const status = req.query.status; // Опциональный фильтр по статусу
+    
+    let query = `
+      SELECT 
+        id,
+        bot_token,
+        chat_id,
+        message_text,
+        priority,
+        status,
+        attempts,
+        max_attempts,
+        created_at,
+        sent_at,
+        error_message
+      FROM message_queue
+    `;
+    
+    const params = [];
+    if (status) {
+      query += ` WHERE status = $1`;
+      params.push(status);
+    }
+    
+    query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+    params.push(limit, offset);
+    
+    const result = await db.query(query, params);
+    
+    // Маскируем токены для безопасности
+    const messages = result.rows.map(row => ({
+      id: row.id,
+      botToken: row.bot_token ? row.bot_token.substring(0, 10) + '...' : null,
+      chatId: row.chat_id,
+      messageText: row.message_text.length > 100 ? row.message_text.substring(0, 100) + '...' : row.message_text,
+      messageTextFull: row.message_text,
+      priority: row.priority,
+      status: row.status,
+      attempts: row.attempts,
+      maxAttempts: row.max_attempts,
+      createdAt: row.created_at,
+      sentAt: row.sent_at,
+      errorMessage: row.error_message
+    }));
+    
+    // Получаем общее количество для пагинации
+    let countQuery = 'SELECT COUNT(*) as total FROM message_queue';
+    const countParams = [];
+    if (status) {
+      countQuery += ' WHERE status = $1';
+      countParams.push(status);
+    }
+    const countResult = await db.query(countQuery, countParams);
+    const total = parseInt(countResult.rows[0].total);
+    
+    res.json({
+      messages,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error getting queue history:', error);
+    res.status(500).json({ error: 'Failed to get queue history' });
+  }
+});
+
 app.get('/api/webhook-logs', auth, async (req, res) => {
   if (process.env.DATABASE_URL) {
     try {
