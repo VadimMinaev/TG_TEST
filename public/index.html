@@ -4,53 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Telegram Webhook Integration</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --background: 240 10% 98%;
+            --background: 0 0% 100%;
             --foreground: 222.2 84% 4.9%;
             --card: 0 0% 100%;
             --card-foreground: 222.2 84% 4.9%;
-            --primary: 262 83% 58%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 222.2 84% 4.9%;
+            --primary: 221.2 83.2% 53.3%;
             --primary-foreground: 210 40% 98%;
-            --secondary: 240 4.8% 95.9%;
+            --secondary: 210 40% 96%;
             --secondary-foreground: 222.2 84% 4.9%;
-            --muted: 240 4.8% 95.9%;
+            --muted: 210 40% 96%;
             --muted-foreground: 215.4 16.3% 46.9%;
-            --accent: 240 4.8% 95.9%;
+            --accent: 210 40% 96%;
             --accent-foreground: 222.2 84% 4.9%;
             --destructive: 0 84.2% 60.2%;
             --destructive-foreground: 210 40% 98%;
             --border: 214.3 31.8% 91.4%;
             --input: 214.3 31.8% 91.4%;
-            --ring: 262 83% 58%;
-            --radius: 0.75rem;
-            --success: 142 76% 36%;
-            --warning: 38 92% 50%;
-            --info: 217 91% 60%;
+            --ring: 221.2 83.2% 53.3%;
+            --radius: 0.5rem;
+            --shadow: 222.2 84% 4.9%;
+            --success: 120 99% 38%;
+            --warning: 45 100% 50%;
+            --info: 210 100% 50%;
         }
 
         :root.dark-theme {
             --background: 222.2 84% 4.9%;
             --foreground: 210 40% 98%;
-            --card: 224 71% 4%;
+            --card: 216 12% 17%;
             --card-foreground: 210 40% 98%;
-            --primary: 263 70% 50%;
+            --popover: 216 12% 17%;
+            --popover-foreground: 210 40% 98%;
+            --primary: 221.2 83.2% 53.3%;
             --primary-foreground: 210 40% 98%;
-            --secondary: 217 33% 17%;
+            --secondary: 216 10% 25%;
             --secondary-foreground: 210 40% 98%;
-            --muted: 217 33% 17%;
-            --muted-foreground: 215 20.2% 65.1%;
-            --accent: 217 33% 17%;
+            --muted: 216 10% 25%;
+            --muted-foreground: 215.4 16.3% 66.9%;
+            --accent: 216 10% 25%;
             --accent-foreground: 210 40% 98%;
-            --destructive: 0 62.8% 30.6%;
+            --destructive: 0 84.2% 60.2%;
             --destructive-foreground: 210 40% 98%;
-            --border: 217 33% 17%;
-            --input: 217 33% 17%;
-            --ring: 263 70% 50%;
-            --success: 142 76% 36%;
-            --warning: 38 92% 50%;
-            --info: 217 91% 60%;
+            --border: 216 10% 30%;
+            --input: 216 10% 30%;
+            --ring: 221.2 83.2% 53.3%;
+            --shadow: 222.2 84% 4.9%;
+            --success: 120 99% 38%;
+            --warning: 45 100% 50%;
+            --info: 210 100% 50%;
         }
 
         * {
@@ -60,13 +65,12 @@
         }
 
         body {
-            background: hsl(var(--background));
+            background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
             color: hsl(var(--foreground));
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             min-height: 100vh;
-            padding: 1.5rem;
-            transition: background-color 0.3s ease, color 0.3s ease;
-            line-height: 1.6;
+            padding: 1rem;
+            transition: background-color 0.3s ease;
         }
 
         .login-container {
@@ -79,28 +83,9 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.8) 100%);
+            background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
             z-index: 9999;
-            transition: opacity 0.5s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .login-container::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: 
-                radial-gradient(circle at 20% 50%, hsl(var(--primary) / 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, hsl(var(--info) / 0.3) 0%, transparent 50%);
-            animation: pulse 8s ease-in-out infinite;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            transition: background 0.3s ease;
         }
 
         .login-container.hidden {
@@ -108,85 +93,72 @@
         }
 
         .login-card {
-            background: hsl(var(--card) / 0.95);
-            border: 1px solid hsl(var(--border) / 0.5);
-            border-radius: calc(var(--radius) * 1.5);
-            padding: 3rem;
-            box-shadow: 
-                0 20px 25px -5px rgba(0, 0, 0, 0.1),
-                0 10px 10px -5px rgba(0, 0, 0, 0.04),
-                0 0 0 1px rgba(0, 0, 0, 0.05);
+            background: hsl(var(--card));
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
+            padding: 2rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             width: 100%;
-            max-width: 440px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            z-index: 1;
-            backdrop-filter: blur(20px);
+            max-width: 400px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
         }
 
         .login-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 
-                0 25px 50px -12px rgba(0, 0, 0, 0.25),
-                0 0 0 1px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
         }
 
         .login-card h1 {
             color: hsl(var(--foreground));
-            margin-bottom: 0.75rem;
+            margin-bottom: 1rem;
             text-align: center;
-            font-size: 2rem;
-            font-weight: 700;
+            font-size: 1.5rem;
+            font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 0.75rem;
-            letter-spacing: -0.025em;
+            gap: 0.5rem;
         }
 
         .login-card p {
             color: hsl(var(--muted-foreground));
             text-align: center;
-            margin-bottom: 2.5rem;
-            font-size: 0.9375rem;
-            font-weight: 500;
+            margin-bottom: 2rem;
+            font-size: 0.875rem;
         }
 
         .login-form-group {
-            margin-bottom: 1.75rem;
+            margin-bottom: 1.5rem;
         }
 
         .login-form-group label {
             display: block;
-            margin-bottom: 0.625rem;
+            margin-bottom: 0.5rem;
             color: hsl(var(--foreground));
-            font-weight: 600;
+            font-weight: 500;
             font-size: 0.875rem;
-            letter-spacing: -0.01em;
         }
 
         .login-form-group input {
             width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid hsl(var(--input));
+            padding: 0.75rem;
+            border: 1px solid hsl(var(--input));
             border-radius: var(--radius);
             font-size: 1rem;
             background: hsl(var(--background));
             color: hsl(var(--foreground));
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .login-form-group input:focus {
             outline: none;
             border-color: hsl(var(--ring));
-            box-shadow: 0 0 0 3px hsl(var(--ring) / 0.15);
-            transform: translateY(-1px);
+            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
         }
 
         .login-btn {
             width: 100%;
-            padding: 1rem;
+            padding: 0.75rem;
             background: hsl(var(--primary));
             color: hsl(var(--primary-foreground));
             border: none;
@@ -194,82 +166,52 @@
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 4px 6px -1px hsl(var(--primary) / 0.3);
-            letter-spacing: -0.01em;
+            transition: all 0.2s;
         }
 
         .login-btn:hover {
             background: hsl(var(--primary) / 0.9);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px hsl(var(--primary) / 0.4);
-        }
-
-        .login-btn:active {
-            transform: translateY(0);
         }
 
         .login-alert {
             display: none;
-            padding: 1rem;
+            padding: 0.75rem;
             background: hsl(var(--destructive) / 0.1);
             color: hsl(var(--destructive));
             border: 1px solid hsl(var(--destructive) / 0.2);
             border-radius: var(--radius);
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             font-size: 0.875rem;
-            font-weight: 500;
         }
 
         .login-alert.show {
             display: block;
-            animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        @keyframes slideDown {
-            from {
-                opacity: 0;
-                transform: translateY(-10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            animation: fadeIn 0.3s ease;
         }
 
         .container {
-            max-width: 1280px;
+            max-width: 1200px;
             margin: 0 auto;
         }
 
         header {
             text-align: center;
             color: hsl(var(--foreground));
-            margin-bottom: 3rem;
+            margin-bottom: 2rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: relative;
-            padding: 1.5rem 2rem;
-            background: hsl(var(--card));
-            border-radius: calc(var(--radius) * 1.5);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
 
         header h1 {
-            font-size: 1.875rem;
+            font-size: 2.5rem;
             margin: 0;
             flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.75rem;
-            font-weight: 700;
-            letter-spacing: -0.025em;
-            background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--info)));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
         .header-actions {
@@ -285,44 +227,38 @@
 
         .icon-btn {
             background: hsl(var(--secondary));
-            border: 2px solid hsl(var(--border));
+            border: 1px solid hsl(var(--border));
             border-radius: 50%;
-            width: 2.75rem;
-            height: 2.75rem;
+            width: 2.5rem;
+            height: 2.5rem;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             color: hsl(var(--secondary-foreground));
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s;
         }
 
         .icon-btn:hover {
             background: hsl(var(--accent));
-            transform: rotate(15deg) scale(1.05);
-            border-color: hsl(var(--primary));
         }
 
         .logout-btn {
             background: hsl(var(--secondary));
             color: hsl(var(--secondary-foreground));
-            border: 2px solid hsl(var(--border));
-            padding: 0.625rem 1.25rem;
+            border: 1px solid hsl(var(--border));
+            padding: 0.5rem 1rem;
             border-radius: var(--radius);
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s;
             font-size: 0.875rem;
-            font-weight: 600;
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
         .logout-btn:hover {
-            background: hsl(var(--destructive) / 0.1);
-            border-color: hsl(var(--destructive));
-            color: hsl(var(--destructive));
-            transform: translateY(-1px);
+            background: hsl(var(--accent));
         }
 
         .content {
@@ -335,49 +271,37 @@
         .card {
             background: hsl(var(--card));
             border: 1px solid hsl(var(--border));
-            border-radius: calc(var(--radius) * 1.2);
-            box-shadow: 
-                0 4px 6px -1px rgba(0, 0, 0, 0.1),
-                0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: var(--radius);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: transform 0.3s ease;
             overflow: hidden;
         }
 
         .card:hover {
-            transform: translateY(-3px);
-            box-shadow: 
-                0 20px 25px -5px rgba(0, 0, 0, 0.1),
-                0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            transform: translateY(-2px);
         }
 
         .card-header {
-            padding: 1.75rem 2rem;
+            padding: 1.5rem;
             border-bottom: 2px solid hsl(var(--primary));
             display: flex;
             justify-content: space-between;
             align-items: center;
             cursor: pointer;
-            transition: background 0.2s ease;
-            background: linear-gradient(to right, hsl(var(--card)), hsl(var(--muted) / 0.3));
-        }
-
-        .card-header:hover {
-            background: linear-gradient(to right, hsl(var(--muted) / 0.5), hsl(var(--muted) / 0.3));
         }
 
         .card-header h2 {
             color: hsl(var(--foreground));
             margin: 0;
-            font-size: 1.375rem;
-            font-weight: 700;
+            font-size: 1.25rem;
+            font-weight: 600;
             display: flex;
             align-items: center;
-            gap: 0.625rem;
-            letter-spacing: -0.02em;
+            gap: 0.5rem;
         }
 
         .card-header-icon {
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s ease;
         }
 
         .card-header.collapsed .card-header-icon {
@@ -385,36 +309,34 @@
         }
 
         .card-content {
-            padding: 2rem;
-            max-height: 2000px;
+            padding: 0 2rem;
+            max-height: 1000px;
             overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: max-height 0.3s ease, padding 0.3s ease;
         }
 
         .card-content.collapsed {
             max-height: 0;
-            padding: 0 2rem;
+            padding: 0;
         }
 
         .form-group {
-            margin-bottom: 1.75rem;
+            margin-bottom: 1.5rem;
         }
 
         label {
             display: block;
-            margin-bottom: 0.625rem;
+            margin-bottom: 0.5rem;
             color: hsl(var(--foreground));
-            font-weight: 600;
+            font-weight: 500;
             font-size: 0.875rem;
-            letter-spacing: -0.01em;
         }
 
         .form-hint {
             color: hsl(var(--muted-foreground));
             font-size: 0.8125rem;
-            margin-top: 0.5rem;
+            margin-top: 0.3125rem;
             display: block;
-            line-height: 1.5;
         }
 
         input[type="text"],
@@ -423,14 +345,13 @@
         textarea,
         select {
             width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid hsl(var(--input));
+            padding: 0.75rem;
+            border: 1px solid hsl(var(--input));
             border-radius: var(--radius);
-            font-size: 0.9375rem;
+            font-size: 1rem;
             background: hsl(var(--background));
             color: hsl(var(--foreground));
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         input[type="text"]:focus,
@@ -440,165 +361,130 @@
         select:focus {
             outline: none;
             border-color: hsl(var(--ring));
-            box-shadow: 0 0 0 3px hsl(var(--ring) / 0.15);
-            transform: translateY(-1px);
+            box-shadow: 0 0 0 2px hsl(var(--ring) / 0.2);
         }
 
         textarea {
             resize: vertical;
-            min-height: 7rem;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', monospace;
-            line-height: 1.6;
+            min-height: 6rem;
+            font-family: 'Courier New', monospace;
         }
 
         .checkbox-group {
             display: flex;
             align-items: center;
-            gap: 0.625rem;
+            gap: 0.5rem;
         }
 
         input[type="checkbox"] {
-            width: 1.125rem;
-            height: 1.125rem;
+            width: 1rem;
+            height: 1rem;
             cursor: pointer;
-            accent-color: hsl(var(--primary));
         }
 
         .button-group {
             display: flex;
-            gap: 1rem;
-            margin-top: 2rem;
+            gap: 0.75rem;
+            margin-top: 1.5rem;
             flex-wrap: wrap;
         }
 
         button {
             flex: 1;
-            min-width: 140px;
-            padding: 0.875rem 1.25rem;
+            min-width: 120px;
+            padding: 0.75rem;
             border: none;
             border-radius: var(--radius);
-            font-size: 0.9375rem;
+            font-size: 1rem;
             cursor: pointer;
             font-weight: 600;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            letter-spacing: -0.01em;
-            font-family: inherit;
+            transition: all 0.2s;
         }
 
         .btn-primary {
             background: hsl(var(--primary));
             color: hsl(var(--primary-foreground));
-            box-shadow: 0 4px 6px -1px hsl(var(--primary) / 0.3);
         }
 
         .btn-primary:hover {
             background: hsl(var(--primary) / 0.9);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px hsl(var(--primary) / 0.4);
         }
 
         .btn-secondary {
             background: hsl(var(--secondary));
             color: hsl(var(--secondary-foreground));
-            border: 2px solid hsl(var(--border));
         }
 
         .btn-secondary:hover {
             background: hsl(var(--accent));
-            border-color: hsl(var(--primary));
-            transform: translateY(-1px);
         }
 
         .btn-danger {
             background: hsl(var(--destructive));
             color: hsl(var(--destructive-foreground));
-            box-shadow: 0 4px 6px -1px hsl(var(--destructive) / 0.3);
         }
 
         .btn-danger:hover {
             background: hsl(var(--destructive) / 0.9);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px hsl(var(--destructive) / 0.4);
         }
 
         .btn-test {
-            background: hsl(var(--info));
-            color: white;
-            box-shadow: 0 4px 6px -1px hsl(var(--info) / 0.3);
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
         }
 
         .btn-test:hover {
-            background: hsl(var(--info) / 0.9);
-            transform: translateY(-2px);
-            box-shadow: 0 10px 15px -3px hsl(var(--info) / 0.4);
+            background: hsl(var(--primary) / 0.9);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid hsl(var(--border));
         }
 
         .btn-small {
-            padding: 0.625rem 1rem;
-            font-size: 0.8125rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.875rem;
             min-width: auto;
         }
 
         .btn-success {
             background: hsl(var(--success));
             color: white;
-            box-shadow: 0 4px 6px -1px hsl(var(--success) / 0.3);
         }
 
         .btn-warning {
             background: hsl(var(--warning));
             color: white;
-            box-shadow: 0 4px 6px -1px hsl(var(--warning) / 0.3);
         }
 
         .btn-info {
             background: hsl(var(--info));
             color: white;
-            box-shadow: 0 4px 6px -1px hsl(var(--info) / 0.3);
         }
 
         .rules-list {
-            max-height: 42rem;
+            max-height: 37.5rem;
             overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .rules-list::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .rules-list::-webkit-scrollbar-track {
-            background: hsl(var(--muted));
-            border-radius: 10px;
-        }
-
-        .rules-list::-webkit-scrollbar-thumb {
-            background: hsl(var(--primary) / 0.5);
-            border-radius: 10px;
-        }
-
-        .rules-list::-webkit-scrollbar-thumb:hover {
-            background: hsl(var(--primary));
+            padding: 0.5rem;
         }
 
         .rule-item {
-            background: hsl(var(--muted) / 0.5);
+            background: hsl(var(--muted));
             border-left: 4px solid hsl(var(--primary));
-            padding: 1.5rem;
-            margin-bottom: 1.25rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
             border-radius: var(--radius);
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            gap: 1.5rem;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            gap: 1rem;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .rule-item:hover {
-            transform: translateX(8px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-            background: hsl(var(--card));
+            transform: translateX(5px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .rule-item.disabled {
@@ -607,7 +493,8 @@
         }
 
         .rule-item.disabled:hover {
-            transform: translateX(3px);
+            transform: none;
+            box-shadow: none;
         }
 
         .rule-content {
@@ -615,87 +502,71 @@
         }
 
         .rule-name {
-            font-weight: 700;
+            font-weight: 600;
             color: hsl(var(--foreground));
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
-            gap: 0.625rem;
-            font-size: 1.0625rem;
-            letter-spacing: -0.01em;
+            gap: 0.5rem;
         }
 
         .rule-condition {
             background: hsl(var(--background));
-            padding: 0.875rem;
+            padding: 0.625rem;
             border-radius: calc(var(--radius) - 2px);
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            font-size: 0.8125rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
             color: hsl(var(--muted-foreground));
-            margin-bottom: 0.75rem;
+            margin-bottom: 0.5rem;
             word-break: break-word;
             border: 1px solid hsl(var(--border));
-            line-height: 1.6;
         }
 
         .rule-channel {
             color: hsl(var(--muted-foreground));
             font-size: 0.875rem;
-            font-weight: 500;
         }
 
         .rule-bot {
             color: hsl(var(--muted-foreground));
             font-size: 0.875rem;
-            margin-top: 0.375rem;
-            font-weight: 500;
+            margin-top: 0.25rem;
         }
 
         .rule-actions {
             display: flex;
             flex-direction: column;
-            gap: 0.625rem;
-            min-width: 140px;
+            gap: 8px;
+            min-width: 120px;
         }
 
         .rule-status {
             display: flex;
-            gap: 0.5rem;
+            gap: 5px;
             align-items: center;
-            font-size: 0.8125rem;
-            margin-top: 0.75rem;
-            font-weight: 600;
+            font-size: 0.85em;
+            margin-top: 0.5rem;
         }
 
         .status-badge {
             display: inline-block;
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
             border-radius: 50%;
-            background: hsl(var(--success));
-            box-shadow: 0 0 0 3px hsl(var(--success) / 0.2);
-            animation: pulse-badge 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse-badge {
-            0%, 100% { box-shadow: 0 0 0 3px hsl(var(--success) / 0.2); }
-            50% { box-shadow: 0 0 0 6px hsl(var(--success) / 0.1); }
+            background: #27ae60;
         }
 
         .status-badge.disabled {
-            background: hsl(var(--muted-foreground));
-            box-shadow: 0 0 0 3px hsl(var(--muted-foreground) / 0.2);
-            animation: none;
+            background: #999;
         }
 
         .alert {
-            padding: 1.25rem;
-            border-radius: var(--radius);
-            margin-bottom: 1.5rem;
+            padding: 1rem;
+            border-radius: calc(var(--radius) - 2px);
+            margin-bottom: 1rem;
             display: none;
-            border: 1px solid;
-            animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            font-weight: 500;
+            border: 1px solid hsl(var(--border));
+            animation: fadeIn 0.3s ease;
         }
 
         .alert.show {
@@ -703,7 +574,7 @@
         }
 
         .alert-success {
-            background: hsl(var(--success) / 0.1);
+            background: hsl(var(--success) / 0.15);
             color: hsl(var(--success));
             border-color: hsl(var(--success) / 0.3);
         }
@@ -727,23 +598,21 @@
         }
 
         .instructions {
-            background: hsl(var(--muted) / 0.5);
-            border-radius: calc(var(--radius) * 1.2);
-            padding: 2rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            background: hsl(var(--muted));
+            border-radius: var(--radius);
+            padding: 1.5rem;
+            box-shadow: hsl(var(--shadow) / 0.1) 0px 4px 6px -1px, hsl(var(--shadow) / 0.1) 0px 2px 4px -2px;
             color: hsl(var(--foreground));
-            margin-top: 1.5rem;
+            margin-top: 1rem;
         }
 
         .instructions h3 {
             color: hsl(var(--primary));
-            margin-top: 2rem;
-            margin-bottom: 1rem;
+            margin-top: 1.25rem;
+            margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
-            gap: 0.625rem;
-            font-weight: 700;
-            font-size: 1.125rem;
+            gap: 0.5rem;
         }
 
         .instructions h3:first-child {
@@ -751,84 +620,95 @@
         }
 
         .instructions code {
-            background: hsl(var(--muted));
-            padding: 0.25rem 0.5rem;
-            border-radius: 0.375rem;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            color: hsl(var(--primary));
-            font-size: 0.875rem;
-            font-weight: 600;
+            background: #f5f5f5;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            color: #d32f2f;
+        }
+
+        .dark-theme .instructions code {
+            background: #444;
+            color: #ff7070;
         }
 
         .instructions pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: 'Courier New', monospace;
+            margin: 10px 0;
+        }
+
+        .dark-theme .instructions pre {
             background: #1e1e1e;
             color: #d4d4d4;
-            padding: 1.25rem;
-            border-radius: var(--radius);
-            overflow-x: auto;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            margin: 1rem 0;
-            line-height: 1.6;
-            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
         }
 
         .instructions ul,
         .instructions ol {
-            margin-left: 1.5rem;
-            margin-bottom: 1.25rem;
+            margin-left: 20px;
+            margin-bottom: 15px;
         }
 
         .instructions li {
-            margin-bottom: 0.625rem;
-            line-height: 1.7;
+            margin-bottom: 8px;
+            line-height: 1.6;
         }
 
         .webhook-url {
-            background: hsl(var(--muted));
-            padding: 1rem;
-            border-radius: var(--radius);
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
             word-break: break-all;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            margin-top: 1rem;
-            border: 2px solid hsl(var(--border));
-            font-weight: 600;
-            color: hsl(var(--primary));
+            font-family: 'Courier New', monospace;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+
+        .dark-theme .webhook-url {
+            background: #333;
+            border-color: #555;
+            color: #fff;
         }
 
         .test-section {
-            margin-top: 2rem;
-            padding-top: 2rem;
+            margin-top: 20px;
+            padding-top: 20px;
             border-top: 1px solid hsl(var(--border));
         }
 
         .test-result {
-            background: hsl(var(--muted) / 0.5);
-            padding: 1.25rem;
-            border-radius: var(--radius);
-            margin-top: 1.25rem;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: 'Courier New', monospace;
             display: none;
-            border-left: 4px solid hsl(var(--muted-foreground));
-            font-size: 0.875rem;
-            line-height: 1.6;
+            border-left: 4px solid #6c757d;
+        }
+
+        .dark-theme .test-result {
+            background: #333;
+            color: #fff;
         }
 
         .test-result.success {
             border-left-color: hsl(var(--success));
-            background: hsl(var(--success) / 0.1);
         }
 
         .test-result.error {
             border-left-color: hsl(var(--destructive));
-            background: hsl(var(--destructive) / 0.1);
         }
 
         .loading {
             display: inline-block;
             width: 20px;
             height: 20px;
-            border: 3px solid hsl(var(--muted));
-            border-top: 3px solid hsl(var(--primary));
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
             border-radius: 50%;
             animation: spin 1s linear infinite;
         }
@@ -838,61 +718,48 @@
             100% { transform: rotate(360deg); }
         }
 
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Tabs styles */
         .tabs-container {
-            margin-bottom: 2.5rem;
+            margin-bottom: 2rem;
         }
 
         .tabs {
             display: flex;
-            gap: 0.5rem;
+            gap: 0.25rem;
             border-bottom: 2px solid hsl(var(--border));
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             overflow-x: auto;
-            padding-bottom: 0;
+            padding-bottom: 0.5rem;
             flex-wrap: wrap;
         }
 
         .tab {
-            padding: 1rem 1.75rem;
-            background: transparent;
+            padding: 0.75rem 1.5rem;
+            background: hsl(var(--secondary));
             border: none;
             border-radius: var(--radius) var(--radius) 0 0;
             cursor: pointer;
-            font-weight: 600;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            transition: all 0.2s;
             white-space: nowrap;
             display: flex;
             align-items: center;
-            gap: 0.625rem;
-            color: hsl(var(--muted-foreground));
-            position: relative;
-            font-size: 0.9375rem;
-        }
-
-        .tab::after {
-            content: '';
-            position: absolute;
-            bottom: -2px;
-            left: 0;
-            right: 0;
-            height: 2px;
-            background: hsl(var(--primary));
-            transform: scaleX(0);
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            gap: 0.5rem;
         }
 
         .tab:hover {
-            background: hsl(var(--muted) / 0.5);
-            color: hsl(var(--foreground));
+            background: hsl(var(--accent));
         }
 
         .tab.active {
-            color: hsl(var(--primary));
             background: hsl(var(--card));
-        }
-
-        .tab.active::after {
-            transform: scaleX(1);
+            border-bottom: 2px solid hsl(var(--primary));
+            font-weight: 600;
         }
 
         .tab-content {
@@ -905,27 +772,17 @@
 
         .tab-pane.active {
             display: block;
-            animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: fadeIn 0.3s ease;
         }
 
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
+        /* Rules toolbar styles */
         .rules-toolbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             flex-wrap: wrap;
-            gap: 1.25rem;
+            gap: 1rem;
             padding: 0 1rem;
         }
 
@@ -937,29 +794,53 @@
 
         .rules-search {
             position: relative;
-            width: 280px;
+            width: 250px;
         }
 
         .rules-search input {
-            padding-left: 2.75rem;
+            padding-left: 2.5rem;
         }
 
         .rules-search::before {
             content: "🔍";
             position: absolute;
-            left: 1rem;
+            left: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
-            font-size: 1.125rem;
+            color: hsl(var(--muted-foreground));
+            font-size: 1rem;
         }
 
+        /* Create rule button */
+        .create-rule-btn {
+            background: hsl(var(--primary));
+            color: hsl(var(--primary-foreground));
+            border: none;
+            padding: 0.75rem 1.5rem;
+            border-radius: var(--radius);
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .create-rule-btn:hover {
+            background: hsl(var(--primary) / 0.9);
+            transform: translateY(-1px);
+        }
+
+        /* Logs styles */
         .logs-toolbar {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
             flex-wrap: wrap;
-            gap: 1.25rem;
+            gap: 1rem;
         }
 
         .logs-toolbar h2 {
@@ -970,175 +851,139 @@
 
         .logs-actions {
             display: flex;
-            gap: 0.875rem;
+            gap: 0.75rem;
         }
 
         .logs-container {
-            max-height: 45rem;
+            max-height: 40rem;
             overflow-y: auto;
-            padding: 1rem;
-        }
-
-        .logs-container::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .logs-container::-webkit-scrollbar-track {
-            background: hsl(var(--muted));
-            border-radius: 10px;
-        }
-
-        .logs-container::-webkit-scrollbar-thumb {
-            background: hsl(var(--primary) / 0.5);
-            border-radius: 10px;
-        }
-
-        .logs-container::-webkit-scrollbar-thumb:hover {
-            background: hsl(var(--primary));
+            padding: 0.5rem;
         }
 
         .log-item {
             border-bottom: 1px solid hsl(var(--border));
-            padding: 1rem 0;
+            padding: 0.625rem 0;
             color: hsl(var(--foreground));
-            transition: background 0.2s ease;
-        }
-
-        .log-item:hover {
-            background: hsl(var(--muted) / 0.3);
-            border-radius: var(--radius);
-            padding: 1rem;
         }
 
         .log-timestamp {
-            font-weight: 700;
+            font-weight: 600;
             color: hsl(var(--foreground));
-            margin-bottom: 0.5rem;
-            font-size: 0.9375rem;
+            margin-bottom: 0.25rem;
         }
 
         .log-payload {
             background: hsl(var(--background));
             color: hsl(var(--foreground));
-            padding: 0.875rem;
-            margin: 0.625rem 0;
-            font-size: 0.8125rem;
-            border-radius: var(--radius);
+            padding: 0.5rem;
+            margin: 0.3125rem 0;
+            font-size: 0.875rem;
+            border-radius: calc(var(--radius) - 2px);
             border: 1px solid hsl(var(--border));
-            max-height: 18rem;
+            max-height: 15rem;
             overflow: auto;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            line-height: 1.6;
         }
 
         .log-match {
-            margin-top: 0.5rem;
-            font-weight: 600;
+            margin-top: 0.3125rem;
+            font-weight: 500;
         }
 
         .log-telegram {
-            margin-top: 0.625rem;
+            margin-top: 0.3125rem;
         }
 
         .log-telegram-item {
-            margin: 0.375rem 0;
-            padding-left: 1.5rem;
+            margin: 0.25rem 0;
+            padding-left: 1.25rem;
         }
 
         .log-success {
             color: hsl(var(--success));
-            font-weight: 600;
         }
 
         .log-error {
             color: hsl(var(--destructive));
-            font-weight: 600;
         }
 
+        /* Pagination */
         .pagination {
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 1.25rem;
-            margin-top: 2rem;
-            padding-top: 1.5rem;
+            gap: 1rem;
+            margin-top: 1.5rem;
+            padding-top: 1rem;
             border-top: 1px solid hsl(var(--border));
         }
 
         .page-btn {
             background: hsl(var(--secondary));
-            border: 2px solid hsl(var(--border));
-            padding: 0.625rem 1.25rem;
+            border: 1px solid hsl(var(--border));
+            padding: 0.5rem 1rem;
             border-radius: var(--radius);
             cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            font-weight: 600;
-            font-size: 0.875rem;
+            transition: all 0.2s;
         }
 
         .page-btn:hover:not(:disabled) {
-            background: hsl(var(--primary));
-            color: hsl(var(--primary-foreground));
-            border-color: hsl(var(--primary));
-            transform: translateY(-1px);
+            background: hsl(var(--accent));
         }
 
         .page-btn:disabled {
-            opacity: 0.4;
+            opacity: 0.5;
             cursor: not-allowed;
         }
 
         .page-info {
             color: hsl(var(--muted-foreground));
             font-size: 0.875rem;
-            font-weight: 600;
         }
 
+        /* Condition builder */
         .condition-builder {
-            background: hsl(var(--muted) / 0.5);
+            background: hsl(var(--muted));
             border-radius: var(--radius);
-            padding: 2rem;
-            margin-top: 1.25rem;
-            border: 2px solid hsl(var(--border));
+            padding: 1.5rem;
+            margin-top: 1rem;
         }
 
         .condition-mode-toggle {
             display: flex;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
             flex-wrap: wrap;
         }
 
         .condition-mode-toggle label {
             display: flex;
             align-items: center;
-            gap: 0.625rem;
+            gap: 0.5rem;
             cursor: pointer;
-            font-weight: 600;
         }
 
         .condition-groups {
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .condition-group {
             background: hsl(var(--background));
-            border: 2px solid hsl(var(--border));
+            border: 1px solid hsl(var(--border));
             border-radius: var(--radius);
-            padding: 1.5rem;
-            margin-bottom: 1.25rem;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
         }
 
         .condition-rows {
-            margin-bottom: 1.25rem;
+            margin-bottom: 1rem;
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 0.75rem;
         }
 
         .condition-row {
             display: flex;
-            gap: 1rem;
+            gap: 0.75rem;
             align-items: center;
             flex-wrap: wrap;
         }
@@ -1146,28 +991,24 @@
         .condition-row select, 
         .condition-row input {
             flex: 1;
-            min-width: 160px;
+            min-width: 150px;
         }
 
         .add-condition-btn {
             background: hsl(var(--secondary));
-            border: 2px solid hsl(var(--border));
-            padding: 0.5rem 1rem;
+            border: 1px solid hsl(var(--border));
+            padding: 0.375rem 0.75rem;
             border-radius: var(--radius);
             cursor: pointer;
             font-size: 0.875rem;
-            font-weight: 600;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s;
             display: inline-flex;
             align-items: center;
-            gap: 0.625rem;
+            gap: 0.5rem;
         }
 
         .add-condition-btn:hover {
-            background: hsl(var(--primary));
-            color: hsl(var(--primary-foreground));
-            border-color: hsl(var(--primary));
-            transform: translateY(-1px);
+            background: hsl(var(--accent));
         }
 
         .remove-condition-btn {
@@ -1175,84 +1016,65 @@
             color: white;
             border: none;
             border-radius: 50%;
-            width: 28px;
-            height: 28px;
+            width: 24px;
+            height: 24px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 1rem;
+            font-size: 0.875rem;
             padding: 0;
-            font-weight: 700;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .remove-condition-btn:hover {
-            transform: scale(1.1) rotate(90deg);
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
         }
 
         .condition-logic {
-            margin-top: 1.25rem;
-            padding-top: 1.25rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
             border-top: 1px solid hsl(var(--border));
         }
 
         .preview-section {
-            margin-top: 2rem;
-            padding-top: 2rem;
+            margin-top: 1.5rem;
+            padding-top: 1.5rem;
             border-top: 2px solid hsl(var(--primary));
         }
 
         .preview-result {
             background: hsl(var(--background));
-            border-radius: var(--radius);
-            padding: 1.25rem;
-            margin-bottom: 2rem;
-            font-family: 'SF Mono', 'Monaco', 'Inconsolata', monospace;
-            font-size: 0.8125rem;
-            border: 2px solid hsl(var(--border));
-            line-height: 1.6;
+            border-radius: calc(var(--radius) - 2px);
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+            border: 1px solid hsl(var(--border));
         }
 
         .telegram-preview {
-            border: 2px solid hsl(var(--border));
-            border-radius: calc(var(--radius) * 1.2);
+            border: 1px solid hsl(var(--border));
+            border-radius: var(--radius);
             overflow: hidden;
-            background: #e8e8e8;
-            max-width: 440px;
+            background: #eaeaea;
+            max-width: 400px;
             margin: 0 auto;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
-        }
-
-        .dark-theme .telegram-preview {
-            background: #1a1a1a;
         }
 
         .telegram-message {
             display: flex;
-            padding: 1rem;
+            padding: 0.75rem;
             background: white;
         }
 
-        .dark-theme .telegram-message {
-            background: #222;
-        }
-
         .telegram-avatar {
-            width: 44px;
-            height: 44px;
-            background: linear-gradient(135deg, #0088cc, #0066cc);
+            width: 40px;
+            height: 40px;
+            background: #0088cc;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-weight: 700;
-            margin-right: 1rem;
+            font-weight: bold;
+            margin-right: 0.75rem;
             flex-shrink: 0;
-            font-size: 1.125rem;
-            box-shadow: 0 2px 8px rgba(0, 136, 204, 0.3);
         }
 
         .telegram-content {
@@ -1260,47 +1082,42 @@
         }
 
         .telegram-sender {
-            font-weight: 700;
-            color: #0088cc;
-            margin-bottom: 0.375rem;
-            font-size: 0.9375rem;
+            font-weight: 600;
+            color: #000;
+            margin-bottom: 0.25rem;
         }
 
         .telegram-text {
             color: #333;
-            line-height: 1.6;
+            line-height: 1.5;
             font-size: 0.9375rem;
             white-space: pre-line;
-        }
-
-        .dark-theme .telegram-text {
-            color: #e8e8e8;
         }
 
         .telegram-time {
             color: #999;
             font-size: 0.75rem;
-            margin-top: 0.5rem;
+            margin-top: 0.25rem;
         }
 
         .code-condition-editor {
-            margin-top: 1.25rem;
+            margin-top: 1rem;
         }
 
+        /* Input with button */
         .input-with-button {
             position: relative;
             display: flex;
-            gap: 0.625rem;
+            gap: 0.5rem;
         }
 
         .input-with-button input {
             flex: 1;
-            padding-right: 3rem;
         }
 
         .input-with-button button {
             position: absolute;
-            right: 0.875rem;
+            right: 0.75rem;
             top: 50%;
             transform: translateY(-50%);
             background: transparent;
@@ -1308,20 +1125,13 @@
             color: hsl(var(--muted-foreground));
             cursor: pointer;
             padding: 0;
-            font-size: 1.25rem;
-            transition: all 0.2s ease;
-            min-width: auto;
         }
 
-        .input-with-button button:hover {
-            color: hsl(var(--primary));
-            transform: translateY(-50%) scale(1.2);
-        }
-
+        /* Export/import section */
         .export-import-section {
-            margin-top: 2.5rem;
-            padding-top: 2rem;
-            border-top: 2px solid hsl(var(--border));
+            margin-top: 2rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid hsl(var(--border));
         }
 
         .export-import-section h3 {
@@ -1329,17 +1139,16 @@
             color: hsl(var(--primary));
             border: none;
             padding: 0;
-            font-weight: 700;
         }
 
         .skeleton {
             background: linear-gradient(90deg, 
                 hsl(var(--muted)) 0%, 
-                hsl(var(--muted) / 0.6) 50%, 
+                hsl(var(--muted) / 0.8) 50%, 
                 hsl(var(--muted)) 100%
             );
             background-size: 200% 100%;
-            animation: loading 1.5s ease-in-out infinite;
+            animation: loading 1.5s infinite;
         }
 
         @keyframes loading {
@@ -1347,23 +1156,19 @@
             100% { background-position: -200% 0; }
         }
 
+        /* Responsive design */
         @media (max-width: 768px) {
-            body {
-                padding: 1rem;
-            }
-
             .content {
                 grid-template-columns: 1fr;
             }
 
             header {
                 flex-direction: column;
-                gap: 1.25rem;
-                padding: 1.25rem 1.5rem;
+                gap: 15px;
             }
 
             header h1 {
-                font-size: 1.5rem;
+                font-size: 2em;
             }
 
             .tabs {
@@ -1371,7 +1176,7 @@
             }
 
             .tab {
-                padding: 0.75rem 1.25rem;
+                padding: 0.5rem 1rem;
                 font-size: 0.875rem;
             }
 
@@ -1399,7 +1204,6 @@
             .rule-actions {
                 flex-direction: row;
                 flex-wrap: wrap;
-                width: 100%;
             }
 
             .condition-row {
@@ -1411,20 +1215,8 @@
                 max-width: 100%;
             }
             
-            .card-content {
-                padding: 1.5rem;
-            }
-            
-            .login-card {
-                padding: 2rem;
-            }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-            *, *::before, *::after {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
+            .create-rule-btn {
+                width: 100%;
             }
         }
     </style>
@@ -1458,17 +1250,17 @@
     <div class="main-app" id="mainApp" style="display: none;">
         <div class="container">
             <header>
-                <h1>📱 Telegram Webhook Integration</h1>
+                <h1>📱 Telegram Webhook Integration 💲VadminLink</h1>
                 <div class="header-actions">
                     <div class="theme-toggle">
                         <button id="themeToggle" class="icon-btn" aria-label="Переключить тему">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.43 7.508 7.508 0 0 0 1.107-3.43A9.5 9.5 0 0 1 6 12c0 2.62.676 5.067 1.868 7.083a7.5 7.5 0 0 0 3.956-11.81 7.5 7.5 0 0 0-7.452-4.273A9.5 9.5 0 0 1 12 3z"></path>
                             </svg>
                         </button>
                     </div>
                     <button class="logout-btn" onclick="logout()">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
                             <polyline points="16 17 21 12 16 7"></polyline>
                             <line x1="21" y1="12" x2="9" y2="12"></line>
@@ -1481,34 +1273,33 @@
             <div class="tabs-container">
                 <div class="tabs">
                     <button class="tab active" data-tab="rules">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                            <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
-                            <polyline points="10 9 9 9 8 9"></polyline>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                            <line x1="9" y1="9" x2="15" y2="15"></line>
+                            <line x1="15" y1="9" x2="9" y2="15"></line>
                         </svg>
                         Правила
                     </button>
                     <button class="tab" data-tab="test">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <line x1="12" y1="8" x2="12" y2="12"></line>
+                            <line x1="12" y1="16" x2="12.01" y2="16"></line>
                         </svg>
                         Тестирование
                     </button>
                     <button class="tab" data-tab="history">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M3 3v5h5"></path>
-                            <path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"></path>
-                            <path d="M12 7v5l4 2"></path>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                            <circle cx="12" cy="12" r="10"></circle>
                         </svg>
                         История
                     </button>
                     <button class="tab" data-tab="instructions">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"></circle>
-                            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                            <line x1="12" y1="16" x2="12" y2="12"></line>
+                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
                         </svg>
                         Инструкции
                     </button>
@@ -1521,13 +1312,13 @@
                             <div class="card">
                                 <div class="card-header" id="createRuleHeader">
                                     <h2>
-                                        <svg class="card-header-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <svg class="card-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <polyline points="6 9 12 15 18 9"></polyline>
                                         </svg>
                                         Создать новое правило
                                     </h2>
                                     <button class="btn-primary" id="toggleCreateRule">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                             <line x1="12" y1="5" x2="12" y2="19"></line>
                                             <line x1="5" y1="12" x2="19" y2="12"></line>
                                         </svg>
@@ -1581,8 +1372,8 @@
                                                                     <input type="text" class="value-input" placeholder="Значение" value="incident">
                                                                 </div>
                                                             </div>
-                                                            <button type="button" class="add-condition-btn">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <button class="add-condition-btn">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                                     <line x1="12" y1="5" x2="12" y2="19"></line>
                                                                     <line x1="5" y1="12" x2="19" y2="12"></line>
                                                                 </svg>
@@ -1685,7 +1476,7 @@
                                 <div id="rulesAlert" class="alert"></div>
 
                                 <div id="rulesList" class="rules-list">
-                                    <p style="color: hsl(var(--muted-foreground)); text-align: center; padding: 40px 20px;">Загрузка правил...</p>
+                                    <p style="color: #999; text-align: center; padding: 40px 20px;">Загрузка правил...</p>
                                 </div>
                             </div>
                         </div>
@@ -1694,15 +1485,14 @@
                     <div id="test-tab" class="tab-pane">
                         <div class="content">
                             <div class="card">
-                                <div class="card-content">
-                                    <h2>🧪 Тестирование условий</h2>
-                                    <div class="form-group">
-                                        <label for="testCondition">Условие</label>
-                                        <input type="text" id="testCondition" placeholder='payload.team_id === 40' value='payload.category === "incident"'>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="testPayload">Тестовый payload (JSON)</label>
-                                        <textarea id="testPayload" placeholder='{"team_id": 40, "name": "Test"}'>{
+                                <h2>🧪 Тестирование условий</h2>
+                                <div class="form-group">
+                                    <label for="testCondition">Условие</label>
+                                    <input type="text" id="testCondition" placeholder='payload.team_id === 40' value='payload.category === "incident"'>
+                                </div>
+                                <div class="form-group">
+                                    <label for="testPayload">Тестовый payload (JSON)</label>
+                                    <textarea id="testPayload" placeholder='{"team_id": 40, "name": "Test"}'>{
   "team_id": 40,
   "team": {
     "id": 40,
@@ -1732,63 +1522,61 @@
   "resolution_target_at": "2024-07-29T19:20:00Z",
   "response_target_at": "2024-07-26T21:50:00Z"
 }</textarea>
-                                        <small class="form-hint">Вставьте пример payload из истории для тестирования</small>
-                                    </div>
-                                    <button class="btn-test" onclick="testCondition()">Протестировать условие</button>
-                                    <div id="testResult" class="test-result"></div>
+                                    <small class="form-hint">Вставьте пример payload из истории для тестирования</small>
                                 </div>
+                                <button class="btn-test" onclick="testCondition()">Протестировать условие</button>
+                                <div id="testResult" class="test-result"></div>
                             </div>
                             
                             <div class="card">
-                                <div class="card-content">
-                                    <h2>📤 Тест отправки в Telegram</h2>
-                                    <div class="form-group">
-                                        <label for="testChatId">ID чата</label>
-                                        <input type="text" id="testChatId" placeholder="-1001234567890">
-                                        <small class="form-hint">ID чата или канала в Telegram</small>
-                                    </div>
-                                    <div class="form-group">
-                                        <label for="testMessage">Тестовое сообщение</label>
-                                        <textarea id="testMessage" placeholder="Привет из веб-интерфейса!">Тестовое сообщение из webhook интеграции</textarea>
-                                    </div>
-                                    <button class="btn-primary" onclick="testTelegramSend()">Отправить тестовое сообщение</button>
-                                    <div id="telegramTestResult" class="test-result"></div>
+                                <h2>📤 Тест отправки в Telegram</h2>
+                                <div class="form-group">
+                                    <label for="testChatId">ID чата</label>
+                                    <input type="text" id="testChatId" placeholder="-1001234567890">
+                                    <small class="form-hint">ID чата или канала в Telegram</small>
                                 </div>
+                                <div class="form-group">
+                                    <label for="testMessage">Тестовое сообщение</label>
+                                    <textarea id="testMessage" placeholder="Привет из веб-интерфейса!">Тестовое сообщение из webhook интеграции</textarea>
+                                </div>
+                                <button class="btn-primary" onclick="testTelegramSend()">Отправить тестовое сообщение</button>
+                                <div id="telegramTestResult" class="test-result"></div>
                             </div>
                         </div>
                     </div>
 
                     <div id="history-tab" class="tab-pane">
                         <div class="card">
-                            <div class="card-content">
-                                <div class="logs-toolbar">
-                                    <h2>📊 История вебхуков</h2>
-                                    <div class="logs-actions">
-                                        <button class="btn-secondary" onclick="loadWebhookLogs()">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
-                                            </svg>
-                                            Обновить
-                                        </button>
-                                        <button class="btn-danger" onclick="clearWebhookLogs()">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <polyline points="3 6 5 6 21 6"></polyline>
-                                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                            </svg>
-                                            Очистить
-                                        </button>
-                                    </div>
+                            <div class="logs-toolbar">
+                                <h2>📊 История вебхуков</h2>
+                                <div class="logs-actions">
+                                    <button class="btn-secondary" onclick="loadWebhookLogs()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                                        </svg>
+                                        Обновить
+                                    </button>
+                                    <button class="btn-danger" onclick="clearWebhookLogs()">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="3 6 5 6 21 6"></polyline>
+                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                                        </svg>
+                                        Очистить
+                                    </button>
                                 </div>
-                                
-                                <div id="logsContainer" class="logs-container skeleton">
-                                    <p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>
-                                </div>
-                                
-                                <div class="pagination">
-                                    <button class="page-btn prev" disabled>← Пред</button>
-                                    <span class="page-info">Страница 1 из 1</span>
-                                    <button class="page-btn next" disabled>След →</button>
-                                </div>
+                            </div>
+                            
+                            <div id="logsContainer" class="logs-container skeleton">
+                                <p style="color: hsl(var(--muted-foreground)); text-align: center;">Загрузка истории...</p>
+                            </div>
+                            
+                            <div class="pagination">
+                                <button class="page-btn prev" disabled>← Пред</button>
+                                <span class="page-info">Страница 1 из 1</span>
+                                <button class="page-btn next" disabled>След →</button>
                             </div>
                         </div>
                     </div>
@@ -1796,39 +1584,38 @@
                     <div id="instructions-tab" class="tab-pane">
                         <div class="content">
                             <div class="card">
-                                <div class="card-content">
-                                    <h2>🚀 Быстрый старт</h2>
-                                    <ol>
-                                        <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
-                                        <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
-                                        <li>Настройте условие для фильтрации вебхуков</li>
-                                    </ol>
+                                <h2>🚀 Быстрый старт</h2>
+                                <ol>
+                                    <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
+                                    <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
+                                    <li>Настройте условие для фильтрации вебхуков</li>
+                                </ol>
 
-                                    <h3>📝 Примеры условий</h3>
-                                    <ul>
-                                        <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
-                                        <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
-                                        <li><code>payload.status === "error"</code> - проверка статуса</li>
-                                        <li><code>payload.impact === "high"</code> - проверка влияния</li>
-                                        <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
-                                        <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
-                                        <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
-                                        <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
-                                    </ul>
+                                <h3>📝 Примеры условий</h3>
+                                <ul>
+                                    <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
+                                    <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
+                                    <li><code>payload.status === "error"</code> - проверка статуса</li>
+                                    <li><code>payload.impact === "high"</code> - проверка влияния</li>
+                                    <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
+                                    <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
+                                    <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
+                                    <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
+                                </ul>
 
-                                    <h3>🔗 Webhook URL</h3>
-                                    <p>Отправляйте POST запросы на этот адрес:</p>
-                                    <div class="webhook-url" id="webhookUrl">http://localhost:3000/webhook</div>
-                                    <button class="btn-secondary btn-small" onclick="copyWebhookUrl()" style="margin-top: 1rem;">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                        </svg>
-                                        Копировать
-                                    </button>
+                                <h3>🔗 Webhook URL</h3>
+                                <p>Отправляйте POST запросы на этот адрес:</p>
+                                <div class="webhook-url" id="webhookUrl">http://localhost:3000/webhook</div>
+                                <button class="btn-secondary btn-small" onclick="copyWebhookUrl()" style="margin-top: 0.5rem;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                    </svg>
+                                    Копировать
+                                </button>
 
-                                    <h3>📋 Пример запроса</h3>
-                                    <pre>curl -X POST http://localhost:3000/webhook \
+                                <h3>📋 Пример запроса</h3>
+                                <pre>curl -X POST http://localhost:3000/webhook \
   -H "Content-Type: application/json" \
   -d '{
     "team_id": 40,
@@ -1846,31 +1633,28 @@
       }
     }
   }'</pre>
-                                </div>
                             </div>
                             
                             <div class="card">
-                                <div class="card-content">
-                                    <h2>🔧 Дополнительные настройки</h2>
-                                    <div class="form-group">
-                                        <label for="globalBotToken">Глобальный токен бота (резервный)</label>
-                                        <div class="input-with-button">
-                                            <input type="password" id="globalBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
-                                            <button type="button" class="toggle-password-global" aria-label="Показать/скрыть пароль">👁️</button>
-                                        </div>
-                                        <small class="form-hint">Используется, если в правиле не указан токен. Можно оставить пустым.</small>
+                                <h2>🔧 Дополнительные настройки</h2>
+                                <div class="form-group">
+                                    <label for="globalBotToken">Глобальный токен бота (резервный)</label>
+                                    <div class="input-with-button">
+                                        <input type="password" id="globalBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                                        <button type="button" class="toggle-password-global" aria-label="Показать/скрыть пароль">👁️</button>
                                     </div>
-                                    <button class="btn-primary" onclick="saveGlobalBotToken()">Сохранить токен</button>
-                                    
-                                    <div class="export-import-section">
-                                        <h3>💾 Экспорт/Импорт правил</h3>
-                                        <div class="button-group">
-                                            <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
-                                            <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
-                                            <input type="file" id="importFile" accept=".json" style="display: none;">
-                                        </div>
-                                        <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
+                                    <small class="form-hint">Используется, если в правиле не указан токен. Можно оставить пустым.</small>
+                                </div>
+                                <button class="btn-primary" onclick="saveGlobalBotToken()">Сохранить токен</button>
+                                
+                                <div class="export-import-section">
+                                    <h3>💾 Экспорт/Импорт правил</h3>
+                                    <div class="button-group">
+                                        <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
+                                        <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
+                                        <input type="file" id="importFile" accept=".json" style="display: none;">
                                     </div>
+                                    <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
                                 </div>
                             </div>
                         </div>
@@ -1887,6 +1671,7 @@
         let currentPage = 1;
         const logsPerPage = 10;
 
+        // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
             setupEventListeners();
@@ -1895,12 +1680,15 @@
         });
 
         function setupEventListeners() {
+            // Forms and buttons
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             document.getElementById('ruleForm').addEventListener('submit', saveRule);
             
+            // Toggle create rule form
             document.getElementById('toggleCreateRule').addEventListener('click', toggleCreateRuleForm);
             document.getElementById('createRuleHeader').addEventListener('click', toggleCreateRuleForm);
             
+            // Tab switching
             document.querySelectorAll('.tab').forEach(tab => {
                 tab.addEventListener('click', () => {
                     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -1911,8 +1699,10 @@
                 });
             });
             
+            // Theme toggle
             document.getElementById('themeToggle').addEventListener('click', toggleTheme);
             
+            // Condition builder
             document.querySelectorAll('input[name="conditionMode"]').forEach(radio => {
                 radio.addEventListener('change', function() {
                     document.getElementById('visualConditionEditor').style.display = this.value === 'visual' ? 'block' : 'none';
@@ -1924,13 +1714,16 @@
                 });
             });
             
+            // Visual condition editor
             document.querySelector('.field-select').addEventListener('change', updateConditionPreview);
             document.querySelector('.operator-select').addEventListener('change', updateConditionPreview);
             document.querySelector('.value-input').addEventListener('input', updateConditionPreview);
             document.querySelector('.add-condition-btn').addEventListener('click', addConditionRow);
             
+            // Code condition editor
             document.getElementById('conditionCode').addEventListener('input', updateCodeCondition);
             
+            // Password toggle
             document.querySelector('.toggle-password').addEventListener('click', function() {
                 togglePasswordVisibility('#botToken', this);
             });
@@ -1939,12 +1732,15 @@
                 togglePasswordVisibility('#globalBotToken', this);
             });
             
+            // Rules search
             document.getElementById('rulesSearch').addEventListener('input', function() {
                 filterRules(this.value);
             });
             
+            // Copy webhook URL
             document.getElementById('webhookUrl').addEventListener('click', copyWebhookUrl);
             
+            // Import file
             document.getElementById('importFile').addEventListener('change', importRules);
         }
 
@@ -1955,19 +1751,21 @@
             const arrowSvg = button.querySelector('svg');
             
             if (content.classList.contains('collapsed')) {
+                // Раскрываем форму
                 content.classList.remove('collapsed');
                 content.style.maxHeight = content.scrollHeight + 'px';
                 icon.style.transform = 'rotate(0deg)';
                 arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
-                button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
             } else {
+                // Сворачиваем форму
                 content.style.maxHeight = content.scrollHeight + 'px';
-                content.offsetHeight;
+                content.offsetHeight; // trigger reflow
                 content.style.maxHeight = '0';
                 content.classList.add('collapsed');
                 icon.style.transform = 'rotate(-90deg)';
                 arrowSvg.innerHTML = '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
-                button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
+                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
             }
         }
 
@@ -2015,11 +1813,12 @@
                     <option value="includes">содержит</option>
                 </select>
                 <input type="text" class="value-input" placeholder="Значение">
-                <button type="button" class="remove-condition-btn">−</button>
+                <button type="button" class="remove-condition-btn">-</button>
             `;
             
             document.querySelector('.condition-rows').appendChild(newRow);
             
+            // Add event listeners to new elements
             newRow.querySelector('.field-select').addEventListener('change', updateConditionPreview);
             newRow.querySelector('.operator-select').addEventListener('change', updateConditionPreview);
             newRow.querySelector('.value-input').addEventListener('input', updateConditionPreview);
@@ -2036,9 +1835,11 @@
             const operator = document.querySelector('.operator-select').value;
             const value = document.querySelector('.value-input').value;
             
+            // Определяем, нужно ли брать значение в кавычки
             let needsQuotes = true;
             let formattedValue = value;
             
+            // Для числовых полей и ID не используем кавычки
             if (field.includes('.id') || field.includes('_id') || 
                 field.includes('.priority') || 
                 (field === 'payload.priority' && !isNaN(value)) ||
@@ -2046,17 +1847,22 @@
                 needsQuotes = false;
             }
             
+            // Для некоторых операторов не используем кавычки
             if (operator === '>' || operator === '<' || operator === '>=' || operator === '<=') {
                 needsQuotes = false;
             }
             
+            // Форматируем значение
             if (needsQuotes) {
+                // Для boolean значений не используем кавычки
                 if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
                     formattedValue = value.toLowerCase();
                 } else {
+                    // Используем ДВОЙНЫЕ кавычки как в JSON
                     formattedValue = `"${value.replace(/"/g, '\\"')}"`;
                 }
             } else {
+                // Убираем кавычки для числовых значений
                 formattedValue = value.replace(/['"]/g, '');
             }
             
@@ -2075,6 +1881,7 @@
         }
 
         function updateMessagePreview(condition) {
+            // This is a simplified preview - in real app you would evaluate the condition
             const payload = {
                 id: 141,
                 team_id: 40,
@@ -2107,19 +1914,23 @@
             
             let message = '';
             
+            // ID
             if (payload.id) {
                 message += `🆔 ID: ${payload.id}\n\n`;
             }
             
+            // Subject
             if (payload.subject) {
                 message += `📋 Тема: ${payload.subject}\n\n`;
             }
             
+            // Requested by
             if (payload.requested_by?.name) {
                 const account = payload.requested_by.account?.name || '';
                 message += `👤 Инициатор запроса: ${payload.requested_by.name}${account ? ' @' + account : ''}\n\n`;
             }
             
+            // Team, Category, Impact
             if (payload.team?.name) {
                 message += `Команда: ${payload.team.name}\n`;
             }
@@ -2131,6 +1942,7 @@
             }
             message += '\n';
             
+            // SLA targets
             if (payload.response_target_at || payload.resolution_target_at) {
                 if (payload.response_target_at) {
                     try {
@@ -2168,6 +1980,7 @@
                 message += '\n';
             }
             
+            // Notes
             if (payload.note) {
                 message += `📝 Комментарий:\n`;
                 const notes = Array.isArray(payload.note) ? payload.note : [payload.note];
@@ -2315,7 +2128,7 @@
             );
             
             if (filteredRules.length === 0) {
-                container.innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center; padding: 40px 20px;">Правила не найдены</p>';
+                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Правила не найдены</p>';
                 return;
             }
 
@@ -2386,8 +2199,9 @@
                 
                 document.getElementById('ruleForm').reset();
                 editingRuleId = null;
-                document.querySelector('#createRuleHeader h2').innerHTML = '<svg class="card-header-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>Создать новое правило';
-                document.querySelector('#toggleCreateRule svg').innerHTML = '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
+                document.querySelector('.card-header h2').textContent = 'Создать новое правило';
+                document.querySelector('#createRuleHeader #toggleCreateRule svg').innerHTML =
+                    '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>';
                 document.getElementById('createRuleContent').classList.add('collapsed');
                 document.getElementById('createRuleContent').style.maxHeight = '0';
                 document.querySelector('#createRuleHeader .card-header-icon').style.transform = 'rotate(-90deg)';
@@ -2399,6 +2213,7 @@
         }
 
         async function editRule(id) {
+            // Сначала раскрываем форму создания/редактирования
             const content = document.getElementById('createRuleContent');
             const icon = document.querySelector('#createRuleHeader .card-header-icon');
             const button = document.getElementById('toggleCreateRule');
@@ -2409,8 +2224,9 @@
                 content.style.maxHeight = content.scrollHeight + 'px';
                 icon.style.transform = 'rotate(0deg)';
                 arrowSvg.innerHTML = '<line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line>';
-                button.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
+                button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>';
                 
+                // Прокручиваем вверх для удобства
                 const ruleForm = document.getElementById('ruleForm');
                 ruleForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
@@ -2430,9 +2246,11 @@
                 document.getElementById('messageTemplate').value = rule.messageTemplate || '';
                 document.getElementById('enabled').checked = rule.enabled !== false;
 
+                // Handle condition mode
                 const visualMode = document.querySelector('input[name="conditionMode"][value="visual"]');
                 const codeMode = document.querySelector('input[name="conditionMode"][value="code"]');
                 
+                // Try to parse condition for visual mode
                 if (rule.condition.includes('team_id') || rule.condition.includes('team.name') || 
                     rule.condition.includes('category') || rule.condition.includes('impact')) {
                     visualMode.checked = true;
@@ -2440,16 +2258,19 @@
                     document.getElementById('codeConditionEditor').style.display = 'none';
                     
                     try {
+                        // Simple parsing for demo purposes
                         const parts = rule.condition.split(/\s*(===|!==|>|<|includes)\s*/);
                         if (parts.length >= 3) {
                             document.querySelector('.field-select').value = parts[0].trim();
                             document.querySelector('.operator-select').value = parts[1].trim();
                             
+                            // Убираем кавычки для отображения в поле ввода
                             let rawValue = parts[2].trim().replace(/['"]/g, '');
                             document.querySelector('.value-input').value = rawValue;
                         }
                         updateConditionPreview();
                     } catch (e) {
+                        // Fallback to code mode
                         codeMode.checked = true;
                         document.getElementById('visualConditionEditor').style.display = 'none';
                         document.getElementById('codeConditionEditor').style.display = 'block';
@@ -2465,7 +2286,7 @@
                 document.getElementById('condition').value = rule.condition;
                 
                 editingRuleId = id;
-                document.querySelector('#createRuleHeader h2').innerHTML = '<svg class="card-header-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>✏️ Редактировать правило';
+                document.querySelector('#createRuleHeader h2').textContent = '✏️ Редактировать правило';
                 document.getElementById('ruleForm').scrollIntoView({ behavior: 'smooth' });
             } catch (error) {
                 showAlert('addAlert', 'Ошибка при загрузке правила: ' + error.message, 'error');
@@ -2505,6 +2326,7 @@
                 resultDiv.style.display = 'block';
                 resultDiv.className = 'test-result';
 
+                // Evaluate condition locally for testing
                 try {
                     const fn = new Function('payload', `return ${condition}`);
                     const result = fn(payload);
@@ -2602,7 +2424,7 @@
                     ${log.telegram_results && log.telegram_results.length > 0 ? `
                     <div class="log-telegram">
                         <strong>Результаты отправки в Telegram:</strong>
-                        <ul style="margin: 0.5rem 0; padding-left: 1.5rem;">
+                        <ul style="margin: 0.5rem 0; padding-left: 1.25rem;">
                             ${log.telegram_results.map(result => `
                                 <li class="log-telegram-item">
                                     <strong>Chat ID:</strong> ${result.chatId} - 
@@ -2642,12 +2464,12 @@
                 });
                 if (response.ok) {
                     loadWebhookLogs();
-                    alert('История успешно очищена');
+                    showAlert('logsAlert', 'История успешно очищена', 'success');
                 } else {
-                    alert('Ошибка очистки истории');
+                    showAlert('logsAlert', 'Ошибка очистки истории', 'error');
                 }
             } catch (error) {
-                alert('Ошибка: ' + error.message);
+                showAlert('logsAlert', 'Ошибка: ' + error.message, 'error');
             }
         }
 
@@ -2693,7 +2515,7 @@
                 }
                 
                 const dataStr = JSON.stringify(rules, null, 2);
-                const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                const dataUri = 'application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
                 
                 const exportFileDefaultName = `telegram-webhook-rules-${new Date().toISOString().slice(0,10)}.json`;
                 
@@ -2729,6 +2551,7 @@
                         return;
                     }
                     
+                    // First delete all existing rules
                     const existingRulesResponse = await fetch('/api/rules', { headers: getHeaders() });
                     const existingRules = await existingRulesResponse.json();
                     
@@ -2739,6 +2562,7 @@
                         });
                     }
                     
+                    // Then add the new rules
                     for (const rule of rules) {
                         await fetch('/api/rules', {
                             method: 'POST',
@@ -2762,15 +2586,16 @@
             };
             reader.readAsText(file);
             
+            // Reset the input for future imports
             document.getElementById('importFile').value = '';
         }
 
         function copyWebhookUrl() {
             const url = document.getElementById('webhookUrl').textContent;
             navigator.clipboard.writeText(url).then(() => {
-                const btn = event.target.closest('button');
+                const btn = document.querySelector('button[onclick="copyWebhookUrl()"]');
                 const originalText = btn.innerHTML;
-                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Скопировано!';
+                btn.innerHTML = '✅ Скопировано!';
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                 }, 2000);
