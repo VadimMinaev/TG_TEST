@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -90,6 +90,28 @@ if (process.env.DATABASE_URL) {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS message_queue (
+          id SERIAL PRIMARY KEY,
+          bot_token TEXT NOT NULL,
+          chat_id TEXT NOT NULL,
+          message_text TEXT NOT NULL,
+          priority INTEGER DEFAULT 0,
+          status VARCHAR(20) DEFAULT 'pending',
+          attempts INTEGER DEFAULT 0,
+          max_attempts INTEGER DEFAULT 3,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          sent_at TIMESTAMP,
+          error_message TEXT,
+          webhook_log_id INTEGER
+        )
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_message_queue_status ON message_queue(status, created_at);
+      `);
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_message_queue_chat_id ON message_queue(chat_id);
+      `);
       
       // Загружаем глобальный токен из БД при старте
       try {
@@ -104,6 +126,9 @@ if (process.env.DATABASE_URL) {
       
       db = client;
       console.log('DB connected and tables created');
+      
+      // Запускаем worker для обработки очереди сообщений
+      startMessageQueueWorker();
     } catch (err) {
       console.error('DB init error:', err);
     }
@@ -202,6 +227,262 @@ const vadminOnly = (req, res, next) => {
   }
   res.status(403).json({ error: 'Forbidden: Only vadmin can perform this action' });
 };
+
+// MESSAGE QUEUE FUNCTIONS
+async function addMessageToQueue(botToken, chatId, messageText, priority = 0, webhookLogId = null) {
+  if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+    // Если БД нет, отправляем напрямую (fallback для файлового режима)
+    return sendTelegramMessageDirect(botToken, chatId, messageText);
+  }
+  
+  try {
+    const result = await db.query(
+      `INSERT INTO message_queue (bot_token, chat_id, message_text, priority, webhook_log_id) 
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [botToken, chatId, messageText, priority, webhookLogId]
+    );
+    return { queued: true, id: result.rows[0].id };
+  } catch (error) {
+    console.error('Error adding message to queue:', error);
+    // Fallback: отправляем напрямую при ошибке
+    return sendTelegramMessageDirect(botToken, chatId, messageText);
+  }
+}
+
+async function sendTelegramMessageDirect(botToken, chatId, messageText) {
+  try {
+    const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      chat_id: chatId,
+      text: messageText
+    });
+    return { success: true, response: response.data };
+  } catch (error) {
+    const errDetail = error.response?.data || error.message;
+    console.error('Telegram send error:', errDetail);
+    return { success: false, error: errDetail };
+  }
+}
+
+async function getNextMessageFromQueue() {
+  if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+    return null;
+  }
+  
+  try {
+    const result = await db.query(
+      `SELECT id, bot_token, chat_id, message_text, attempts, max_attempts 
+       FROM message_queue 
+       WHERE status = 'pending' AND created_at <= CURRENT_TIMESTAMP
+       ORDER BY priority DESC, created_at ASC 
+       LIMIT 1 
+       FOR UPDATE SKIP LOCKED`
+    );
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    // Обновляем статус на 'processing'
+    await db.query(
+      `UPDATE message_queue SET status = 'processing' WHERE id = $1`,
+      [result.rows[0].id]
+    );
+    
+    return result.rows[0];
+  } catch (error) {
+    console.error('Error getting message from queue:', error);
+    return null;
+  }
+}
+
+async function updateMessageStatus(id, status, errorMessage = null) {
+  if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+    return;
+  }
+  
+  try {
+    if (status === 'sent') {
+      await db.query(
+        `UPDATE message_queue SET status = $1, sent_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        [status, id]
+      );
+    } else if (status === 'failed') {
+      await db.query(
+        `UPDATE message_queue SET status = $1, error_message = $2, attempts = attempts + 1 WHERE id = $3`,
+        [status, errorMessage, id]
+      );
+    } else {
+      await db.query(
+        `UPDATE message_queue SET status = $1 WHERE id = $2`,
+        [status, id]
+      );
+    }
+  } catch (error) {
+    console.error('Error updating message status:', error);
+  }
+}
+
+// Rate limiting: отслеживание отправок по чатам и токенам
+const rateLimiters = new Map(); // chatId -> { count: number, resetAt: timestamp }
+
+function checkRateLimit(chatId) {
+  const now = Date.now();
+  const chatIdStr = String(chatId);
+  
+  // Проверяем лимит для приватных чатов: 1 сообщение в секунду
+  // Для групп: 20 сообщений в минуту
+  // Определяем тип чата по ID (группы имеют отрицательные ID)
+  const isGroup = chatIdStr.startsWith('-');
+  const limitWindow = isGroup ? 60000 : 1000; // 1 минута для групп, 1 секунда для приватных
+  const limitCount = isGroup ? 20 : 1;
+  
+  if (!rateLimiters.has(chatIdStr)) {
+    rateLimiters.set(chatIdStr, { count: 0, resetAt: now + limitWindow });
+  }
+  
+  const limiter = rateLimiters.get(chatIdStr);
+  
+  // Сбрасываем счетчик если окно истекло
+  if (now >= limiter.resetAt) {
+    limiter.count = 0;
+    limiter.resetAt = now + limitWindow;
+  }
+  
+  // Проверяем лимит
+  if (limiter.count >= limitCount) {
+    return false; // Лимит превышен
+  }
+  
+  limiter.count++;
+  return true; // Можно отправить
+}
+
+// Глобальный лимит: 30 сообщений в секунду
+let globalMessageCount = 0;
+let globalResetAt = Date.now() + 1000;
+
+function checkGlobalRateLimit() {
+  const now = Date.now();
+  
+  if (now >= globalResetAt) {
+    globalMessageCount = 0;
+    globalResetAt = now + 1000;
+  }
+  
+  if (globalMessageCount >= 30) {
+    return false; // Глобальный лимит превышен
+  }
+  
+  globalMessageCount++;
+  return true;
+}
+
+// Worker для обработки очереди сообщений
+let workerRunning = false;
+let workerInterval = null;
+
+async function processMessageQueue() {
+  if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+    return;
+  }
+  
+  // Проверяем глобальный лимит
+  if (!checkGlobalRateLimit()) {
+    return; // Пропускаем итерацию если глобальный лимит превышен
+  }
+  
+  const message = await getNextMessageFromQueue();
+  if (!message) {
+    return; // Нет сообщений в очереди
+  }
+  
+  // Проверяем лимит для конкретного чата
+  if (!checkRateLimit(message.chat_id)) {
+    // Лимит превышен, возвращаем сообщение в очередь
+    await updateMessageStatus(message.id, 'pending');
+    return;
+  }
+  
+  try {
+    const result = await sendTelegramMessageDirect(
+      message.bot_token,
+      message.chat_id,
+      message.message_text
+    );
+    
+    if (result.success) {
+      await updateMessageStatus(message.id, 'sent');
+      console.log(`Message ${message.id} sent successfully to chat ${message.chat_id}`);
+    } else {
+      // Проверяем, является ли ошибка 429 (Too Many Requests)
+      const isRateLimitError = result.error && (
+        (typeof result.error === 'string' && result.error.includes('429')) ||
+        (result.error.error_code === 429) ||
+        (result.error.description && result.error.description.includes('Too Many Requests'))
+      );
+      
+      // Для ошибок rate limit увеличиваем задержку перед следующей попыткой
+      if (isRateLimitError) {
+        // Возвращаем в очередь с небольшой задержкой (через 5 секунд)
+        await db.query(
+          `UPDATE message_queue SET status = 'pending', 
+           created_at = CURRENT_TIMESTAMP + INTERVAL '5 seconds',
+           error_message = $1, attempts = attempts + 1 
+           WHERE id = $2`,
+          [JSON.stringify(result.error), message.id]
+        );
+        console.log(`Message ${message.id} rate limited, will retry in 5 seconds`);
+      } else if (message.attempts + 1 >= message.max_attempts) {
+        await updateMessageStatus(message.id, 'failed', JSON.stringify(result.error));
+        console.error(`Message ${message.id} failed after ${message.attempts + 1} attempts`);
+      } else {
+        // Возвращаем в очередь для повторной попытки
+        await updateMessageStatus(message.id, 'pending', JSON.stringify(result.error));
+      }
+    }
+  } catch (error) {
+    console.error(`Error processing message ${message.id}:`, error);
+    if (message.attempts + 1 >= message.max_attempts) {
+      await updateMessageStatus(message.id, 'failed', error.message);
+    } else {
+      await updateMessageStatus(message.id, 'pending', error.message);
+    }
+  }
+}
+
+function startMessageQueueWorker() {
+  if (workerRunning) {
+    return;
+  }
+  
+  if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+    console.log('Message queue worker not started: database not available');
+    return;
+  }
+  
+  workerRunning = true;
+  console.log('Message queue worker started');
+  
+  // Обрабатываем очередь каждые 100мс (10 раз в секунду)
+  workerInterval = setInterval(() => {
+    processMessageQueue().catch(err => {
+      console.error('Worker error:', err);
+    });
+  }, 100);
+  
+  // Очистка старых записей из очереди (старше 7 дней)
+  setInterval(async () => {
+    try {
+      await db.query(
+        `DELETE FROM message_queue 
+         WHERE (status = 'sent' AND sent_at < NOW() - INTERVAL '7 days') 
+            OR (status = 'failed' AND created_at < NOW() - INTERVAL '7 days')`
+      );
+    } catch (error) {
+      console.error('Error cleaning old queue messages:', error);
+    }
+  }, 3600000); // Каждый час
+}
 
 // AUTH ROUTES
 app.post('/api/login', async (req, res) => {
@@ -799,14 +1080,19 @@ app.post('/webhook', async (req, res) => {
 
         for (const chat of chatIds) {
           try {
-            const response = await axios.post(`https://api.telegram.org/bot${token}/sendMessage`, {
-              chat_id: chat,
-              text: messageText
-            });
-            telegram_results.push({ chatId: chat, success: true, response: response.data });
+            // Добавляем сообщение в очередь вместо прямой отправки
+            const queueResult = await addMessageToQueue(token, chat, messageText, 0, null);
+            if (queueResult.queued) {
+              telegram_results.push({ chatId: chat, success: true, queued: true, queueId: queueResult.id });
+            } else if (queueResult.success) {
+              // Fallback: сообщение отправлено напрямую (если БД недоступна)
+              telegram_results.push({ chatId: chat, success: true, response: queueResult.response });
+            } else {
+              telegram_results.push({ chatId: chat, success: false, error: queueResult.error });
+            }
           } catch (error) {
             const errDetail = error.response?.data || error.message;
-            console.error('Telegram send error for chat', chat, errDetail);
+            console.error('Error adding message to queue for chat', chat, errDetail);
             telegram_results.push({ chatId: chat, success: false, error: errDetail });
           }
         }
@@ -823,6 +1109,50 @@ app.post('/webhook', async (req, res) => {
 
 // HEALTH CHECK & LOGS
 app.get('/health', (req, res) => res.json({ ok: true }));
+
+// MESSAGE QUEUE STATUS
+app.get('/api/message-queue/status', auth, async (req, res) => {
+  if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+    return res.json({ 
+      available: false, 
+      message: 'Message queue requires database' 
+    });
+  }
+  
+  try {
+    const stats = await db.query(`
+      SELECT 
+        status,
+        COUNT(*) as count
+      FROM message_queue
+      GROUP BY status
+    `);
+    
+    const total = await db.query(`
+      SELECT COUNT(*) as total FROM message_queue
+    `);
+    
+    const pending = await db.query(`
+      SELECT COUNT(*) as count FROM message_queue WHERE status = 'pending'
+    `);
+    
+    const statsObj = {};
+    stats.rows.forEach(row => {
+      statsObj[row.status] = parseInt(row.count);
+    });
+    
+    res.json({
+      available: true,
+      total: parseInt(total.rows[0].total),
+      pending: parseInt(pending.rows[0].count),
+      stats: statsObj,
+      workerRunning: workerRunning
+    });
+  } catch (error) {
+    console.error('Error getting queue status:', error);
+    res.status(500).json({ error: 'Failed to get queue status' });
+  }
+});
 
 app.get('/api/webhook-logs', auth, async (req, res) => {
   if (process.env.DATABASE_URL) {

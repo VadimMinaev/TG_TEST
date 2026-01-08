@@ -2271,18 +2271,38 @@
 
         async function loadRules() {
             // Сбрасываем детали при загрузке нового списка
-            document.getElementById('ruleDetails').style.display = 'none';
-            document.getElementById('ruleDetailsPlaceholder').style.display = 'block';
-            document.getElementById('ruleDetailsContent').innerHTML = '';
+            const detailsPanel = document.getElementById('ruleDetails');
+            const placeholder = document.getElementById('ruleDetailsPlaceholder');
+            if (detailsPanel && placeholder) {
+                detailsPanel.style.display = 'none';
+                placeholder.style.display = 'block';
+            }
             
             try {
                 const response = await fetch(`${API_BASE}/rules`, {
                     headers: getHeaders()
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const rules = await response.json();
+                
+                if (!Array.isArray(rules)) {
+                    console.error('Invalid response format:', rules);
+                    throw new Error('Invalid response format from server');
+                }
+                
                 displayRules(rules);
             } catch (error) {
+                console.error('Error loading rules:', error);
                 showAlert('rulesAlert', 'Ошибка при загрузке правил: ' + error.message, 'error');
+                // Показываем сообщение об ошибке в списке правил
+                const container = document.getElementById('rulesList');
+                if (container) {
+                    container.innerHTML = '<p style="color: hsl(var(--destructive)); text-align: center; padding: 40px 20px;">Ошибка загрузки правил: ' + escapeHtml(error.message) + '</p>';
+                }
             }
         }
 
