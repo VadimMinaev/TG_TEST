@@ -1390,14 +1390,6 @@
                         </svg>
                         Очередь сообщений
                     </button>
-                    <button class="tab" data-tab="instructions">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="10"></circle>
-                            <line x1="12" y1="16" x2="12" y2="12"></line>
-                            <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                        </svg>
-                        Инструкции
-                    </button>
                     <button class="tab" data-tab="users" id="usersTab" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -1415,12 +1407,94 @@
                             <div class="card">
                                 <div class="rules-toolbar">
                                     <h2>📋 Правила</h2>
-                                    <div class="rules-search">
-                                        <input type="text" id="rulesSearch" placeholder="Поиск правил...">
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <div class="rules-search">
+                                            <input type="text" id="rulesSearch" placeholder="Поиск правил...">
+                                        </div>
+                                        <button class="btn-secondary btn-small" id="toggleSettingsBtn" onclick="toggleSettingsPanel()" title="Настройки">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <circle cx="12" cy="12" r="3"></circle>
+                                                <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3m15.364 6.364l-4.243-4.243m-4.242 0L5.636 17.364m12.728 0l-4.243-4.243m-4.242 0L5.636 6.636"></path>
+                                            </svg>
+                                        </button>
                                     </div>
                                 </div>
                                 
                                 <div id="rulesAlert" class="alert"></div>
+                                
+                                <div id="settingsPanel" class="card" style="display: none; margin-bottom: 1rem;">
+                                    <div class="card-header" id="settingsHeader" onclick="toggleSettingsPanel()" style="cursor: pointer;">
+                                        <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                            <svg class="card-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-90deg); transition: transform 0.3s;">
+                                                <polyline points="6 9 12 15 18 9"></polyline>
+                                            </svg>
+                                            🔧 Настройки и инструкции
+                                        </h3>
+                                    </div>
+                                    <div class="card-content collapsed" id="settingsContent" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out;">
+                                        <div style="margin-bottom: 2rem;">
+                                            <h3>🚀 Быстрый старт</h3>
+                                            <ol>
+                                                <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
+                                                <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
+                                                <li>Настройте условие для фильтрации вебхуков</li>
+                                            </ol>
+
+                                            <h3 style="margin-top: 1.5rem;">📝 Примеры условий</h3>
+                                            <ul>
+                                                <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
+                                                <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
+                                                <li><code>payload.status === "error"</code> - проверка статуса</li>
+                                                <li><code>payload.impact === "high"</code> - проверка влияния</li>
+                                                <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
+                                                <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
+                                                <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
+                                                <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
+                                            </ul>
+
+                                            <h3 style="margin-top: 1.5rem;">🔗 Webhook URL</h3>
+                                            <p>Отправляйте POST запросы на этот адрес:</p>
+                                            <div class="webhook-url" id="webhookUrlSettings" style="background: hsl(var(--card)); padding: 0.75rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); font-family: monospace; word-break: break-all;">http://localhost:3000/webhook</div>
+                                            <button class="btn-secondary btn-small" onclick="copyWebhookUrlFromSettings()" style="margin-top: 0.5rem;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                                </svg>
+                                                Копировать
+                                            </button>
+
+                                            <h3 style="margin-top: 1.5rem;">📋 Пример запроса</h3>
+                                            <pre style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto; font-size: 0.875rem;">curl -X POST http://localhost:3000/webhook \
+  -H "Content-Type: application/json" \
+  -d '{
+    "team_id": 40,
+    "team": {
+      "id": 40,
+      "name": "Поддержка конечных пользователей"
+    },
+    "category": "incident",
+    "impact": "medium",
+    "subject": "Ноутбук CMP00035 больше не загружается",
+    "requested_by": {
+      "name": "Мокосеева Ксения",
+      "account": {
+        "name": "АО ПроПродукт"
+      }
+    }
+  }'</pre>
+                                        </div>
+                                        
+                                        <div style="border-top: 1px solid hsl(var(--border)); padding-top: 1.5rem; margin-top: 1.5rem;">
+                                            <h3>💾 Экспорт/Импорт правил</h3>
+                                            <div class="button-group">
+                                                <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
+                                                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
+                                                <input type="file" id="importFile" accept=".json" style="display: none;">
+                                            </div>
+                                            <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <div class="rules-layout" style="display: flex; gap: 1rem; min-height: 500px;">
                                     <div class="rules-list-column" style="flex: 0 0 500px; border-right: 1px solid hsl(var(--border)); padding-right: 1rem;">
@@ -1782,75 +1856,6 @@
                         </div>
                     </div>
                     
-                    <div id="instructions-tab" class="tab-pane">
-                        <div class="content">
-                            <div class="card">
-                                <h2>🚀 Быстрый старт</h2>
-                                <ol>
-                                    <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
-                                    <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
-                                    <li>Настройте условие для фильтрации вебхуков</li>
-                                </ol>
-
-                                <h3>📝 Примеры условий</h3>
-                                <ul>
-                                    <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
-                                    <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
-                                    <li><code>payload.status === "error"</code> - проверка статуса</li>
-                                    <li><code>payload.impact === "high"</code> - проверка влияния</li>
-                                    <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
-                                    <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
-                                    <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
-                                    <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
-                                </ul>
-
-                                <h3>🔗 Webhook URL</h3>
-                                <p>Отправляйте POST запросы на этот адрес:</p>
-                                <div class="webhook-url" id="webhookUrl">http://localhost:3000/webhook</div>
-                                <button class="btn-secondary btn-small" onclick="copyWebhookUrl()" style="margin-top: 0.5rem;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                    </svg>
-                                    Копировать
-                                </button>
-
-                                <h3>📋 Пример запроса</h3>
-                                <pre>curl -X POST http://localhost:3000/webhook \
-  -H "Content-Type: application/json" \
-  -d '{
-    "team_id": 40,
-    "team": {
-      "id": 40,
-      "name": "Поддержка конечных пользователей"
-    },
-    "category": "incident",
-    "impact": "medium",
-    "subject": "Ноутбук CMP00035 больше не загружается",
-    "requested_by": {
-      "name": "Мокосеева Ксения",
-      "account": {
-        "name": "АО ПроПродукт"
-      }
-    }
-  }'</pre>
-                            </div>
-                            
-                            <div class="card">
-                                <h2>🔧 Дополнительные настройки</h2>
-                                <div class="export-import-section">
-                                    <h3>💾 Экспорт/Импорт правил</h3>
-                                    <div class="button-group">
-                                        <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
-                                        <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
-                                        <input type="file" id="importFile" accept=".json" style="display: none;">
-                                    </div>
-                                    <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
                     <div id="users-tab" class="tab-pane">
                         <div class="content">
                             <div class="card" id="createUserCard" style="display: none;">
@@ -2359,7 +2364,14 @@
 
         function updateWebhookUrl() {
             const url = `${window.location.origin}/webhook`;
-            document.getElementById('webhookUrl').textContent = url;
+            const webhookUrlElement = document.getElementById('webhookUrl');
+            const webhookUrlSettingsElement = document.getElementById('webhookUrlSettings');
+            if (webhookUrlElement) {
+                webhookUrlElement.textContent = url;
+            }
+            if (webhookUrlSettingsElement) {
+                webhookUrlSettingsElement.textContent = url;
+            }
         }
 
         async function loadRules() {
@@ -3401,9 +3413,9 @@
                 linkElement.setAttribute('download', exportFileDefaultName);
                 linkElement.click();
                 
-                showAlert('addAlert', `Экспортировано ${rules.length} правил`, 'success');
+                showAlert('rulesAlert', `Экспортировано ${rules.length} правил`, 'success');
             } catch (error) {
-                showAlert('addAlert', 'Ошибка экспорта: ' + error.message, 'error');
+                showAlert('rulesAlert', 'Ошибка экспорта: ' + error.message, 'error');
             }
         }
 
@@ -3430,41 +3442,105 @@
                     
                     // First delete all existing rules
                     const existingRulesResponse = await fetch('/api/rules', { headers: getHeaders() });
+                    if (!existingRulesResponse.ok) {
+                        throw new Error('Не удалось загрузить существующие правила');
+                    }
                     const existingRules = await existingRulesResponse.json();
                     
                     for (const rule of existingRules) {
-                        await fetch(`/api/rules/${rule.id}`, { 
+                        const deleteResponse = await fetch(`/api/rules/${rule.id}`, { 
                             method: 'DELETE',
                             headers: getHeaders()
                         });
+                        if (!deleteResponse.ok) {
+                            console.warn(`Не удалось удалить правило ${rule.id}`);
+                        }
                     }
                     
                     // Then add the new rules
+                    let importedCount = 0;
+                    let failedCount = 0;
                     for (const rule of rules) {
-                        await fetch('/api/rules', {
-                            method: 'POST',
-                            headers: getHeaders(),
-                            body: JSON.stringify({
-                                name: rule.name,
-                                condition: rule.condition,
-                                chatId: rule.chatId,
-                                botToken: rule.botToken,
-                                messageTemplate: rule.messageTemplate || null,
-                                enabled: rule.enabled !== false
-                            })
-                        });
+                        try {
+                            const createResponse = await fetch('/api/rules', {
+                                method: 'POST',
+                                headers: getHeaders(),
+                                body: JSON.stringify({
+                                    name: rule.name,
+                                    condition: rule.condition,
+                                    chatId: rule.chatId,
+                                    botToken: rule.botToken,
+                                    messageTemplate: rule.messageTemplate || null,
+                                    enabled: rule.enabled !== false
+                                })
+                            });
+                            
+                            if (!createResponse.ok) {
+                                const errorData = await createResponse.json().catch(() => ({}));
+                                console.error(`Ошибка создания правила "${rule.name}":`, errorData);
+                                failedCount++;
+                            } else {
+                                importedCount++;
+                            }
+                        } catch (err) {
+                            console.error(`Ошибка при импорте правила "${rule.name}":`, err);
+                            failedCount++;
+                        }
                     }
                     
-                    showAlert('addAlert', `Успешно импортировано ${rules.length} правил`, 'success');
+                    if (failedCount > 0) {
+                        showAlert('rulesAlert', `Импортировано ${importedCount} из ${rules.length} правил. Ошибок: ${failedCount}`, 'warning');
+                    }
+                    
+                    showAlert('rulesAlert', `Успешно импортировано ${rules.length} правил`, 'success');
                     await loadRules();
                 } catch (error) {
-                    showAlert('addAlert', 'Ошибка импорта: ' + error.message, 'error');
+                    showAlert('rulesAlert', 'Ошибка импорта: ' + error.message, 'error');
                 }
             };
             reader.readAsText(file);
             
             // Reset the input for future imports
             document.getElementById('importFile').value = '';
+        }
+
+        function toggleSettingsPanel() {
+            const panel = document.getElementById('settingsPanel');
+            const content = document.getElementById('settingsContent');
+            const icon = document.querySelector('#settingsHeader .card-header-icon');
+            
+            if (!panel || !content) return;
+            
+            // Показываем панель если она скрыта
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+            }
+            
+            if (content.classList.contains('collapsed')) {
+                // Раскрываем
+                content.classList.remove('collapsed');
+                content.style.maxHeight = content.scrollHeight + 'px';
+                if (icon) icon.style.transform = 'rotate(0deg)';
+            } else {
+                // Сворачиваем
+                content.style.maxHeight = content.scrollHeight + 'px';
+                content.offsetHeight; // trigger reflow
+                content.style.maxHeight = '0';
+                content.classList.add('collapsed');
+                if (icon) icon.style.transform = 'rotate(-90deg)';
+            }
+        }
+
+        function copyWebhookUrlFromSettings() {
+            const urlElement = document.getElementById('webhookUrlSettings');
+            if (urlElement) {
+                const url = urlElement.textContent;
+                navigator.clipboard.writeText(url).then(() => {
+                    showAlert('rulesAlert', 'Webhook URL скопирован в буфер обмена', 'success');
+                }).catch(err => {
+                    showAlert('rulesAlert', 'Ошибка копирования: ' + err.message, 'error');
+                });
+            }
         }
 
         function copyWebhookUrl() {
