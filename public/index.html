@@ -2303,22 +2303,8 @@
             }
         }
 
-        function displayRules(rules) {
-            const container = document.getElementById('rulesList');
-            const searchQuery = document.getElementById('rulesSearch').value.toLowerCase();
-            
-            const filteredRules = rules.filter(rule => 
-                rule.name.toLowerCase().includes(searchQuery) ||
-                rule.condition.toLowerCase().includes(searchQuery) ||
-                rule.chatId.toString().includes(searchQuery)
-            );
-            
-            if (filteredRules.length === 0) {
-                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Правила не найдены</p>';
-                return;
-            }
-
-            container.innerHTML = filteredRules.map(rule => `
+        function renderRuleCard(rule) {
+            return `
                 <div class="rule-item ${rule.enabled ? '' : 'disabled'}" data-id="${rule.id}">
                     <div class="rule-content">
                         <div class="rule-name">
@@ -2338,7 +2324,70 @@
                         <button class="btn-danger btn-small" onclick="deleteRule(${rule.id})">🗑️ Удалить</button>
                     </div>
                 </div>
-            `).join('');
+            `;
+        }
+
+        function displayRules(rules) {
+            const container = document.getElementById('rulesList');
+            const searchQuery = document.getElementById('rulesSearch').value.toLowerCase();
+            
+            const filteredRules = rules.filter(rule => 
+                rule.name.toLowerCase().includes(searchQuery) ||
+                rule.condition.toLowerCase().includes(searchQuery) ||
+                rule.chatId.toString().includes(searchQuery)
+            );
+            
+            if (filteredRules.length === 0) {
+                container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Правила не найдены</p>';
+                return;
+            }
+
+            container.innerHTML = filteredRules.map(rule => renderRuleCard(rule)).join('');
+        }
+
+        function updateRuleCard(updatedRule) {
+            const container = document.getElementById('rulesList');
+            const ruleElement = container.querySelector(`[data-id="${updatedRule.id}"]`);
+            
+            // Проверяем, проходит ли правило через текущий фильтр
+            const searchQuery = document.getElementById('rulesSearch').value.toLowerCase();
+            const matchesFilter = 
+                updatedRule.name.toLowerCase().includes(searchQuery) ||
+                updatedRule.condition.toLowerCase().includes(searchQuery) ||
+                updatedRule.chatId.toString().includes(searchQuery);
+            
+            if (!ruleElement) {
+                // Если карточка не найдена
+                if (matchesFilter) {
+                    // Если правило проходит фильтр, добавляем его в список
+                    const noRulesMsg = container.querySelector('p');
+                    if (noRulesMsg) {
+                        // Если был текст "правила не найдены", заменяем его
+                        container.innerHTML = renderRuleCard(updatedRule);
+                    } else {
+                        // Добавляем в начало списка
+                        container.insertAdjacentHTML('afterbegin', renderRuleCard(updatedRule));
+                    }
+                } else {
+                    // Если правило не проходит фильтр и не найдено, ничего не делаем
+                    // (возможно, оно было удалено ранее или еще не было создано)
+                }
+                return;
+            }
+            
+            if (matchesFilter) {
+                // Обновляем существующую карточку
+                ruleElement.outerHTML = renderRuleCard(updatedRule);
+            } else {
+                // Если правило не проходит фильтр, удаляем его из отображения
+                ruleElement.remove();
+                
+                // Проверяем, остались ли еще правила
+                const remainingRules = container.querySelectorAll('.rule-item');
+                if (remainingRules.length === 0) {
+                    container.innerHTML = '<p style="color: #999; text-align: center; padding: 40px 20px;">Правила не найдены</p>';
+                }
+            }
         }
 
         function filterRules(query) {
@@ -2391,7 +2440,17 @@
 
                 if (!response.ok) throw new Error('Failed to save rule');
 
+                const savedRule = await response.json();
+
                 showAlert('addAlert', editingRuleId ? 'Правило успешно обновлено' : 'Правило успешно создано', 'success');
+                
+                if (editingRuleId) {
+                    // При обновлении - обновляем только конкретную карточку
+                    updateRuleCard(savedRule);
+                } else {
+                    // При создании - перезагружаем весь список
+                    await loadRules();
+                }
                 
                 document.getElementById('ruleForm').reset();
                 editingRuleId = null;
@@ -2401,8 +2460,6 @@
                 document.getElementById('createRuleContent').classList.add('collapsed');
                 document.getElementById('createRuleContent').style.maxHeight = '0';
                 document.querySelector('#createRuleHeader .card-header-icon').style.transform = 'rotate(-90deg)';
-                
-                await loadRules();
             } catch (error) {
                 showAlert('addAlert', 'Ошибка: ' + error.message, 'error');
             }
