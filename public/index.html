@@ -1411,10 +1411,11 @@
                                         <div class="rules-search">
                                             <input type="text" id="rulesSearch" placeholder="Поиск правил...">
                                         </div>
-                                        <button class="btn-secondary btn-small" id="toggleSettingsBtn" onclick="toggleSettingsPanel()" title="Настройки">
+                                        <button class="btn-secondary btn-small" id="toggleSettingsBtn" onclick="showInstructionsModal()" title="Инструкции">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <circle cx="12" cy="12" r="3"></circle>
-                                                <path d="M12 1v6m0 6v6m9-9h-6m-6 0H3m15.364 6.364l-4.243-4.243m-4.242 0L5.636 17.364m12.728 0l-4.243-4.243m-4.242 0L5.636 6.636"></path>
+                                                <circle cx="12" cy="12" r="10"></circle>
+                                                <path d="M12 16v-4"></path>
+                                                <path d="M12 8h.01"></path>
                                             </svg>
                                         </button>
                                     </div>
@@ -1422,78 +1423,13 @@
                                 
                                 <div id="rulesAlert" class="alert"></div>
                                 
-                                <div id="settingsPanel" class="card" style="display: none; margin-bottom: 1rem;">
-                                    <div class="card-header" id="settingsHeader" onclick="toggleSettingsPanel()" style="cursor: pointer;">
-                                        <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-                                            <svg class="card-header-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform: rotate(-90deg); transition: transform 0.3s;">
-                                                <polyline points="6 9 12 15 18 9"></polyline>
-                                            </svg>
-                                            🔧 Настройки и инструкции
-                                        </h3>
+                                <div style="margin-bottom: 1rem;">
+                                    <div class="button-group">
+                                        <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
+                                        <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
+                                        <input type="file" id="importFile" accept=".json" style="display: none;">
                                     </div>
-                                    <div class="card-content collapsed" id="settingsContent" style="max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out;">
-                                        <div style="margin-bottom: 2rem;">
-                                            <h3>🚀 Быстрый старт</h3>
-                                            <ol>
-                                                <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
-                                                <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
-                                                <li>Настройте условие для фильтрации вебхуков</li>
-                                            </ol>
-
-                                            <h3 style="margin-top: 1.5rem;">📝 Примеры условий</h3>
-                                            <ul>
-                                                <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
-                                                <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
-                                                <li><code>payload.status === "error"</code> - проверка статуса</li>
-                                                <li><code>payload.impact === "high"</code> - проверка влияния</li>
-                                                <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
-                                                <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
-                                                <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
-                                                <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
-                                            </ul>
-
-                                            <h3 style="margin-top: 1.5rem;">🔗 Webhook URL</h3>
-                                            <p>Отправляйте POST запросы на этот адрес:</p>
-                                            <div class="webhook-url" id="webhookUrlSettings" style="background: hsl(var(--card)); padding: 0.75rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); font-family: monospace; word-break: break-all;">http://localhost:3000/webhook</div>
-                                            <button class="btn-secondary btn-small" onclick="copyWebhookUrlFromSettings()" style="margin-top: 0.5rem;">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                                </svg>
-                                                Копировать
-                                            </button>
-
-                                            <h3 style="margin-top: 1.5rem;">📋 Пример запроса</h3>
-                                            <pre style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto; font-size: 0.875rem;">curl -X POST http://localhost:3000/webhook \
-  -H "Content-Type: application/json" \
-  -d '{
-    "team_id": 40,
-    "team": {
-      "id": 40,
-      "name": "Поддержка конечных пользователей"
-    },
-    "category": "incident",
-    "impact": "medium",
-    "subject": "Ноутбук CMP00035 больше не загружается",
-    "requested_by": {
-      "name": "Мокосеева Ксения",
-      "account": {
-        "name": "АО ПроПродукт"
-      }
-    }
-  }'</pre>
-                                        </div>
-                                        
-                                        <div style="border-top: 1px solid hsl(var(--border)); padding-top: 1.5rem; margin-top: 1.5rem;">
-                                            <h3>💾 Экспорт/Импорт правил</h3>
-                                            <div class="button-group">
-                                                <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
-                                                <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
-                                                <input type="file" id="importFile" accept=".json" style="display: none;">
-                                            </div>
-                                            <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
-                                        </div>
-                                    </div>
+                                    <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
                                 </div>
 
                                 <div class="rules-layout" style="display: flex; gap: 1rem; min-height: 500px;">
@@ -1906,6 +1842,52 @@
         </div>
     </div>
 
+    <!-- Модальное окно с инструкциями -->
+    <div id="instructionsModal" class="modal" style="display: none;" onclick="closeInstructionsModal(event)">
+        <div class="modal-content" onclick="event.stopPropagation();" style="max-width: 800px;">
+            <div class="modal-header">
+                <h2>🔧 Инструкции по использованию</h2>
+                <button onclick="closeInstructionsModal()" style="margin-left: auto; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: hsl(var(--muted-foreground));">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 2rem;">
+                    <h3>🚀 Быстрый старт</h3>
+                    <ol>
+                        <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
+                        <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
+                        <li>Настройте условие для фильтрации вебхуков</li>
+                    </ol>
+
+                    <h3 style="margin-top: 1.5rem;">📝 Примеры условий</h3>
+                    <ul>
+                        <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
+                        <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
+                        <li><code>payload.status === "error"</code> - проверка статуса</li>
+                        <li><code>payload.impact === "high"</code> - проверка влияния</li>
+                        <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
+                        <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
+                        <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
+                        <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
+                    </ul>
+
+                    <h3 style="margin-top: 1.5rem;">🔗 Webhook URL</h3>
+                    <p>Отправляйте POST запросы на этот адрес:</p>
+                    <div class="webhook-url" id="webhookUrlModal" style="background: hsl(var(--card)); padding: 0.75rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); font-family: monospace; word-break: break-all;"></div>
+                    <button class="btn-secondary btn-small" onclick="copyWebhookUrlFromModal()" style="margin-top: 0.5rem;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                        Копировать
+                    </button>
+
+                    <h3 style="margin-top: 1.5rem;">📋 Пример запроса</h3>
+                    <pre id="webhookExample" style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto; font-size: 0.875rem;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api';
         let editingRuleId = null;
@@ -2307,6 +2289,8 @@
                 const response = await fetch(`${API_BASE}/me`, { headers: getHeaders() });
                 if (response.ok) {
                     const data = await response.json();
+                    currentUserData = data; // Сохраняем данные пользователя
+                    currentUserId = data.userId;
                     const usernameEl = document.getElementById('currentUsername');
                     if (usernameEl) {
                         usernameEl.textContent = `👤 ${data.username}`;
@@ -2366,11 +2350,37 @@
             const url = `${window.location.origin}/webhook`;
             const webhookUrlElement = document.getElementById('webhookUrl');
             const webhookUrlSettingsElement = document.getElementById('webhookUrlSettings');
+            const webhookUrlModalElement = document.getElementById('webhookUrlModal');
+            const webhookExampleElement = document.getElementById('webhookExample');
+            
             if (webhookUrlElement) {
                 webhookUrlElement.textContent = url;
             }
             if (webhookUrlSettingsElement) {
                 webhookUrlSettingsElement.textContent = url;
+            }
+            if (webhookUrlModalElement) {
+                webhookUrlModalElement.textContent = url;
+            }
+            if (webhookExampleElement) {
+                webhookExampleElement.textContent = `curl -X POST ${url} \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "team_id": 40,
+    "team": {
+      "id": 40,
+      "name": "Поддержка конечных пользователей"
+    },
+    "category": "incident",
+    "impact": "medium",
+    "subject": "Ноутбук CMP00035 больше не загружается",
+    "requested_by": {
+      "name": "Мокосеева Ксения",
+      "account": {
+        "name": "АО ПроПродукт"
+      }
+    }
+  }'`;
             }
         }
 
@@ -2592,6 +2602,13 @@
                 
                 const rule = await response.json();
                 
+                // Проверяем права на редактирование
+                const canEdit = currentUserData && (
+                    currentUserData.username === 'vadmin' || 
+                    (rule.authorId && typeof rule.authorId === 'number' && rule.authorId === currentUserData.userId) ||
+                    (rule.authorId === 'vadmin' && currentUserData.username === 'vadmin')
+                );
+                
                 // Отображаем детали
                 detailsContainer.innerHTML = `
                     <div style="margin-bottom: 1rem;">
@@ -2639,9 +2656,16 @@
                         </div>
                     </div>
                     
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem;">
-                        <button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>
-                        <button class="btn-danger" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>
+                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                        ${canEdit ? `<button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>` : ''}
+                        <button class="btn-primary" onclick="event.stopPropagation(); createNewRule()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Создать новое правило
+                        </button>
+                        ${canEdit ? `<button class="btn-danger" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>` : ''}
                     </div>
                 `;
             } catch (error) {
@@ -3504,35 +3528,27 @@
             document.getElementById('importFile').value = '';
         }
 
-        function toggleSettingsPanel() {
-            const panel = document.getElementById('settingsPanel');
-            const content = document.getElementById('settingsContent');
-            const icon = document.querySelector('#settingsHeader .card-header-icon');
-            
-            if (!panel || !content) return;
-            
-            // Показываем панель если она скрыта
-            if (panel.style.display === 'none') {
-                panel.style.display = 'block';
-            }
-            
-            if (content.classList.contains('collapsed')) {
-                // Раскрываем
-                content.classList.remove('collapsed');
-                content.style.maxHeight = content.scrollHeight + 'px';
-                if (icon) icon.style.transform = 'rotate(0deg)';
-            } else {
-                // Сворачиваем
-                content.style.maxHeight = content.scrollHeight + 'px';
-                content.offsetHeight; // trigger reflow
-                content.style.maxHeight = '0';
-                content.classList.add('collapsed');
-                if (icon) icon.style.transform = 'rotate(-90deg)';
+        function showInstructionsModal() {
+            const modal = document.getElementById('instructionsModal');
+            if (modal) {
+                updateWebhookUrl(); // Обновляем URL перед показом
+                modal.style.display = 'flex';
             }
         }
 
-        function copyWebhookUrlFromSettings() {
-            const urlElement = document.getElementById('webhookUrlSettings');
+        function closeInstructionsModal(event) {
+            // Если событие передано и клик был не по фону модального окна, не закрываем
+            if (event && event.target !== event.currentTarget && event.target.closest('.modal-content')) {
+                return;
+            }
+            const modal = document.getElementById('instructionsModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function copyWebhookUrlFromModal() {
+            const urlElement = document.getElementById('webhookUrlModal');
             if (urlElement) {
                 const url = urlElement.textContent;
                 navigator.clipboard.writeText(url).then(() => {
@@ -3576,6 +3592,7 @@
 
         // User management functions
         let currentUserId = null;
+        let currentUserData = null; // Информация о текущем пользователе
 
         async function loadUsers() {
             try {
