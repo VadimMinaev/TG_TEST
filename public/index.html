@@ -3443,23 +3443,33 @@
 
         async function exportRules() {
             try {
-                const response = await fetch('/api/rules', { headers: getHeaders() });
+                const response = await fetch(`${API_BASE}/rules`, { headers: getHeaders() });
+                if (!response.ok) {
+                    throw new Error('Не удалось загрузить правила');
+                }
                 const rules = await response.json();
                 
                 if (rules.length === 0) {
-                    showAlert('addAlert', 'Нет правил для экспорта', 'warning');
+                    showAlert('rulesAlert', 'Нет правил для экспорта', 'warning');
                     return;
                 }
                 
                 const dataStr = JSON.stringify(rules, null, 2);
-                const dataUri = 'application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+                const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
+                const url = URL.createObjectURL(blob);
                 
                 const exportFileDefaultName = `telegram-webhook-rules-${new Date().toISOString().slice(0,10)}.json`;
                 
                 const linkElement = document.createElement('a');
-                linkElement.setAttribute('href', dataUri);
-                linkElement.setAttribute('download', exportFileDefaultName);
+                linkElement.href = url;
+                linkElement.download = exportFileDefaultName;
+                linkElement.style.display = 'none';
+                document.body.appendChild(linkElement);
                 linkElement.click();
+                document.body.removeChild(linkElement);
+                
+                // Освобождаем память
+                URL.revokeObjectURL(url);
                 
                 showAlert('rulesAlert', `Экспортировано ${rules.length} правил`, 'success');
             } catch (error) {
