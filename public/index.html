@@ -771,24 +771,28 @@
             padding-left: 1rem;
             padding-right: 1rem;
             width: calc(100% + 2rem);
+            display: flex;
+            gap: 0;
+            align-items: flex-start;
         }
 
         .tabs {
             display: flex;
+            flex-direction: column;
             gap: 0.25rem;
-            border-bottom: 2px solid hsl(var(--border));
+            border-right: 2px solid hsl(var(--border));
             margin-bottom: 1.5rem;
-            overflow-x: auto;
-            padding-bottom: 0.5rem;
-            flex-wrap: wrap;
-            justify-content: flex-start;
+            margin-right: 1.5rem;
+            padding-right: 0.5rem;
+            width: fit-content;
+            min-width: 200px;
         }
 
         .tab {
             padding: 0.75rem 1.5rem;
             background: hsl(var(--secondary));
             border: none;
-            border-radius: var(--radius) var(--radius) 0 0;
+            border-radius: var(--radius) 0 0 var(--radius);
             cursor: pointer;
             font-weight: 500;
             transition: all 0.2s;
@@ -796,6 +800,8 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            text-align: left;
+            width: 100%;
         }
 
         .tab:hover {
@@ -804,12 +810,14 @@
 
         .tab.active {
             background: hsl(var(--card));
-            border-bottom: 2px solid hsl(var(--primary));
+            border-right: 2px solid hsl(var(--primary));
             font-weight: 600;
         }
 
         .tab-content {
             position: relative;
+            flex: 1;
+            min-width: 0;
         }
 
         .tab-pane {
