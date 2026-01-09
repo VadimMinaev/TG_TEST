@@ -997,8 +997,7 @@ ${truncated}
 \`\`\``);
 }
 }
-return messageParts.join('
-');
+return messageParts.join('\n'); // ✅ ИСПРАВЛЕНО: теперь корректно
 } catch (e) {
 console.error('Format message error:', e.message);
 return `❌ Ошибка форматирования сообщения: ${e.message}
