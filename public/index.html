@@ -766,6 +766,11 @@
         /* Tabs styles */
         .tabs-container {
             margin-bottom: 2rem;
+            margin-left: -1rem;
+            margin-right: -1rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+            width: calc(100% + 2rem);
         }
 
         .tabs {
@@ -776,6 +781,7 @@
             overflow-x: auto;
             padding-bottom: 0.5rem;
             flex-wrap: wrap;
+            justify-content: flex-start;
         }
 
         .tab {
@@ -2307,6 +2313,8 @@
                         } else {
                             usersTab.style.display = 'none';
                             createUserBtn.style.display = 'none';
+                            // Загружаем список пользователей для получения имен авторов (без отображения)
+                            loadUsersForCache();
                         }
                     }
                 }
@@ -2609,6 +2617,9 @@
                     (rule.authorId === 'vadmin' && currentUserData.username === 'vadmin')
                 );
                 
+                // Получаем имя автора
+                const authorName = getAuthorName(rule.authorId);
+                
                 // Отображаем детали
                 detailsContainer.innerHTML = `
                     <div style="margin-bottom: 1rem;">
@@ -2619,6 +2630,9 @@
                             </div>
                             <div style="margin-bottom: 0.75rem;">
                                 <strong>Название:</strong> ${escapeHtml(rule.name || '')}
+                            </div>
+                            <div style="margin-bottom: 0.75rem;">
+                                <strong>Автор правила:</strong> ${escapeHtml(authorName)}${rule.authorId === 'vadmin' ? ' <span style="color: #667eea;">(vadmin)</span>' : ''}
                             </div>
                             <div style="margin-bottom: 0.75rem;">
                                 <strong>Статус:</strong> 
@@ -3593,6 +3607,7 @@
         // User management functions
         let currentUserId = null;
         let currentUserData = null; // Информация о текущем пользователе
+        let usersCache = null; // Кэш списка пользователей для получения имен авторов
 
         async function loadUsers() {
             try {
@@ -3604,6 +3619,9 @@
                     throw new Error('Failed to load users');
                 }
                 const users = await response.json();
+                
+                // Сохраняем в кэш для получения имен авторов
+                usersCache = users;
                 
                 const container = document.getElementById('usersList');
                 if (!container) return;
@@ -3635,6 +3653,41 @@
                     container.innerHTML = `<p style="color: #f44336; text-align: center; padding: 40px 20px;">Ошибка загрузки пользователей: ${error.message}</p>`;
                 }
             }
+        }
+
+        // Загрузка пользователей только для кэша (без отображения)
+        async function loadUsersForCache() {
+            try {
+                const response = await fetch(`${API_BASE}/users`, { headers: getHeaders() });
+                if (response.ok) {
+                    const users = await response.json();
+                    usersCache = users;
+                }
+            } catch (error) {
+                // Игнорируем ошибки - просто не будет кэша
+                console.debug('Could not load users for cache:', error);
+            }
+        }
+
+        // Функция для получения имени автора правила
+        function getAuthorName(authorId) {
+            if (!authorId) {
+                return 'Неизвестно';
+            }
+            
+            if (authorId === 'vadmin') {
+                return 'vadmin';
+            }
+            
+            if (typeof authorId === 'number' && usersCache) {
+                const user = usersCache.find(u => u.id === authorId);
+                if (user) {
+                    return user.username;
+                }
+            }
+            
+            // Если не нашли в кэше, возвращаем ID
+            return typeof authorId === 'number' ? `Пользователь #${authorId}` : String(authorId);
         }
 
         function showCreateUserForm() {
