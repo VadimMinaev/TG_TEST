@@ -69,7 +69,7 @@
             color: hsl(var(--foreground));
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
             min-height: 100vh;
-            padding: 1rem;
+            padding: 0.5rem;
             transition: background-color 0.3s ease;
         }
 
@@ -190,18 +190,20 @@
         }
 
         .container {
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 100%;
+            margin: 0;
+            width: 100%;
         }
 
         header {
             text-align: center;
             color: hsl(var(--foreground));
-            margin-bottom: 2rem;
+            margin-bottom: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
             position: relative;
+            padding: 0 0.5rem;
         }
 
         header h1 {
@@ -264,8 +266,8 @@
         .content {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 2rem;
-            margin-bottom: 2rem;
+            gap: 1rem;
+            margin-bottom: 1rem;
         }
 
         .card {
@@ -282,7 +284,7 @@
         }
 
         .card-header {
-            padding: 1.5rem;
+            padding: 1rem;
             border-bottom: 2px solid hsl(var(--primary));
             display: flex;
             justify-content: space-between;
@@ -309,7 +311,7 @@
         }
 
         .card-content {
-            padding: 0 2rem;
+            padding: 0 1rem;
             max-height: 1000px;
             overflow: hidden;
             transition: max-height 0.3s ease, padding 0.3s ease;
@@ -766,11 +768,11 @@
         /* Tabs styles */
         .tabs-container {
             margin-bottom: 2rem;
-            margin-left: -1rem;
-            margin-right: -1rem;
-            padding-left: 1rem;
-            padding-right: 1rem;
-            width: calc(100% + 2rem);
+            margin-left: -0.5rem;
+            margin-right: -0.5rem;
+            padding-left: 0.5rem;
+            padding-right: 0.5rem;
+            width: calc(100% + 1rem);
             display: flex;
             gap: 0;
             align-items: flex-start;
@@ -782,10 +784,10 @@
             gap: 0.25rem;
             border-right: 2px solid hsl(var(--border));
             margin-bottom: 1.5rem;
-            margin-right: 1.5rem;
+            margin-right: 1rem;
             padding-right: 0.5rem;
             width: fit-content;
-            min-width: 200px;
+            min-width: 180px;
         }
 
         .tab {
@@ -837,7 +839,7 @@
             margin-bottom: 1rem;
             flex-wrap: wrap;
             gap: 1rem;
-            padding: 0 1rem;
+            padding: 0 0.5rem;
         }
 
         .rules-toolbar h2 {
