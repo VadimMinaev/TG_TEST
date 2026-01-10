@@ -3494,54 +3494,82 @@
             reader.onload = async function(event) {
                 try {
                     const rules = JSON.parse(event.target.result);
-                    
+
                     if (!Array.isArray(rules)) {
-                        throw new Error('Неверный формат файла');
+                        throw new Error('Неверный формат файла: ожидался массив правил');
                     }
-                    
+
                     if (rules.length === 0) {
                         throw new Error('Файл не содержит правил');
                     }
-                    
-                    if (!confirm(`Вы уверены, что хотите импортировать ${rules.length} правил? Это заменит существующие правила.`)) {
+
+                    if (!confirm(`Вы уверены, что хотите импортировать ${rules.length} правил? Существующие правила, которые вы можете удалить, будут удалены.`)) {
                         return;
                     }
-                    
-                    // First delete all existing rules
+
+                    // Проверяем наличие валидных токенов в правилах
+                    const needFallback = rules.some(r => !r.botToken || typeof r.botToken !== 'string' || r.botToken.includes('*') || r.botToken === 'YOUR_TOKEN');
+                    let fallbackToken = null;
+                    if (needFallback) {
+                        fallbackToken = prompt('Некоторые правила не содержат валидного botToken. Введите токен, который будет использован для правил без токена (Отмена — прервать импорт):');
+                        if (!fallbackToken) {
+                            showAlert('rulesAlert', 'Импорт отменён: отсутствует токен для некоторых правил', 'error');
+                            return;
+                        }
+                    }
+
+                    // First load existing rules and try to delete only those we are allowed to delete
                     const existingRulesResponse = await fetch('/api/rules', { headers: getHeaders() });
                     if (!existingRulesResponse.ok) {
                         throw new Error('Не удалось загрузить существующие правила');
                     }
                     const existingRules = await existingRulesResponse.json();
-                    
+
+                    let deletedCount = 0;
+                    let skippedDeletes = 0;
                     for (const rule of existingRules) {
-                        const deleteResponse = await fetch(`/api/rules/${rule.id}`, { 
-                            method: 'DELETE',
-                            headers: getHeaders()
-                        });
-                        if (!deleteResponse.ok) {
-                            console.warn(`Не удалось удалить правило ${rule.id}`);
+                        // Можно удалять, если текущий пользователь — vadmin или автор правила
+                        const canDelete = (currentUserData && (currentUserData.username === 'vadmin' || (rule.authorId && typeof rule.authorId === 'number' && rule.authorId === currentUserData.userId)));
+                        if (!canDelete) {
+                            skippedDeletes++;
+                            continue;
+                        }
+                        try {
+                            const deleteResponse = await fetch(`/api/rules/${rule.id}`, {
+                                method: 'DELETE',
+                                headers: getHeaders()
+                            });
+                            if (deleteResponse.ok) deletedCount++; else skippedDeletes++;
+                        } catch (err) {
+                            console.warn(`Не удалось удалить правило ${rule.id}:`, err);
+                            skippedDeletes++;
                         }
                     }
-                    
-                    // Then add the new rules
+
+                    // Then add the new rules (preserve chatIds or chatId)
                     let importedCount = 0;
                     let failedCount = 0;
                     for (const rule of rules) {
                         try {
+                            const body = {
+                                name: rule.name,
+                                condition: rule.condition,
+                                messageTemplate: rule.messageTemplate || null,
+                                enabled: rule.enabled !== false
+                            };
+                            if (Array.isArray(rule.chatIds) && rule.chatIds.length > 0) body.chatIds = rule.chatIds;
+                            else if (rule.chatId) body.chatId = rule.chatId;
+
+                            // если токен маскирован или отсутствует — используем fallback
+                            const token = (rule.botToken && typeof rule.botToken === 'string' && !rule.botToken.includes('*') && rule.botToken !== 'YOUR_TOKEN') ? rule.botToken : fallbackToken;
+                            body.botToken = token;
+
                             const createResponse = await fetch('/api/rules', {
                                 method: 'POST',
                                 headers: getHeaders(),
-                                body: JSON.stringify({
-                                    name: rule.name,
-                                    condition: rule.condition,
-                                    chatId: rule.chatId,
-                                    botToken: rule.botToken,
-                                    messageTemplate: rule.messageTemplate || null,
-                                    enabled: rule.enabled !== false
-                                })
+                                body: JSON.stringify(body)
                             });
-                            
+
                             if (!createResponse.ok) {
                                 const errorData = await createResponse.json().catch(() => ({}));
                                 console.error(`Ошибка создания правила "${rule.name}":`, errorData);
@@ -3554,12 +3582,14 @@
                             failedCount++;
                         }
                     }
-                    
+
+                    // Отчёт пользователю
                     if (failedCount > 0) {
-                        showAlert('rulesAlert', `Импортировано ${importedCount} из ${rules.length} правил. Ошибок: ${failedCount}`, 'warning');
+                        showAlert('rulesAlert', `Импортировано ${importedCount} из ${rules.length} правил. Ошибок: ${failedCount}. Удалено старых правил: ${deletedCount}. Пропущено удаление: ${skippedDeletes}.`, 'warning');
+                    } else {
+                        showAlert('rulesAlert', `Успешно импортировано ${importedCount} правил. Удалено старых правил: ${deletedCount}. Пропущено удаление: ${skippedDeletes}.`, 'success');
                     }
-                    
-                    showAlert('rulesAlert', `Успешно импортировано ${rules.length} правил`, 'success');
+
                     await loadRules();
                 } catch (error) {
                     showAlert('rulesAlert', 'Ошибка импорта: ' + error.message, 'error');
