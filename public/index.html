@@ -1870,7 +1870,7 @@
                     <h3>🚀 Быстрый старт</h3>
                     <ol>
                         <li>Получите токен бота от <code>@BotFather</code> в Telegram.</li>
-                        <li>Добавьте токен в правило или сохраните как глобальный через «Тестирование → Сохранить как глобальный токен».</li>  
+                        <li>Добавьте токен в правило или сохраните как глобальный через «Тестирование → Сохранить как глобальный токен».</li>
                         <li>Создайте правило: задайте название, условие (визуально или в коде), укажите один или несколько <code>chatId</code>, токен и шаблон (опционально).</li>
                         <li>Отправляйте вебхуки на указанный ниже URL или используйте пример curl.</li>
                     </ol>
@@ -1890,6 +1890,8 @@
                     <div class="webhook-url" id="webhookUrlModal" style="background: hsl(var(--card)); padding: 0.75rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); font-family: monospace; word-break: break-all;"></div>
                     <div style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
                         <button class="btn-secondary btn-small" onclick="copyWebhookUrlFromModal()">Копировать URL</button>
+                        <small style="color: hsl(var(--muted-foreground));">Поддерживается специальный event <code>webhook.verify</code> для проверки доступности.</small>
+                    </div>
                         <small style="color: hsl(var(--muted-foreground));">Поддерживается специальный event <code>webhook.verify</code> для проверки доступности.</small>
                     </div>
 
@@ -1940,6 +1942,7 @@
         let authToken = localStorage.getItem('authToken');
         let currentPage = 1;
         const logsPerPage = 10;
+        let _pendingImportRules = null;
         let _pendingImportRules = null;
 
         // Initialize on page load
@@ -2026,7 +2029,10 @@
             document.getElementById('webhookUrl').addEventListener('click', copyWebhookUrl);
             
             // Import file
-            document.getElementById('importFile').addEventListener('change', importRules);
+            const importFileEl = document.getElementById('importFile');
+            if (importFileEl) {
+                importFileEl.addEventListener('change', importRules);
+            }
         }
 
 
@@ -2329,6 +2335,8 @@
         async function showMainApp() {
             document.getElementById('loginContainer').classList.add('hidden');
             document.getElementById('mainApp').style.display = 'block';
+            
+            setupEventListeners();
             
             // Загружаем информацию о текущем пользователе
             try {
@@ -3546,9 +3554,48 @@
             };
             reader.readAsText(file);
         }
-            
-            // Reset the input for future imports
-            document.getElementById('importFile').value = '';
+
+        function showInstructionsModal() {
+            const modal = document.getElementById('instructionsModal');
+            if (modal) {
+                updateWebhookUrl(); // Обновляем URL перед показом
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeInstructionsModal(event) {
+            // Если событие передано и клик был не по фону модального окна, не закрываем
+            if (event && event.target !== event.currentTarget && event.target.closest('.modal-content')) {
+                return;
+            }
+            const modal = document.getElementById('instructionsModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function copyWebhookUrlFromModal() {
+            const urlElement = document.getElementById('webhookUrlModal');
+            if (urlElement) {
+                const url = urlElement.textContent;
+                navigator.clipboard.writeText(url).then(() => {
+                    showAlert('rulesAlert', 'Webhook URL скопирован в буфер обмена', 'success');
+                }).catch(err => {
+                    showAlert('rulesAlert', 'Ошибка копирования: ' + err.message, 'error');
+                });
+            }
+        }
+
+        function copyWebhookUrl() {
+            const url = document.getElementById('webhookUrl').textContent;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = document.querySelector('button[onclick="copyWebhookUrl()"]');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '✅ Скопировано!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
         }
 
         function showImportTokenModal() {
@@ -3637,49 +3684,6 @@
             } finally {
                 document.getElementById('importFile').value = '';
             }
-        }
-
-        function showInstructionsModal() {
-            const modal = document.getElementById('instructionsModal');
-            if (modal) {
-                updateWebhookUrl(); // Обновляем URL перед показом
-                modal.style.display = 'flex';
-            }
-        }
-
-        function closeInstructionsModal(event) {
-            // Если событие передано и клик был не по фону модального окна, не закрываем
-            if (event && event.target !== event.currentTarget && event.target.closest('.modal-content')) {
-                return;
-            }
-            const modal = document.getElementById('instructionsModal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        function copyWebhookUrlFromModal() {
-            const urlElement = document.getElementById('webhookUrlModal');
-            if (urlElement) {
-                const url = urlElement.textContent;
-                navigator.clipboard.writeText(url).then(() => {
-                    showAlert('rulesAlert', 'Webhook URL скопирован в буфер обмена', 'success');
-                }).catch(err => {
-                    showAlert('rulesAlert', 'Ошибка копирования: ' + err.message, 'error');
-                });
-            }
-        }
-
-        function copyWebhookUrl() {
-            const url = document.getElementById('webhookUrl').textContent;
-            navigator.clipboard.writeText(url).then(() => {
-                const btn = document.querySelector('button[onclick="copyWebhookUrl()"]');
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '✅ Скопировано!';
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                }, 2000);
-            });
         }
 
         function showAlert(elementId, message, type) {
