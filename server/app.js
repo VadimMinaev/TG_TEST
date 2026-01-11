@@ -1241,10 +1241,15 @@ saveLogs();
 res.json({ status: 'ok' });
 }
 });
+
+// SPA fallback: serve index.html for all routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 const server = app.listen(PORT, () => {
 console.log(`Server on http://localhost:${PORT}`);
 });
 process.on('SIGTERM', () => server.close(() => process.exit(0)));
-});
 
 
