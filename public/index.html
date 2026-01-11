@@ -1282,7 +1282,7 @@
     <div class="login-container" id="loginContainer">
         <div class="login-card">
             <h1>🔐 Вход</h1>
-            <p>Telegram Webhook Integration</p>
+            <p>интеграция с TG</p>
 
             <div id="loginAlert" class="login-alert"></div>
 
@@ -1306,7 +1306,7 @@
     <div class="main-app" id="mainApp" style="display: none;">
         <div class="container">
             <header>
-                <h1>📱 Telegram Webhook Integration 💲VadminLink</h1>
+                <h1>📱 Интреграция с TG 💲VadminLink</h1>
                 <div class="header-actions">
                     <span id="currentUsername" style="margin-right: 1rem; color: hsl(var(--muted-foreground));"></span>
                     <button class="logout-btn" onclick="showChangePasswordModal()" style="margin-right: 0.5rem;">
@@ -2609,15 +2609,48 @@
             `;
         }
 
+        function sortRules(field) {
+            if (window.rulesSortField === field) {
+                window.rulesSortDirection = window.rulesSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                window.rulesSortField = field;
+                window.rulesSortDirection = 'asc';
+            }
+            loadRules(); // Перезагружаем правила с новой сортировкой
+        }
+
         function displayRules(rules) {
             const container = document.getElementById('rulesList');
             const searchQuery = document.getElementById('rulesSearch').value.toLowerCase();
+            
+            // Переменные для сортировки (сохраняются между вызовами)
+            if (typeof window.rulesSortField === 'undefined') {
+                window.rulesSortField = 'name';
+                window.rulesSortDirection = 'asc';
+            }
             
             const filteredRules = rules.filter(rule => 
                 rule.name.toLowerCase().includes(searchQuery) ||
                 rule.condition.toLowerCase().includes(searchQuery) ||
                 rule.chatId.toString().includes(searchQuery)
-            );
+            ).sort((a, b) => {
+                let aVal = a[window.rulesSortField];
+                let bVal = b[window.rulesSortField];
+                
+                if (window.rulesSortField === 'enabled') {
+                    aVal = aVal ? 1 : 0;
+                    bVal = bVal ? 1 : 0;
+                } else {
+                    aVal = (aVal || '').toString().toLowerCase();
+                    bVal = (bVal || '').toString().toLowerCase();
+                }
+                
+                if (window.rulesSortDirection === 'asc') {
+                    return aVal > bVal ? 1 : aVal < bVal ? -1 : 0;
+                } else {
+                    return aVal < bVal ? 1 : aVal > bVal ? -1 : 0;
+                }
+            });
             
             if (filteredRules.length === 0) {
                 container.innerHTML = '<p style="color: hsl(var(--muted-foreground)); text-align: center; padding: 40px 20px;">Правила не найдены</p>';
@@ -2629,11 +2662,10 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="border-bottom: 2px solid hsl(var(--border)); text-align: left;">
-                            <th style="padding: 0.5rem; font-weight: 600;">Статус</th>
-                            <th style="padding: 0.5rem; font-weight: 600;">Название</th>
-                            <th style="padding: 0.5rem; font-weight: 600;">Условие</th>
-                            <th style="padding: 0.5rem; font-weight: 600;">Канал</th>
-                            <th style="padding: 0.5rem; font-weight: 600;">Действия</th>
+                            <th style="padding: 0.5rem; font-weight: 600; cursor: pointer;" onclick="sortRules('enabled')">Статус ${window.rulesSortField === 'enabled' ? (window.rulesSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th style="padding: 0.5rem; font-weight: 600; cursor: pointer;" onclick="sortRules('name')">Название ${window.rulesSortField === 'name' ? (window.rulesSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th style="padding: 0.5rem; font-weight: 600; cursor: pointer;" onclick="sortRules('condition')">Условие ${window.rulesSortField === 'condition' ? (window.rulesSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
+                            <th style="padding: 0.5rem; font-weight: 600; cursor: pointer;" onclick="sortRules('chatId')">Канал ${window.rulesSortField === 'chatId' ? (window.rulesSortDirection === 'asc' ? '↑' : '↓') : ''}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -2656,13 +2688,6 @@
                                 <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${escapeHtml(rule.name)}</td>
                                 <td style="padding: 0.75rem 0.5rem;"><code style="font-size: 0.875rem; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(rule.condition)}</code></td>
                                 <td style="padding: 0.75rem 0.5rem;"><code>${escapeHtml(rule.chatId)}</code></td>
-                                <td style="padding: 0.75rem 0.5rem;">
-                                    <div style="display: flex; gap: 0.25rem;">
-                                        ${canEdit ? `<button class="btn-secondary btn-small" onclick="event.stopPropagation(); duplicateRule(${rule.id})" title="Дублировать">📋</button>` : ''}
-                                        ${canEdit ? `<button class="btn-primary btn-small" onclick="event.stopPropagation(); editRule(${rule.id})" title="Редактировать">✏️</button>` : ''}
-                                        ${canEdit ? `<button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteRule(${rule.id})" title="Удалить">🗑️</button>` : ''}
-                                    </div>
-                                </td>
                             </tr>
                         `}).join('')}
                     </tbody>
@@ -2781,6 +2806,19 @@
                 
                 // Отображаем детали
                 detailsContainer.innerHTML = `
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                        ${canEdit ? `<button class="btn-secondary" onclick="event.stopPropagation(); duplicateRule(${rule.id})">📋 Дублировать</button>` : ''}
+                        ${canEdit ? `<button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>` : ''}
+                        <button class="btn-primary" onclick="event.stopPropagation(); createNewRule()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Создать новое правило
+                        </button>
+                        ${canEdit ? `<button class="btn-danger" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>` : ''}
+                    </div>
+                    
                     <div style="margin-bottom: 1rem;">
                         <h4 style="margin: 0 0 0.5rem 0; color: hsl(var(--muted-foreground));">Информация о правиле</h4>
                         <div style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); position: relative;">
@@ -2831,19 +2869,6 @@
                                 </div>
                             ` : '<div style="margin-bottom: 0.75rem; color: hsl(var(--muted-foreground));">Используется шаблон по умолчанию</div>'}
                         </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
-                        ${canEdit ? `<button class="btn-secondary" onclick="event.stopPropagation(); duplicateRule(${rule.id})">📋 Дублировать</button>` : ''}
-                        ${canEdit ? `<button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>` : ''}
-                        <button class="btn-primary" onclick="event.stopPropagation(); createNewRule()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="12" y1="5" x2="12" y2="19"></line>
-                                <line x1="5" y1="12" x2="19" y2="12"></line>
-                            </svg>
-                            Создать новое правило
-                        </button>
-                        ${canEdit ? `<button class="btn-danger" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>` : ''}
                     </div>
                 `;
             } catch (error) {
