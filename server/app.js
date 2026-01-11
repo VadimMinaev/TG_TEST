@@ -777,7 +777,9 @@ const newRule = {
   botToken, 
   enabled: req.body.enabled !== false, 
   encoding: 'utf8',
-  authorId  // ← сохраняем автора
+  authorId,  // ← сохраняем автора
+  created_at: new Date().toISOString(),
+  updated_at: new Date().toISOString()
 };
 if (process.env.DATABASE_URL) {
 await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
@@ -824,7 +826,7 @@ return res.status(400).json({ error: 'Invalid bot token' });
 }
 ruleData.botToken = botToken;
 }
-const updated = { ...rule, ...ruleData };
+const updated = { ...rule, ...ruleData, updated_at: new Date().toISOString() };
 if (!updated.botToken) {
 return res.status(400).json({ error: 'Bot token is required' });
 }

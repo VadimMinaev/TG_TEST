@@ -2,6 +2,10 @@
     "chat.tools.terminal.autoApprove": {
         "git push": true,
         "git add": true,
-        "git commit": true
+        "git commit": true,
+        "/^node -c c:\\\\TG_TEST\\\\server\\\\app\\.js$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
     }
 }
