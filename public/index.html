@@ -1945,7 +1945,6 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
-            setupEventListeners();
             loadSavedTheme();
             updateWebhookUrl();
         });
@@ -2329,6 +2328,8 @@
         async function showMainApp() {
             document.getElementById('loginContainer').classList.add('hidden');
             document.getElementById('mainApp').style.display = 'block';
+            
+            setupEventListeners();
             
             // Загружаем информацию о текущем пользователе
             try {
@@ -3571,6 +3572,11 @@
                         const body = { name: rule.name, condition: rule.condition, messageTemplate: rule.messageTemplate || null, enabled: rule.enabled !== false };
                         if (Array.isArray(rule.chatIds) && rule.chatIds.length > 0) body.chatIds = rule.chatIds; else if (rule.chatId) body.chatId = rule.chatId;
                         const token = (rule.botToken && typeof rule.botToken === 'string' && !rule.botToken.includes('*') && rule.botToken !== 'YOUR_TOKEN') ? rule.botToken : fallbackToken;
+                        if (!token || typeof token !== 'string' || !token.trim()) {
+                            console.error(`Пропущено правило "${rule.name}": отсутствует валидный токен`);
+                            failedCount++;
+                            continue;
+                        }
                         body.botToken = token;
 
                         const createResponse = await fetch('/api/rules', { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
@@ -3593,12 +3599,24 @@
         }
 
         function importRules(e) {
+            console.log('importRules called', e.target.files);
             const file = e.target.files[0];
-            if (!file) return;
+            if (!file) {
+                console.log('No file selected');
+                return;
+            }
+            console.log('File selected:', file.name, file.size, file.type);
+            if (!file.name.endsWith('.json')) {
+                showAlert('rulesAlert', 'Выберите файл с расширением .json', 'error');
+                document.getElementById('importFile').value = '';
+                return;
+            }
             const reader = new FileReader();
             reader.onload = async function(event) {
                 try {
+                    console.log('File loaded, parsing JSON');
                     const rules = JSON.parse(event.target.result);
+                    console.log('Parsed rules:', rules);
                     if (!Array.isArray(rules)) throw new Error('Неверный формат файла: ожидался массив правил');
                     if (rules.length === 0) throw new Error('Файл не содержит правил');
                     if (!confirm(`Вы уверены, что хотите импортировать ${rules.length} правил? Существующие правила, которые вы можете удалить, будут удалены.`)) return;
@@ -3611,6 +3629,11 @@
                     showAlert('rulesAlert', 'Ошибка импорта: ' + error.message, 'error');
                     document.getElementById('importFile').value = '';
                 }
+            };
+            reader.onerror = function() {
+                console.error('File read error');
+                showAlert('rulesAlert', 'Ошибка чтения файла', 'error');
+                document.getElementById('importFile').value = '';
             };
             reader.readAsText(file);
         }
