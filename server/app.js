@@ -1245,3 +1245,6 @@ const server = app.listen(PORT, () => {
 console.log(`Server on http://localhost:${PORT}`);
 });
 process.on('SIGTERM', () => server.close(() => process.exit(0)));
+});
+
+
