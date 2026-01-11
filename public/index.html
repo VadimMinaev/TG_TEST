@@ -2601,6 +2601,7 @@
                         </div>
                     </div>
                     <div class="rule-actions">
+                        <button class="btn-secondary btn-small" onclick="event.stopPropagation(); duplicateRule(${rule.id})">📋 Дублировать</button>
                         <button class="btn-primary btn-small" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>
                         <button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteRule(${rule.id})">🗑️ Удалить</button>
                     </div>
@@ -2632,10 +2633,17 @@
                             <th style="padding: 0.5rem; font-weight: 600;">Название</th>
                             <th style="padding: 0.5rem; font-weight: 600;">Условие</th>
                             <th style="padding: 0.5rem; font-weight: 600;">Канал</th>
+                            <th style="padding: 0.5rem; font-weight: 600;">Действия</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${filteredRules.map(rule => `
+                        ${filteredRules.map(rule => {
+                            const canEdit = currentUserData && (
+                                currentUserData.username === 'vadmin' || 
+                                (rule.authorId && typeof rule.authorId === 'number' && rule.authorId === currentUserData.userId) ||
+                                (rule.authorId === 'vadmin' && currentUserData.username === 'vadmin')
+                            );
+                            return `
                             <tr class="rule-row" data-rule-id="${rule.id}" style="border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 0.2s;" 
                                 onmouseover="this.style.background='hsl(var(--accent))'" 
                                 onmouseout="this.style.background='transparent'"
@@ -2648,8 +2656,15 @@
                                 <td style="padding: 0.75rem 0.5rem; font-weight: 500;">${escapeHtml(rule.name)}</td>
                                 <td style="padding: 0.75rem 0.5rem;"><code style="font-size: 0.875rem; max-width: 200px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(rule.condition)}</code></td>
                                 <td style="padding: 0.75rem 0.5rem;"><code>${escapeHtml(rule.chatId)}</code></td>
+                                <td style="padding: 0.75rem 0.5rem;">
+                                    <div style="display: flex; gap: 0.25rem;">
+                                        ${canEdit ? `<button class="btn-secondary btn-small" onclick="event.stopPropagation(); duplicateRule(${rule.id})" title="Дублировать">📋</button>` : ''}
+                                        ${canEdit ? `<button class="btn-primary btn-small" onclick="event.stopPropagation(); editRule(${rule.id})" title="Редактировать">✏️</button>` : ''}
+                                        ${canEdit ? `<button class="btn-danger btn-small" onclick="event.stopPropagation(); deleteRule(${rule.id})" title="Удалить">🗑️</button>` : ''}
+                                    </div>
+                                </td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             `;
@@ -2819,6 +2834,7 @@
                     </div>
                     
                     <div style="display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap;">
+                        ${canEdit ? `<button class="btn-secondary" onclick="event.stopPropagation(); duplicateRule(${rule.id})">📋 Дублировать</button>` : ''}
                         ${canEdit ? `<button class="btn-primary" onclick="event.stopPropagation(); editRule(${rule.id})">✏️ Редактировать</button>` : ''}
                         <button class="btn-primary" onclick="event.stopPropagation(); createNewRule()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -3123,6 +3139,61 @@
                 await loadRules();
             } catch (error) {
                 showAlert('rulesAlert', 'Ошибка при удалении: ' + error.message, 'error');
+            }
+        }
+
+        async function duplicateRule(id) {
+            try {
+                // Загружаем оригинальное правило
+                const response = await fetch(`${API_BASE}/rules/${id}`, {
+                    headers: getHeaders()
+                });
+                
+                if (response.status === 401) {
+                    showAlert('rulesAlert', 'Сессия истекла. Пожалуйста, войдите снова.', 'error');
+                    authToken = null;
+                    localStorage.removeItem('authToken');
+                    showLoginScreen();
+                    return;
+                }
+                
+                if (!response.ok) throw new Error('Не удалось загрузить правило для дублирования');
+                
+                const originalRule = await response.json();
+                
+                // Создаем дубликат с измененным названием
+                const duplicateData = {
+                    name: `${originalRule.name} (копия)`,
+                    condition: originalRule.condition,
+                    chatId: originalRule.chatId,
+                    botToken: originalRule.botToken,
+                    messageTemplate: originalRule.messageTemplate || null,
+                    enabled: false // Отключаем дубликат по умолчанию
+                };
+                
+                const createResponse = await fetch(`${API_BASE}/rules`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(duplicateData)
+                });
+                
+                if (createResponse.status === 401) {
+                    showAlert('rulesAlert', 'Сессия истекла. Пожалуйста, войдите снова.', 'error');
+                    authToken = null;
+                    localStorage.removeItem('authToken');
+                    showLoginScreen();
+                    return;
+                }
+                
+                if (!createResponse.ok) {
+                    const errorData = await createResponse.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || 'Failed to create duplicate rule');
+                }
+                
+                showAlert('rulesAlert', 'Правило успешно дублировано', 'success');
+                await loadRules();
+            } catch (error) {
+                showAlert('rulesAlert', 'Ошибка дублирования: ' + error.message, 'error');
             }
         }
 
