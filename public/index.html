@@ -1945,6 +1945,7 @@
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
             checkAuthStatus();
+            setupEventListeners();
             loadSavedTheme();
             updateWebhookUrl();
         });
@@ -2025,7 +2026,10 @@
             document.getElementById('webhookUrl').addEventListener('click', copyWebhookUrl);
             
             // Import file
-            document.getElementById('importFile').addEventListener('change', importRules);
+            const importFileEl = document.getElementById('importFile');
+            if (importFileEl) {
+                importFileEl.addEventListener('change', importRules);
+            }
         }
 
 
