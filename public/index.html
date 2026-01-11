@@ -1866,39 +1866,48 @@
                 <button onclick="closeInstructionsModal()" style="margin-left: auto; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: hsl(var(--muted-foreground));">&times;</button>
             </div>
             <div class="modal-body">
-                <div style="margin-bottom: 2rem;">
+                <div style="margin-bottom: 2rem; line-height:1.4;">    
                     <h3>🚀 Быстрый старт</h3>
                     <ol>
-                        <li>Получите токен бота от <code>@BotFather</code> в Telegram</li>
-                        <li>Введите токен в поле "Токен Telegram бота" и создайте правило</li>
-                        <li>Настройте условие для фильтрации вебхуков</li>
+                        <li>Получите токен бота от <code>@BotFather</code> в Telegram.</li>
+                        <li>Добавьте токен в правило или сохраните как глобальный через «Тестирование → Сохранить как глобальный токен».</li>  
+                        <li>Создайте правило: задайте название, условие (визуально или в коде), укажите один или несколько <code>chatId</code>, токен и шаблон (опционально).</li>
+                        <li>Отправляйте вебхуки на указанный ниже URL или используйте пример curl.</li>
                     </ol>
 
-                    <h3 style="margin-top: 1.5rem;">📝 Примеры условий</h3>
+                    <h3 style="margin-top: 1rem;">📝 Примеры условий (кратко)</h3>
                     <ul>
-                        <li><code>payload.team_id === 40</code> - проверка по ID команды (число)</li>
-                        <li><code>payload.team.name === "Поддержка конечных пользователей"</code> - проверка по названию команды</li>
-                        <li><code>payload.status === "error"</code> - проверка статуса</li>
-                        <li><code>payload.impact === "high"</code> - проверка влияния</li>
-                        <li><code>payload.subject.includes("сервер")</code> - поиск в теме</li>
-                        <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> - проверка комментариев</li>
-                        <li><code>new Date(payload.created_at) > new Date(Date.now() - 3600000)</code> - проверка времени создания</li>
-                        <li><code>payload.category === "incident" && payload.impact === "high"</code> - несколько условий</li>
+                        <li><code>payload.team_id === 40</code> — проверка по числовому ID.</li>
+                        <li><code>payload.team.name === "Поддержка конечных пользователей"</code> — по названию.</li>
+                        <li><code>payload.status === "error"</code> — статус.</li>
+                        <li><code>payload.note && payload.note.some(n => n.text.includes("срочно"))</code> — поиск в массивах.</li>
+                        <li><code>new Date(payload.created_at) > Date.now() - 3600000</code> — проверка по времени (последний час).</li>    
+                        <li><em>Сложные выражения</em>: объединяйте через <code>&&</code> / <code>||</code>, используйте методы массива, регулярки и т.д.</li>
                     </ul>
 
-                    <h3 style="margin-top: 1.5rem;">🔗 Webhook URL</h3>
-                    <p>Отправляйте POST запросы на этот адрес:</p>
+                    <h3 style="margin-top: 1rem;">🔗 Webhook URL</h3>  
+                    <p>Отправляйте POST запросы на этот адрес (пример ниже):</p>
                     <div class="webhook-url" id="webhookUrlModal" style="background: hsl(var(--card)); padding: 0.75rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); font-family: monospace; word-break: break-all;"></div>
-                    <button class="btn-secondary btn-small" onclick="copyWebhookUrlFromModal()" style="margin-top: 0.5rem;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                        </svg>
-                        Копировать
-                    </button>
+                    <div style="margin-top:0.5rem; display:flex; gap:0.5rem; align-items:center;">
+                        <button class="btn-secondary btn-small" onclick="copyWebhookUrlFromModal()">Копировать URL</button>
+                        <small style="color: hsl(var(--muted-foreground));">Поддерживается специальный event <code>webhook.verify</code> для проверки доступности.</small>
+                    </div>
 
-                    <h3 style="margin-top: 1.5rem;">📋 Пример запроса</h3>
+                    <h3 style="margin-top: 1rem;">📋 Пример запроса</h3>
                     <pre id="webhookExample" style="background: hsl(var(--card)); padding: 1rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); overflow-x: auto; font-size: 0.875rem;"></pre>
+
+                    <h3 style="margin-top: 1rem;">🛠 Отладка и советы</h3>
+                    <ul>
+                        <li>Перед сохранением условия используйте локальный тестер (вкладка «Тестирование»).</li>
+                        <li>Если сообщения не доходят — проверьте логи в «История» и статус очереди в «Очередь сообщений».</li>
+                        <li>Для массовой нагрузки используйте PostgreSQL (укажите <code>DATABASE_URL</code>), чтобы включить очередь и повторные попытки.</li>
+                    </ul>
+
+                    <h3 style="margin-top: 1rem;">⚠️ Безопасность</h3> 
+                    <ul>
+                        <li>Условия выполняются через <code>new Function('payload', ...)</code> — не вставляйте произвольный небезопасный код из ненадёжных источников.</li>
+                        <li>Не храните токены в открытых репозиториях. Используйте переменные окружения или защищённую БД.</li>
+                    </ul>
                 </div>
             </div>
         </div>
