@@ -2362,6 +2362,11 @@
         }
 
         async function checkAuthStatus() {
+            if (!authToken) {
+                showLoginScreen();
+                return;
+            }
+
             try {
                 const response = await fetch(`${API_BASE}/auth-status`, {
                     headers: authToken ? { 'Authorization': `Bearer ${authToken}` } : {}
@@ -2371,9 +2376,15 @@
                 if (data.authenticated) {
                     showMainApp();
                 } else {
+                    // Токен истек или невалиден
+                    authToken = null;
+                    localStorage.removeItem('authToken');
                     showLoginScreen();
                 }
             } catch (error) {
+                // Ошибка сети или сервера - показываем логин
+                authToken = null;
+                localStorage.removeItem('authToken');
                 showLoginScreen();
             }
         }
@@ -2419,6 +2430,13 @@
             // Загружаем информацию о текущем пользователе
             try {
                 const response = await fetch(`${API_BASE}/me`, { headers: getHeaders() });
+                if (response.status === 401) {
+                    // Токен истек
+                    authToken = null;
+                    localStorage.removeItem('authToken');
+                    showLoginScreen();
+                    return;
+                }
                 if (response.ok) {
                     const data = await response.json();
                     currentUserData = data; // Сохраняем данные пользователя
@@ -2884,6 +2902,13 @@
         async function saveRule(e) {
             e.preventDefault();
 
+            // Проверяем, что пользователь авторизован
+            if (!authToken) {
+                showAlert('addAlert', 'Сессия истекла. Пожалуйста, войдите снова.', 'error');
+                showLoginScreen();
+                return;
+            }
+
             const ruleName = document.getElementById('ruleName').value.trim();
             const condition = document.getElementById('condition').value.trim();
             const chatId = document.getElementById('chatId').value.trim();
@@ -2925,7 +2950,18 @@
                     })
                 });
 
-                if (!response.ok) throw new Error('Failed to save rule');
+                if (response.status === 401) {
+                    showAlert('addAlert', 'Сессия истекла. Пожалуйста, войдите снова.', 'error');
+                    authToken = null;
+                    localStorage.removeItem('authToken');
+                    showLoginScreen();
+                    return;
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    throw new Error(errorData.error || 'Failed to save rule');
+                }
 
                 const savedRule = await response.json();
 

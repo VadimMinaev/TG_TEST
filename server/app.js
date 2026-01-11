@@ -218,8 +218,17 @@ console.error('Log error:', e.message);
 const auth = (req, res, next) => {
 const token = req.headers.authorization?.replace('Bearer ', '');
 if (token && sessions.has(token)) {
-req.user = sessions.get(token);
-return next();
+    const session = sessions.get(token);
+    // Проверяем, не истекла ли сессия (24 часа)
+    const now = Date.now();
+    if (now - session.timestamp > 24 * 60 * 60 * 1000) {
+        sessions.delete(token);
+        saveSessions();
+        res.status(401).json({ error: 'Session expired' });
+        return;
+    }
+    req.user = session;
+    return next();
 }
 res.status(401).json({ error: 'Unauthorized' });
 };
@@ -510,6 +519,15 @@ userId: req.user.userId || null
 app.get('/api/auth-status', (req, res) => {
 const token = req.headers.authorization?.replace('Bearer ', '');
 const session = token ? sessions.get(token) : null;
+
+// Проверяем, не истекла ли сессия
+if (session && Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
+    sessions.delete(token);
+    saveSessions();
+    res.json({ authenticated: false });
+    return;
+}
+
 res.json({
 authenticated: !!session,
 username: session ? session.username : null
