@@ -1952,8 +1952,10 @@
 
         function setupEventListeners() {
             // Forms and buttons
-            document.getElementById('loginForm').addEventListener('submit', handleLogin);
-            document.getElementById('ruleForm').addEventListener('submit', saveRule);
+            const loginForm = document.getElementById('loginForm');
+            if (loginForm) loginForm.addEventListener('submit', handleLogin);
+            const ruleForm = document.getElementById('ruleForm');
+            if (ruleForm) ruleForm.addEventListener('submit', saveRule);
             
             // Tab switching
             document.querySelectorAll('.tab').forEach(tab => {
@@ -1977,7 +1979,8 @@
             });
             
             // Theme toggle
-            document.getElementById('themeToggle').addEventListener('click', toggleTheme);
+            const themeToggle = document.getElementById('themeToggle');
+            if (themeToggle) themeToggle.addEventListener('click', toggleTheme);
             
             // Condition builder
             document.querySelectorAll('input[name="conditionMode"]').forEach(radio => {
@@ -1992,25 +1995,34 @@
             });
             
             // Visual condition editor
-            document.querySelector('.field-select').addEventListener('change', updateConditionPreview);
-            document.querySelector('.operator-select').addEventListener('change', updateConditionPreview);
-            document.querySelector('.value-input').addEventListener('input', updateConditionPreview);
-            document.querySelector('.add-condition-btn').addEventListener('click', addConditionRow);
+            const fieldSelect = document.querySelector('.field-select');
+            if (fieldSelect) fieldSelect.addEventListener('change', updateConditionPreview);
+            const operatorSelect = document.querySelector('.operator-select');
+            if (operatorSelect) operatorSelect.addEventListener('change', updateConditionPreview);
+            const valueInput = document.querySelector('.value-input');
+            if (valueInput) valueInput.addEventListener('input', updateConditionPreview);
+            const addConditionBtn = document.querySelector('.add-condition-btn');
+            if (addConditionBtn) addConditionBtn.addEventListener('click', addConditionRow);
             
             // Code condition editor
-            document.getElementById('conditionCode').addEventListener('input', updateCodeCondition);
+            const conditionCode = document.getElementById('conditionCode');
+            if (conditionCode) conditionCode.addEventListener('input', updateCodeCondition);
             
             // Password toggle
-            document.querySelector('.toggle-password').addEventListener('click', function() {
-                togglePasswordVisibility('#botToken', this);
+            document.querySelectorAll('.toggle-password').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    togglePasswordVisibility('#botToken', this);
+                });
             });
-            
-            document.querySelector('.toggle-password-test').addEventListener('click', function() {
-                togglePasswordVisibility('#testBotToken', this);
+            document.querySelectorAll('.toggle-password-test').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    togglePasswordVisibility('#testBotToken', this);
+                });
             });
             
             // Rules search
-            document.getElementById('rulesSearch').addEventListener('input', function() {
+            const rulesSearch = document.getElementById('rulesSearch');
+            if (rulesSearch) rulesSearch.addEventListener('input', function() {
                 filterRules(this.value);
             });
             
@@ -2023,7 +2035,8 @@
             }
             
             // Copy webhook URL
-            document.getElementById('webhookUrl').addEventListener('click', copyWebhookUrl);
+            const webhookUrl = document.getElementById('webhookUrl');
+            if (webhookUrl) webhookUrl.addEventListener('click', copyWebhookUrl);
             
             // Import file
             const importFileEl = document.getElementById('importFile');
@@ -2333,7 +2346,7 @@
             document.getElementById('loginContainer').classList.add('hidden');
             document.getElementById('mainApp').style.display = 'block';
             
-            setupEventListeners();
+            // setupEventListeners(); // Уже вызван в DOMContentLoaded
             
             // Загружаем информацию о текущем пользователе
             try {

@@ -12,10 +12,28 @@ let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
+const SESSIONS_FILE = path.join(__dirname, '../data/sessions.json');
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
-const sessions = new Map(); // token -> { username, timestamp }
-// ЦЕНТРАЛИЗОВАННАЯ СИСТЕМА ПЕРЕВОДОВ
+let sessions = new Map();
+// Загружаем сессии из файла
+if (fs.existsSync(SESSIONS_FILE)) {
+    try {
+        const sessionsData = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
+        sessions = new Map(sessionsData);
+    } catch (err) {
+        console.error('Error loading sessions:', err);
+        sessions = new Map();
+    }
+}
+// Функция для сохранения сессий
+function saveSessions() {
+    try {
+        fs.writeFileSync(SESSIONS_FILE, JSON.stringify([...sessions]));
+    } catch (err) {
+        console.error('Error saving sessions:', err);
+    }
+}
 const fieldTranslations = {
 id: 'ID',
 subject: 'Тема',
@@ -454,6 +472,7 @@ const { username, password } = req.body;
 if (username === CRED_USER && password === CRED_PASS) {
 const token = Date.now().toString();
 sessions.set(token, { username: CRED_USER, timestamp: Date.now() });
+saveSessions();
 return res.json({ token, status: 'success', username: CRED_USER });
 }
 // Проверка пользователей из БД
@@ -466,6 +485,7 @@ const match = await bcrypt.compare(password, user.password_hash);
 if (match) {
 const token = Date.now().toString();
 sessions.set(token, { username: user.username, userId: user.id, timestamp: Date.now() });
+saveSessions();
 return res.json({ token, status: 'success', username: user.username });
 }
 }
@@ -478,6 +498,7 @@ res.status(401).json({ error: 'Invalid credentials' });
 app.post('/api/logout', auth, (req, res) => {
 const token = req.headers.authorization?.replace('Bearer ', '');
 if (token) sessions.delete(token);
+saveSessions();
 res.json({ status: 'ok' });
 });
 app.get('/api/me', auth, (req, res) => {
