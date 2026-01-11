@@ -1427,6 +1427,13 @@
                                         <div class="rules-search">
                                             <input type="text" id="rulesSearch" placeholder="Поиск правил...">
                                         </div>
+                                        <button class="btn-secondary btn-small" onclick="showExportImportModal()" title="Экспорт/Импорт">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                                <polyline points="7,10 12,15 17,10"></polyline>
+                                                <line x1="12" y1="15" x2="12" y2="3"></line>
+                                            </svg>
+                                        </button>
                                         <button class="btn-secondary btn-small" id="toggleSettingsBtn" onclick="showInstructionsModal()" title="Инструкции">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                                 <circle cx="12" cy="12" r="10"></circle>
@@ -1439,14 +1446,7 @@
                                 
                                 <div id="rulesAlert" class="alert"></div>
                                 
-                                <div style="margin-bottom: 1rem;">
-                                    <div class="button-group">
-                                        <button class="btn-secondary" onclick="exportRules()">Экспортировать все правила</button>
-                                        <button class="btn-secondary" onclick="document.getElementById('importFile').click()">Импортировать правила</button>
-                                        <input type="file" id="importFile" accept=".json" style="display: none;">
-                                    </div>
-                                    <small class="form-hint">Экспортируйте правила для резервного копирования или переноса между экземплярами.</small>
-                                </div>
+                                <input type="file" id="importFile" accept=".json" style="display: none;">
 
                                 <div class="rules-layout" style="display: flex; gap: 1rem; min-height: 500px;">
                                     <div class="rules-list-column" style="flex: 0 0 500px; border-right: 1px solid hsl(var(--border)); padding-right: 1rem;">
@@ -1908,6 +1908,27 @@
                         <li>Условия выполняются через <code>new Function('payload', ...)</code> — не вставляйте произвольный небезопасный код из ненадёжных источников.</li>
                         <li>Не храните токены в открытых репозиториях. Используйте переменные окружения или защищённую БД.</li>
                     </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="exportImportModal" class="modal" style="display: none;" onclick="closeExportImportModal(event)">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2>📤 Экспорт/Импорт правил</h2>
+                <button class="icon-btn" onclick="closeExportImportModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 2rem;">
+                    <h3>Экспорт</h3>
+                    <p>Экспортируйте все правила для резервного копирования или переноса между экземплярами.</p>
+                    <button class="btn-secondary" onclick="exportRules(); closeExportImportModal();">Экспортировать все правила</button>
+                </div>
+                <div>
+                    <h3>Импорт</h3>
+                    <p>Импортируйте правила из JSON файла. Существующие правила могут быть перезаписаны.</p>
+                    <button class="btn-secondary" onclick="document.getElementById('importFile').click(); closeExportImportModal();">Импортировать правила</button>
                 </div>
             </div>
         </div>
@@ -3583,6 +3604,24 @@
                 return;
             }
             const modal = document.getElementById('instructionsModal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function showExportImportModal() {
+            const modal = document.getElementById('exportImportModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        }
+
+        function closeExportImportModal(event) {
+            // Если событие передано и клик был не по фону модального окна, не закрываем
+            if (event && event.target !== event.currentTarget && event.target.closest('.modal-content')) {
+                return;
+            }
+            const modal = document.getElementById('exportImportModal');
             if (modal) {
                 modal.style.display = 'none';
             }
