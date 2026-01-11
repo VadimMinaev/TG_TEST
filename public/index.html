@@ -1922,8 +1922,8 @@
             <div class="modal-body">
                 <div style="margin-bottom: 2rem;">
                     <h3>Экспорт</h3>
-                    <p>Экспортируйте все правила для резервного копирования или переноса между экземплярами.</p>
-                    <button class="btn-secondary" onclick="exportRules(); closeExportImportModal();">Экспортировать все правила</button>
+                    <p>Выберите правила в списке (чекбоксы) или экспортируйте все правила для резервного копирования или переноса между экземплярами.</p>
+                    <button class="btn-secondary" onclick="exportRules(); closeExportImportModal();">Экспортировать выбранные правила</button>
                 </div>
                 <div>
                     <h3>Импорт</h3>
@@ -2049,6 +2049,13 @@
             const rulesSearch = document.getElementById('rulesSearch');
             if (rulesSearch) rulesSearch.addEventListener('input', function() {
                 filterRules(this.value);
+            });
+            
+            // Select all rules checkbox
+            const selectAllRules = document.getElementById('selectAllRules');
+            if (selectAllRules) selectAllRules.addEventListener('change', function() {
+                const checkboxes = document.querySelectorAll('.rule-checkbox');
+                checkboxes.forEach(cb => cb.checked = this.checked);
             });
             
             // Queue status filter
@@ -2567,6 +2574,7 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="border-bottom: 2px solid hsl(var(--border)); text-align: left;">
+                            <th style="padding: 0.5rem;"><input type="checkbox" id="selectAllRules" title="Выбрать все"></th>
                             <th style="padding: 0.5rem; font-weight: 600;">Статус</th>
                             <th style="padding: 0.5rem; font-weight: 600;">Название</th>
                             <th style="padding: 0.5rem; font-weight: 600;">Условие</th>
@@ -2578,7 +2586,8 @@
                             <tr class="rule-row" data-rule-id="${rule.id}" style="border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 0.2s;" 
                                 onmouseover="this.style.background='hsl(var(--accent))'" 
                                 onmouseout="this.style.background='transparent'"
-                                onclick="loadRuleDetails(${rule.id})">
+                                onclick="if (!event.target.closest('input[type=checkbox]')) loadRuleDetails(${rule.id})">
+                                <td style="padding: 0.75rem 0.5rem;"><input type="checkbox" class="rule-checkbox" value="${rule.id}"></td>
                                 <td style="padding: 0.75rem 0.5rem;">
                                     <span class="${rule.enabled ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
                                         ${rule.enabled ? '✅ Вкл' : '⏸️ Выкл'}
@@ -3520,14 +3529,24 @@
                 if (!response.ok) {
                     throw new Error('Не удалось загрузить правила');
                 }
-                const rules = await response.json();
+                let allRules = await response.json();
                 
-                if (rules.length === 0) {
+                // Получаем выбранные правила
+                const selectedCheckboxes = document.querySelectorAll('.rule-checkbox:checked');
+                let rulesToExport;
+                if (selectedCheckboxes.length > 0) {
+                    const selectedIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+                    rulesToExport = allRules.filter(rule => selectedIds.includes(rule.id));
+                } else {
+                    rulesToExport = allRules;
+                }
+                
+                if (rulesToExport.length === 0) {
                     showAlert('rulesAlert', 'Нет правил для экспорта', 'warning');
                     return;
                 }
                 
-                const dataStr = JSON.stringify(rules, null, 2);
+                const dataStr = JSON.stringify(rulesToExport, null, 2);
                 const blob = new Blob([dataStr], { type: 'application/json;charset=utf-8' });
                 const url = URL.createObjectURL(blob);
                 
