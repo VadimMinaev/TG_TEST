@@ -2024,7 +2024,12 @@
                     document.getElementById('codeConditionEditor').style.display = this.value === 'code' ? 'block' : 'none';
                     
                     if (this.value === 'visual') {
+                        // При переключении в визуальный режим обновляем предпросмотр
                         updateConditionPreview();
+                    } else if (this.value === 'code') {
+                        // При переключении в кодовый режим заполняем textarea текущим условием
+                        const currentCondition = document.getElementById('condition').value;
+                        document.getElementById('conditionCode').value = currentCondition;
                     }
                 });
             });
@@ -2038,6 +2043,11 @@
             if (valueInput) valueInput.addEventListener('input', updateConditionPreview);
             const addConditionBtn = document.querySelector('.add-condition-btn');
             if (addConditionBtn) addConditionBtn.addEventListener('click', addConditionRow);
+            
+            // Group logic radio buttons
+            document.querySelectorAll('input[name="groupLogic"]').forEach(radio => {
+                radio.addEventListener('change', updateConditionPreview);
+            });
             
             // Code condition editor
             const conditionCode = document.getElementById('conditionCode');
@@ -2143,52 +2153,75 @@
         }
 
         function updateConditionPreview() {
-            const field = document.querySelector('.field-select').value;
-            const operator = document.querySelector('.operator-select').value;
-            const value = document.querySelector('.value-input').value;
+            const conditionRows = document.querySelectorAll('.condition-row');
+            const groupLogic = document.querySelector('input[name="groupLogic"]:checked').value;
             
-            // Определяем, нужно ли брать значение в кавычки
-            let needsQuotes = true;
-            let formattedValue = value;
-            
-            // Для числовых полей и ID не используем кавычки
-            if (field.includes('.id') || field.includes('_id') || 
-                field.includes('.priority') || 
-                (field === 'payload.priority' && !isNaN(value)) ||
-                (field === 'payload.team_id' && !isNaN(value))) {
-                needsQuotes = false;
+            if (conditionRows.length === 0) {
+                document.getElementById('conditionPreview').textContent = '';
+                document.getElementById('condition').value = '';
+                document.getElementById('testCondition').value = '';
+                updateMessagePreview('');
+                return;
             }
             
-            // Для некоторых операторов не используем кавычки
-            if (operator === '>' || operator === '<' || operator === '>=' || operator === '<=') {
-                needsQuotes = false;
-            }
+            const conditions = [];
             
-            // Форматируем значение
-            if (needsQuotes) {
-                // Для boolean значений не используем кавычки
-                if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
-                    formattedValue = value.toLowerCase();
-                } else {
-                    // Используем ДВОЙНЫЕ кавычки как в JSON
-                    formattedValue = `"${value.replace(/"/g, '\\"')}"`;
+            conditionRows.forEach(row => {
+                const field = row.querySelector('.field-select').value;
+                const operator = row.querySelector('.operator-select').value;
+                const value = row.querySelector('.value-input').value;
+                
+                // Определяем, нужно ли брать значение в кавычки
+                let needsQuotes = true;
+                let formattedValue = value;
+                
+                // Для числовых полей и ID не используем кавычки
+                if (field.includes('.id') || field.includes('_id') || 
+                    field.includes('.priority') || 
+                    (field === 'payload.priority' && !isNaN(value)) ||
+                    (field === 'payload.team_id' && !isNaN(value))) {
+                    needsQuotes = false;
                 }
-            } else {
-                // Убираем кавычки для числовых значений
-                formattedValue = value.replace(/['"]/g, '');
-            }
+                
+                // Для некоторых операторов не используем кавычки
+                if (operator === '>' || operator === '<' || operator === '>=' || operator === '<=') {
+                    needsQuotes = false;
+                }
+                
+                // Форматируем значение
+                if (needsQuotes) {
+                    // Для boolean значений не используем кавычки
+                    if (value.toLowerCase() === 'true' || value.toLowerCase() === 'false') {
+                        formattedValue = value.toLowerCase();
+                    } else {
+                        // Используем ДВОЙНЫЕ кавычки как в JSON
+                        formattedValue = `"${value.replace(/"/g, '\\"')}"`;
+                    }
+                } else {
+                    // Убираем кавычки для числовых значений
+                    formattedValue = value.replace(/['"]/g, '');
+                }
+                
+                const condition = `${field} ${operator} ${formattedValue}`;
+                conditions.push(condition);
+            });
             
-            const condition = `${field} ${operator} ${formattedValue}`;
-            document.getElementById('conditionPreview').textContent = condition;
-            document.getElementById('condition').value = condition;
-            document.getElementById('testCondition').value = condition;
-            updateMessagePreview(condition);
+            // Собираем финальное условие с логикой
+            const finalCondition = conditions.length === 1 
+                ? conditions[0] 
+                : conditions.join(` ${groupLogic === 'AND' ? '&&' : '||'} `);
+            
+            document.getElementById('conditionPreview').textContent = finalCondition;
+            document.getElementById('condition').value = finalCondition;
+            document.getElementById('testCondition').value = finalCondition;
+            updateMessagePreview(finalCondition);
         }
 
         function updateCodeCondition() {
             const condition = document.getElementById('conditionCode').value;
             document.getElementById('condition').value = condition;
             document.getElementById('conditionPreview').textContent = condition;
+            document.getElementById('testCondition').value = condition;
             updateMessagePreview(condition);
         }
 
@@ -2815,6 +2848,21 @@
             document.querySelector('input[name="conditionMode"][value="visual"]').checked = true;
             document.getElementById('visualConditionEditor').style.display = 'block';
             document.getElementById('codeConditionEditor').style.display = 'none';
+            
+            // Очищаем дополнительные условия, оставляем только первое
+            const conditionRows = document.querySelectorAll('.condition-row');
+            for (let i = 1; i < conditionRows.length; i++) {
+                conditionRows[i].remove();
+            }
+            
+            // Сбрасываем первое условие
+            document.querySelector('.field-select').value = 'payload.category';
+            document.querySelector('.operator-select').value = '===';
+            document.querySelector('.value-input').value = 'incident';
+            
+            // Сбрасываем логику на AND
+            document.querySelector('input[name="groupLogic"][value="AND"]').checked = true;
+            
             document.getElementById('condition').value = 'payload.category === "incident"';
             document.getElementById('conditionCode').value = '';
             updateConditionPreview();
@@ -2969,23 +3017,15 @@
                 const codeMode = document.querySelector('input[name="conditionMode"][value="code"]');
                 
                 // Try to parse condition for visual mode
-                if (rule.condition.includes('team_id') || rule.condition.includes('team.name') || 
-                    rule.condition.includes('category') || rule.condition.includes('impact')) {
+                if (rule.condition && (rule.condition.includes('team_id') || rule.condition.includes('team.name') || 
+                    rule.condition.includes('category') || rule.condition.includes('impact') ||
+                    rule.condition.includes('&&') || rule.condition.includes('||'))) {
                     visualMode.checked = true;
                     document.getElementById('visualConditionEditor').style.display = 'block';
                     document.getElementById('codeConditionEditor').style.display = 'none';
                     
                     try {
-                        // Simple parsing for demo purposes
-                        const parts = rule.condition.split(/\s*(===|!==|>|<|includes)\s*/);
-                        if (parts.length >= 3) {
-                            document.querySelector('.field-select').value = parts[0].trim();
-                            document.querySelector('.operator-select').value = parts[1].trim();
-                            
-                            // Убираем кавычки для отображения в поле ввода
-                            let rawValue = parts[2].trim().replace(/['"]/g, '');
-                            document.querySelector('.value-input').value = rawValue;
-                        }
+                        parseConditionToVisual(rule.condition);
                         updateConditionPreview();
                     } catch (e) {
                         // Fallback to code mode
