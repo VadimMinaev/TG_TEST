@@ -1904,6 +1904,26 @@
         </div>
     </div>
 
+    <div id="importTokenModal" class="modal" style="display: none;" onclick="event.stopPropagation();">
+        <div class="modal-content" style="max-width: 520px;">
+            <div class="modal-header">
+                <h2>🔑 Введите токен для импорта</h2>
+                <button class="icon-btn" onclick="hideImportTokenModal()">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="importTokenAlert" class="alert"></div>
+                <div class="form-group">
+                    <label for="importTokenInput">Токен бота (будет использован для правил без валидного токена)</label>
+                    <input type="password" id="importTokenInput" placeholder="123456789:ABCdefGHI...">
+                </div>
+                <div style="display:flex; gap:0.5rem; justify-content:flex-end; margin-top:1rem;">
+                    <button class="btn-secondary" onclick="cancelImportToken()">Отмена</button>
+                    <button class="btn-primary" onclick="confirmImportToken()">Импортировать</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE = '/api';
         let editingRuleId = null;
@@ -1911,6 +1931,7 @@
         let authToken = localStorage.getItem('authToken');
         let currentPage = 1;
         const logsPerPage = 10;
+        let _pendingImportRules = null;
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
@@ -3478,88 +3499,135 @@
         }
 
         function importRules(e) {
+            console.log('importRules called', e.target.files);
             const file = e.target.files[0];
-            if (!file) return;
-            
+            if (!file) {
+                console.log('No file selected');
+                return;
+            }
+            console.log('File selected:', file.name, file.size, file.type);
+            if (!file.name.endsWith('.json')) {
+                showAlert('rulesAlert', 'Выберите файл с расширением .json', 'error');
+                document.getElementById('importFile').value = '';
+                return;
+            }
             const reader = new FileReader();
             reader.onload = async function(event) {
                 try {
+                    console.log('File loaded, parsing JSON');
                     const rules = JSON.parse(event.target.result);
-                    
-                    if (!Array.isArray(rules)) {
-                        throw new Error('Неверный формат файла');
-                    }
-                    
-                    if (rules.length === 0) {
-                        throw new Error('Файл не содержит правил');
-                    }
-                    
-                    if (!confirm(`Вы уверены, что хотите импортировать ${rules.length} правил? Это заменит существующие правила.`)) {
-                        return;
-                    }
-                    
-                    // First delete all existing rules
-                    const existingRulesResponse = await fetch('/api/rules', { headers: getHeaders() });
-                    if (!existingRulesResponse.ok) {
-                        throw new Error('Не удалось загрузить существующие правила');
-                    }
-                    const existingRules = await existingRulesResponse.json();
-                    
-                    for (const rule of existingRules) {
-                        const deleteResponse = await fetch(`/api/rules/${rule.id}`, { 
-                            method: 'DELETE',
-                            headers: getHeaders()
-                        });
-                        if (!deleteResponse.ok) {
-                            console.warn(`Не удалось удалить правило ${rule.id}`);
-                        }
-                    }
-                    
-                    // Then add the new rules
-                    let importedCount = 0;
-                    let failedCount = 0;
-                    for (const rule of rules) {
-                        try {
-                            const createResponse = await fetch('/api/rules', {
-                                method: 'POST',
-                                headers: getHeaders(),
-                                body: JSON.stringify({
-                                    name: rule.name,
-                                    condition: rule.condition,
-                                    chatId: rule.chatId,
-                                    botToken: rule.botToken,
-                                    messageTemplate: rule.messageTemplate || null,
-                                    enabled: rule.enabled !== false
-                                })
-                            });
-                            
-                            if (!createResponse.ok) {
-                                const errorData = await createResponse.json().catch(() => ({}));
-                                console.error(`Ошибка создания правила "${rule.name}":`, errorData);
-                                failedCount++;
-                            } else {
-                                importedCount++;
-                            }
-                        } catch (err) {
-                            console.error(`Ошибка при импорте правила "${rule.name}":`, err);
-                            failedCount++;
-                        }
-                    }
-                    
-                    if (failedCount > 0) {
-                        showAlert('rulesAlert', `Импортировано ${importedCount} из ${rules.length} правил. Ошибок: ${failedCount}`, 'warning');
-                    }
-                    
-                    showAlert('rulesAlert', `Успешно импортировано ${rules.length} правил`, 'success');
-                    await loadRules();
+                    console.log('Parsed rules:', rules);
+                    if (!Array.isArray(rules)) throw new Error('Неверный формат файла: ожидался массив правил');
+                    if (rules.length === 0) throw new Error('Файл не содержит правил');
+                    if (!confirm(`Вы уверены, что хотите импортировать ${rules.length} правил? Существующие правила, которые вы можете удалить, будут удалены.`)) return;
+
+                    const needFallback = rules.some(r => !r.botToken || typeof r.botToken !== 'string' || r.botToken.includes('*') || r.botToken === 'YOUR_TOKEN');
+                    if (needFallback) { _pendingImportRules = rules; showImportTokenModal(); return; }
+
+                    await performImport(rules, null);
                 } catch (error) {
                     showAlert('rulesAlert', 'Ошибка импорта: ' + error.message, 'error');
+                    document.getElementById('importFile').value = '';
                 }
             };
+            reader.onerror = function() {
+                console.error('File read error');
+                showAlert('rulesAlert', 'Ошибка чтения файла', 'error');
+                document.getElementById('importFile').value = '';
+            };
             reader.readAsText(file);
+        }
             
             // Reset the input for future imports
             document.getElementById('importFile').value = '';
+        }
+
+        function showImportTokenModal() {
+            document.getElementById('importTokenInput').value = '';
+            document.getElementById('importTokenAlert').className = 'alert';
+            document.getElementById('importTokenModal').style.display = 'flex';
+        }
+
+        function hideImportTokenModal() {
+            document.getElementById('importTokenModal').style.display = 'none';
+        }
+
+        function cancelImportToken() {
+            _pendingImportRules = null;
+            hideImportTokenModal();
+            showAlert('rulesAlert', 'Импорт отменён', 'info');
+            document.getElementById('importFile').value = '';
+        }
+
+        async function confirmImportToken() {
+            const token = document.getElementById('importTokenInput').value.trim();
+            if (!token) {
+                showAlert('importTokenAlert', 'Введите токен', 'error');
+                return;
+            }
+            hideImportTokenModal();
+            if (_pendingImportRules) {
+                const rules = _pendingImportRules;
+                _pendingImportRules = null;
+                await performImport(rules, token);
+            }
+        }
+
+        async function performImport(rules, fallbackToken) {
+            try {
+                // First load existing rules and try to delete only those we are allowed to delete
+                const existingRulesResponse = await fetch('/api/rules', { headers: getHeaders() });
+                if (!existingRulesResponse.ok) {
+                    throw new Error('Не удалось загрузить существующие правила');
+                }
+                const existingRules = await existingRulesResponse.json();
+
+                let deletedCount = 0;
+                let skippedDeletes = 0;
+                for (const rule of existingRules) {
+                    const canDelete = (currentUserData && (currentUserData.username === 'vadmin' || (rule.authorId && typeof rule.authorId === 'number' && rule.authorId === currentUserData.userId)));
+                    if (!canDelete) { skippedDeletes++; continue; }
+                    try {
+                        const deleteResponse = await fetch(`/api/rules/${rule.id}`, { method: 'DELETE', headers: getHeaders() });
+                        if (deleteResponse.ok) deletedCount++; else skippedDeletes++;
+                    } catch (err) {
+                        console.warn(`Не удалось удалить правило ${rule.id}:`, err);
+                        skippedDeletes++;
+                    }
+                }
+
+                // Then add the new rules (preserve chatIds or chatId)
+                let importedCount = 0;
+                let failedCount = 0;
+                for (const rule of rules) {
+                    try {
+                        const body = { name: rule.name, condition: rule.condition, messageTemplate: rule.messageTemplate || null, enabled: rule.enabled !== false };
+                        if (Array.isArray(rule.chatIds) && rule.chatIds.length > 0) body.chatIds = rule.chatIds; else if (rule.chatId) body.chatId = rule.chatId;
+                        const token = (rule.botToken && typeof rule.botToken === 'string' && !rule.botToken.includes('*') && rule.botToken !== 'YOUR_TOKEN') ? rule.botToken : fallbackToken;
+                        if (!token || typeof token !== 'string' || !token.trim()) {
+                            console.error(`Пропущено правило "${rule.name}": отсутствует валидный токен`);
+                            failedCount++;
+                            continue;
+                        }
+                        body.botToken = token;
+
+                        const createResponse = await fetch('/api/rules', { method: 'POST', headers: getHeaders(), body: JSON.stringify(body) });
+                        if (!createResponse.ok) { const errorData = await createResponse.json().catch(() => ({})); console.error(`Ошибка создания правила "${rule.name}":`, errorData); failedCount++; } else { importedCount++; }
+                    } catch (err) { console.error(`Ошибка при импорте правила "${rule.name}":`, err); failedCount++; }
+                }
+
+                if (failedCount > 0) {
+                    showAlert('rulesAlert', `Импортировано ${importedCount} из ${rules.length} правил. Ошибок: ${failedCount}. Удалено старых правил: ${deletedCount}. Пропущено удаление: ${skippedDeletes}.`, 'warning');
+                } else {
+                    showAlert('rulesAlert', `Успешно импортировано ${importedCount} правил. Удалено старых правил: ${deletedCount}. Пропущено удаление: ${skippedDeletes}.`, 'success');
+                }
+
+                await loadRules();
+            } catch (error) {
+                showAlert('rulesAlert', 'Ошибка импорта: ' + error.message, 'error');
+            } finally {
+                document.getElementById('importFile').value = '';
+            }
         }
 
         function showInstructionsModal() {
