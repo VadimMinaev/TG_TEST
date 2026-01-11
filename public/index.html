@@ -1944,6 +1944,10 @@
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Убираем query string из URL, если он есть
+            if (window.location.search) {
+                window.history.replaceState(null, null, window.location.pathname);
+            }
             checkAuthStatus();
             setupEventListeners();
             loadSavedTheme();
