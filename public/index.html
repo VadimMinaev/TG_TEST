@@ -1914,7 +1914,7 @@
     </div>
 
     <div id="exportImportModal" class="modal" style="display: none;" onclick="closeExportImportModal(event)">
-        <div class="modal-content" style="max-width: 500px;">
+        <div class="modal-content" style="max-width: 600px;">
             <div class="modal-header">
                 <h2>📤 Экспорт/Импорт правил</h2>
                 <button class="icon-btn" onclick="closeExportImportModal()">✕</button>
@@ -1922,8 +1922,18 @@
             <div class="modal-body">
                 <div style="margin-bottom: 2rem;">
                     <h3>Экспорт</h3>
-                    <p>Выберите правила в списке (чекбоксы) или экспортируйте все правила для резервного копирования или переноса между экземплярами.</p>
-                    <button class="btn-secondary" onclick="exportRules(); closeExportImportModal();">Экспортировать выбранные правила</button>
+                    <div style="margin-bottom: 0.5rem;">
+                        <label style="display: flex; align-items: center; cursor: pointer;">
+                            <input type="checkbox" id="selectAllExportRules" style="margin-right: 0.5rem;"> Выбрать все правила
+                        </label>
+                    </div>
+                    <div id="exportRulesList" style="max-height: 300px; overflow-y: auto; margin-bottom: 1rem;">
+                        <!-- Список правил будет загружен сюда -->
+                    </div>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn-secondary" onclick="exportSelectedRules(); closeExportImportModal();">Экспортировать выбранные</button>
+                        <button class="btn-secondary" onclick="exportAllRules(); closeExportImportModal();">Экспортировать все</button>
+                    </div>
                 </div>
                 <div>
                     <h3>Импорт</h3>
@@ -2049,13 +2059,6 @@
             const rulesSearch = document.getElementById('rulesSearch');
             if (rulesSearch) rulesSearch.addEventListener('input', function() {
                 filterRules(this.value);
-            });
-            
-            // Select all rules checkbox
-            const selectAllRules = document.getElementById('selectAllRules');
-            if (selectAllRules) selectAllRules.addEventListener('change', function() {
-                const checkboxes = document.querySelectorAll('.rule-checkbox');
-                checkboxes.forEach(cb => cb.checked = this.checked);
             });
             
             // Queue status filter
@@ -2574,7 +2577,6 @@
                 <table style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr style="border-bottom: 2px solid hsl(var(--border)); text-align: left;">
-                            <th style="padding: 0.5rem;"><input type="checkbox" id="selectAllRules" title="Выбрать все"></th>
                             <th style="padding: 0.5rem; font-weight: 600;">Статус</th>
                             <th style="padding: 0.5rem; font-weight: 600;">Название</th>
                             <th style="padding: 0.5rem; font-weight: 600;">Условие</th>
@@ -2586,8 +2588,7 @@
                             <tr class="rule-row" data-rule-id="${rule.id}" style="border-bottom: 1px solid hsl(var(--border)); cursor: pointer; transition: background 0.2s;" 
                                 onmouseover="this.style.background='hsl(var(--accent))'" 
                                 onmouseout="this.style.background='transparent'"
-                                onclick="if (!event.target.closest('input[type=checkbox]')) loadRuleDetails(${rule.id})">
-                                <td style="padding: 0.75rem 0.5rem;"><input type="checkbox" class="rule-checkbox" value="${rule.id}"></td>
+                                onclick="loadRuleDetails(${rule.id})">
                                 <td style="padding: 0.75rem 0.5rem;">
                                     <span class="${rule.enabled ? 'log-success' : 'log-error'}" style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.875rem;">
                                         ${rule.enabled ? '✅ Вкл' : '⏸️ Выкл'}
@@ -3523,7 +3524,7 @@
             }
         }
 
-        async function exportRules() {
+        async function exportRules(selectedIds = null) {
             try {
                 const response = await fetch(`${API_BASE}/rules`, { headers: getHeaders() });
                 if (!response.ok) {
@@ -3531,11 +3532,8 @@
                 }
                 let allRules = await response.json();
                 
-                // Получаем выбранные правила
-                const selectedCheckboxes = document.querySelectorAll('.rule-checkbox:checked');
                 let rulesToExport;
-                if (selectedCheckboxes.length > 0) {
-                    const selectedIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+                if (selectedIds) {
                     rulesToExport = allRules.filter(rule => selectedIds.includes(rule.id));
                 } else {
                     rulesToExport = allRules;
@@ -3563,7 +3561,7 @@
                 // Освобождаем память
                 URL.revokeObjectURL(url);
                 
-                showAlert('rulesAlert', `Экспортировано ${rules.length} правил`, 'success');
+                showAlert('rulesAlert', `Экспортировано ${rulesToExport.length} правил`, 'success');
             } catch (error) {
                 showAlert('rulesAlert', 'Ошибка экспорта: ' + error.message, 'error');
             }
@@ -3630,8 +3628,40 @@
 
         function showExportImportModal() {
             const modal = document.getElementById('exportImportModal');
-            if (modal) {
-                modal.style.display = 'flex';
+            const rulesList = document.getElementById('exportRulesList');
+            
+            if (modal && rulesList) {
+                // Загружаем правила для отображения
+                fetch(`${API_BASE}/rules`, { headers: getHeaders() })
+                    .then(response => response.json())
+                    .then(rules => {
+                        rulesList.innerHTML = rules.map(rule => `
+                            <div style="display: flex; align-items: center; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid hsl(var(--border)); border-radius: 4px;">
+                                <input type="checkbox" class="export-rule-checkbox" value="${rule.id}" style="margin-right: 0.5rem;">
+                                <div style="flex: 1;">
+                                    <div style="font-weight: 500;">${escapeHtml(rule.name)}</div>
+                                    <div style="font-size: 0.875rem; color: hsl(var(--muted-foreground));">
+                                        ${rule.enabled ? '✅ Вкл' : '⏸️ Выкл'} • ${escapeHtml(rule.condition)} • ${escapeHtml(rule.chatId)}
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('');
+                        
+                        // Обработчик для "Выбрать все"
+                        const selectAllCheckbox = document.getElementById('selectAllExportRules');
+                        if (selectAllCheckbox) {
+                            selectAllCheckbox.addEventListener('change', function() {
+                                const checkboxes = document.querySelectorAll('.export-rule-checkbox');
+                                checkboxes.forEach(cb => cb.checked = this.checked);
+                            });
+                        }
+                        
+                        modal.style.display = 'flex';
+                    })
+                    .catch(error => {
+                        rulesList.innerHTML = '<div class="alert error">Ошибка загрузки правил</div>';
+                        modal.style.display = 'flex';
+                    });
             }
         }
 
@@ -3644,6 +3674,20 @@
             if (modal) {
                 modal.style.display = 'none';
             }
+        }
+
+        async function exportSelectedRules() {
+            const selectedCheckboxes = document.querySelectorAll('.export-rule-checkbox:checked');
+            if (selectedCheckboxes.length === 0) {
+                showAlert('rulesAlert', 'Выберите хотя бы одно правило для экспорта', 'warning');
+                return;
+            }
+            const selectedIds = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+            await exportRules(selectedIds);
+        }
+
+        async function exportAllRules() {
+            await exportRules(null); // null означает все правила
         }
 
         function copyWebhookUrlFromModal() {
