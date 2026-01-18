@@ -373,7 +373,7 @@ function formatMessage(fullBody, payload, rule = {}) {
             const payloadJson = JSON.stringify(payload || fullBody, null, 2);
             const escaped = payloadJson.replace(/`/g, '\\`');
             const truncated = escaped.length > 3800 ? escaped.slice(0, 3797) + '...' : escaped;
-            messageParts.push(`📦 Данные:\n\`\`\`json\n${truncated}\n\`\`\``);
+            messageParts.push(`📦 Данные:\n'''\n${JSON.stringify(payload || fullBody, null, 2)}\n'''`);
         }
         return messageParts.join('\n');
     } catch (e) {
