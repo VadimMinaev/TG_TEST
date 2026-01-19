@@ -371,10 +371,12 @@ function formatMessage(fullBody, payload, rule = {}) {
 
         if (messageParts.length === 0) {
             const payloadJson = JSON.stringify(payload || fullBody, null, 2);
-            const escaped = payloadJson.replace(/`/g, '\\`');
-            const truncated = escaped.length > 3800 ? escaped.slice(0, 3797) + '...' : escaped;
-            messageParts.push(`📦 Полные данные (JSON):\n\`\`\`json\n${truncated}\n\`\`\``);
-        }
+            const truncated = payloadJson.length > 3800 
+                ? payloadJson.slice(0, 3797) + '...' 
+                : payloadJson;
+    
+            messageParts.push(`📦 Полные данные (JSON):\n${truncated}`);
+       }
         return messageParts.join('\n');
     } catch (e) {
         console.error('Format message error:', e.message);
