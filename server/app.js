@@ -7,7 +7,7 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, '../public')));
 
 const PORT = process.env.PORT || 3000;
 let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
@@ -865,11 +865,12 @@ app.post('/api/rules', auth, async (req, res) => {
             return res.status(400).json({ error: 'Unable to determine rule author' });
         }
 
+        const safeMessageTemplate = typeof messageTemplate === 'string' ? messageTemplate : '';
         const newRule = {
             id: Date.now(),
             ...ruleData,
             botToken,
-            messageTemplate: messageTemplate.trim(),
+            messageTemplate: safeMessageTemplate.trim(),
             enabled: req.body.enabled !== false,
             encoding: 'utf8',
             authorId,
@@ -1229,7 +1230,7 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
 
 // SPA fallback
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, '../public', 'index.html'));
 });
 
 const server = app.listen(PORT, () => {
