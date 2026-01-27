@@ -1557,6 +1557,13 @@
                         </svg>
                         Пуллинг
                     </button>
+                    <button class="tab" data-tab="polling-history">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                            <circle cx="12" cy="12" r="10"></circle>
+                        </svg>
+                        История пуллинга
+                    </button>
                     <button class="tab" data-tab="users" id="usersTab" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -1982,125 +1989,175 @@
                                     </div>
                                 </div>
 
-                                <div class="polls-details-column" style="flex: 1; padding-left: 1rem;">
+                                    <div class="polls-details-column" style="flex: 1; padding-left: 1rem;">
                                     <div class="card">
                                         <div class="rules-toolbar">
                                             <h2>🔁 Пуллинг</h2>
+                                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                                <button class="btn-primary btn-small" onclick="showPollForm()">Создать задачу</button>
+                                            </div>
                                         </div>
 
                                         <div id="pollingAlert" class="alert"></div>
 
-                                        <form id="pollForm">
-                                            <input type="hidden" id="pollId">
+                                        <div id="pollDetailsPlaceholder" style="color: hsl(var(--muted-foreground)); text-align: center; padding: 2rem;">
+                                            <p style="margin-bottom: 1rem;">Выберите задачу слева или создайте новую</p>
+                                            <button class="btn-primary" onclick="showPollForm()" style="display: inline-flex; align-items: center; gap: 0.5rem;">
+                                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                                                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                                                </svg>
+                                                Создать задачу
+                                            </button>
+                                        </div>
 
-                                            <div class="form-group">
-                                                <label for="pollName">Название задачи</label>
-                                                <input type="text" id="pollName" placeholder="Например: Проверка статуса заказа" required>
+                                        <div id="pollDetailsView" style="display: none;">
+                                            <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                                                <button class="btn-secondary btn-small" onclick="runPollNow(selectedPollId)">▶️ Запустить</button>
+                                                <button class="btn-secondary btn-small" onclick="showPollForm(selectedPollId)">✏️ Редактировать</button>
+                                                <button class="btn-danger btn-small" onclick="deletePoll(selectedPollId)">🗑️ Удалить</button>
                                             </div>
+                                            <div id="pollDetailsContent"></div>
+                                        </div>
 
-                                            <div class="form-group">
-                                                <label for="pollUrl">URL внешнего API</label>
-                                                <input type="text" id="pollUrl" placeholder="https://api.example.com/status" required>
-                                            </div>
+                                        <div id="pollFormContainer" style="display: none;">
+                                            <form id="pollForm">
+                                                <input type="hidden" id="pollId">
 
-                                            <div class="form-group">
-                                                <label for="pollMethod">Метод</label>
-                                                <select id="pollMethod">
-                                                    <option value="GET">GET</option>
-                                                    <option value="POST">POST</option>
-                                                    <option value="PUT">PUT</option>
-                                                    <option value="PATCH">PATCH</option>
-                                                    <option value="DELETE">DELETE</option>
-                                                </select>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollName">Название задачи</label>
+                                                    <input type="text" id="pollName" placeholder="Например: Проверка статуса заказа" required>
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollHeaders">Headers (JSON)</label>
-                                                <textarea id="pollHeaders" placeholder='{"Authorization": "Bearer token"}'></textarea>
-                                                <small class="form-hint">Пример: <code>{"Authorization":"Bearer &lt;TOKEN&gt;","Content-Type":"application/json"}</code></small>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollUrl">URL внешнего API</label>
+                                                    <input type="text" id="pollUrl" placeholder="https://api.example.com/status" required>
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollBody">Body (JSON)</label>
-                                                <textarea id="pollBody" placeholder='{"id": 123}'></textarea>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollMethod">Метод</label>
+                                                    <select id="pollMethod">
+                                                        <option value="GET">GET</option>
+                                                        <option value="POST">POST</option>
+                                                        <option value="PUT">PUT</option>
+                                                        <option value="PATCH">PATCH</option>
+                                                        <option value="DELETE">DELETE</option>
+                                                    </select>
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollCondition">Условия (JSON)</label>
-                                                <textarea id="pollCondition" placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'></textarea>
-                                                <small class="form-hint">Поддерживаются операторы: ==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists.</small>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollHeaders">Headers (JSON)</label>
+                                                    <textarea id="pollHeaders" placeholder='{"Authorization": "Bearer token"}'></textarea>
+                                                    <small class="form-hint">Пример: <code>{"Authorization":"Bearer &lt;TOKEN&gt;","Content-Type":"application/json"}</code></small>
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollInterval">Интервал (сек)</label>
-                                                <input type="number" id="pollInterval" min="5" value="60">
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollBody">Body (JSON)</label>
+                                                    <textarea id="pollBody" placeholder='{"id": 123}'></textarea>
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollTimeout">Таймаут (сек)</label>
-                                                <input type="number" id="pollTimeout" min="3" value="10">
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollCondition">Условия (JSON)</label>
+                                                    <textarea id="pollCondition" placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'></textarea>
+                                                    <small class="form-hint">Поддерживаются операторы: ==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists.</small>
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollChatId">ID Telegram чата</label>
-                                                <input type="text" id="pollChatId" placeholder="-1001234567890" required>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollInterval">Интервал (сек)</label>
+                                                    <input type="number" id="pollInterval" min="5" value="60">
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollBotToken">Токен бота (опционально)</label>
-                                                <input type="password" id="pollBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
-                                                <small class="form-hint">Если пусто — будет использован глобальный токен.</small>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollTimeout">Таймаут (сек)</label>
+                                                    <input type="number" id="pollTimeout" min="3" value="10">
+                                                </div>
 
-                                            <div class="form-group">
-                                                <label for="pollMessageTemplate">Шаблон сообщения (опционально)</label>
-                                                <textarea id="pollMessageTemplate" placeholder="Статус: ${payload.data.status}"></textarea>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollChatId">ID Telegram чата</label>
+                                                    <input type="text" id="pollChatId" placeholder="-1001234567890" required>
+                                                </div>
 
-                                            <div class="form-group checkbox-group">
-                                                <input type="checkbox" id="pollOnlyOnChange" checked>
-                                                <label for="pollOnlyOnChange" style="margin: 0;">Отправлять только при смене условия</label>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollBotToken">Токен бота (опционально)</label>
+                                                    <input type="password" id="pollBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                                                    <small class="form-hint">Если пусто — будет использован глобальный токен.</small>
+                                                </div>
 
-                                            <div class="form-group checkbox-group">
-                                                <input type="checkbox" id="pollEnabled" checked>
-                                                <label for="pollEnabled" style="margin: 0;">Включено</label>
-                                            </div>
+                                                <div class="form-group">
+                                                    <label for="pollMessageTemplate">Шаблон сообщения (опционально)</label>
+                                                    <textarea id="pollMessageTemplate" placeholder="Статус: ${payload.data.status}"></textarea>
+                                                </div>
 
-                                            <div class="button-group">
-                                                <button type="submit" class="btn-primary">Сохранить</button>
-                                                <button type="reset" class="btn-secondary" onclick="resetPollForm()">Очистить</button>
-                                            </div>
-                                        </form>
+                                                <div class="form-group checkbox-group">
+                                                    <input type="checkbox" id="pollOnlyOnChange" checked>
+                                                    <label for="pollOnlyOnChange" style="margin: 0;">Отправлять только при смене условия</label>
+                                                </div>
+
+                                                <div class="form-group checkbox-group">
+                                                    <input type="checkbox" id="pollEnabled" checked>
+                                                    <label for="pollEnabled" style="margin: 0;">Включено</label>
+                                                </div>
+
+                                                <div class="button-group">
+                                                    <button type="submit" class="btn-primary">Сохранить</button>
+                                                    <button type="button" class="btn-secondary" onclick="cancelPollEdit()">Отмена</button>
+                                                </div>
+                                            </form>
+                                        </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                                    <div class="card" style="margin-top: 1rem;">
-                                        <div class="rules-toolbar">
-                                            <h2>🧾 История запусков</h2>
-                                            <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                                <select id="pollHistoryFilter" style="padding: 0.5rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); background: hsl(var(--background));">
-                                                    <option value="">Все задачи</option>
-                                                </select>
-                                                <button class="btn-secondary btn-small" onclick="loadPollHistory()">Обновить</button>
-                                            </div>
-                                        </div>
-                                        <div class="card-content">
-                                            <div style="overflow-x: auto;">
-                                                <table>
-                                                    <thead>
-                                                        <tr>
-                                                            <th>Время</th>
-                                                            <th>Статус</th>
-                                                            <th>Совпадение</th>
-                                                            <th>Результат</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody id="pollHistoryTableBody">
-                                                        <tr><td colspan="4" style="text-align: center; padding: 1.5rem;">Загрузка...</td></tr>
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
+                    <div id="polling-history-tab" class="tab-pane">
+                        <div class="card">
+                            <div class="rules-toolbar">
+                                <h2>🧾 История пуллинга</h2>
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <select id="pollHistoryFilter" style="padding: 0.5rem; border-radius: calc(var(--radius) - 2px); border: 1px solid hsl(var(--border)); background: hsl(var(--background));">
+                                        <option value="">Все задачи</option>
+                                    </select>
+                                    <button class="btn-secondary btn-small" onclick="loadPollHistory()">Обновить</button>
+                                </div>
+                            </div>
+                            <div class="card-content">
+                                <div style="overflow-x: auto;">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th>Время</th>
+                                                <th>Задача</th>
+                                                <th>Запрос</th>
+                                                <th>Ответ</th>
+                                                <th>Статус</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pollHistoryTableBody">
+                                            <tr><td colspan="6" style="text-align: center; padding: 1.5rem;">Загрузка...</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="pollRunModal" class="modal" style="display: none;" onclick="closePollRunModal(event)">
+                        <div class="modal-content" onclick="event.stopPropagation();" style="max-width: 900px;">
+                            <div class="modal-header">
+                                <h2>📄 Детали запроса/ответа</h2>
+                                <button class="icon-btn" onclick="closePollRunModal()">✕</button>
+                            </div>
+                            <div class="modal-body">
+                                <div style="display: grid; gap: 1rem;">
+                                    <div>
+                                        <h3 style="margin-bottom: 0.5rem;">Запрос</h3>
+                                        <pre id="pollRunRequest" style="white-space: pre-wrap;"></pre>
+                                    </div>
+                                    <div>
+                                        <h3 style="margin-bottom: 0.5rem;">Ответ</h3>
+                                        <pre id="pollRunResponse" style="white-space: pre-wrap;"></pre>
                                     </div>
                                 </div>
                             </div>
@@ -2314,6 +2371,9 @@
                         loadQueueStats();
                     } else if (tab.dataset.tab === 'polling') {
                         loadPolls();
+                    } else if (tab.dataset.tab === 'polling-history') {
+                        loadPolls();
+                        loadPollHistory();
                     }
                 });
             });
@@ -4363,7 +4423,16 @@
                 }
                 renderPollsTable();
                 updatePollHistoryFilter();
-                loadPollHistory();
+                if (selectedPollId) {
+                    const poll = pollsCache.find(p => p.id === selectedPollId);
+                    if (poll) {
+                        showPollDetails(poll);
+                    } else {
+                        showPollPlaceholder();
+                    }
+                } else {
+                    showPollPlaceholder();
+                }
             } catch (error) {
                 showAlert('pollingAlert', error.message, 'error');
             }
@@ -4387,10 +4456,7 @@
                         <td style="font-weight: 600;">${escapeHtml(poll.name || '')}</td>
                         <td>${poll.intervalSec || 60} сек</td>
                         <td>${statusText}</td>
-                        <td>
-                            <button class="btn-secondary btn-small" onclick="event.stopPropagation(); editPoll(${poll.id})">Редактировать</button>
-                            <button class="btn-danger btn-small" onclick="event.stopPropagation(); deletePoll(${poll.id})">Удалить</button>
-                        </td>
+                        <td></td>
                     </tr>
                     <tr style="background: ${isActive ? 'hsl(var(--accent) / 0.2)' : 'transparent'};">
                         <td colspan="4" style="font-size: 0.8rem; color: hsl(var(--muted-foreground)); padding: 0.5rem 0.75rem;">
@@ -4467,30 +4533,104 @@
                     const data = await response.json().catch(() => ({}));
                     throw new Error(data.error || 'Ошибка сохранения');
                 }
+                const saved = await response.json();
+                selectedPollId = saved.id;
                 showAlert('pollingAlert', 'Сохранено', 'success');
-                resetPollForm();
                 await loadPolls();
+                showPollDetails(saved);
+            } catch (error) {
+                showAlert('pollingAlert', error.message, 'error');
+            }
+        }
+
+        function showPollPlaceholder() {
+            document.getElementById('pollDetailsPlaceholder').style.display = 'block';
+            document.getElementById('pollDetailsView').style.display = 'none';
+            document.getElementById('pollFormContainer').style.display = 'none';
+        }
+
+        function showPollForm(id = null) {
+            document.getElementById('pollDetailsPlaceholder').style.display = 'none';
+            document.getElementById('pollDetailsView').style.display = 'none';
+            document.getElementById('pollFormContainer').style.display = 'block';
+
+            if (id) {
+                const poll = pollsCache.find(p => p.id === id);
+                if (poll) {
+                    editingPollId = id;
+                    fillPollForm(poll);
+                    return;
+                }
+            }
+            editingPollId = null;
+            resetPollForm();
+        }
+
+        function cancelPollEdit() {
+            if (selectedPollId) {
+                const poll = pollsCache.find(p => p.id === selectedPollId);
+                if (poll) {
+                    showPollDetails(poll);
+                    return;
+                }
+            }
+            showPollPlaceholder();
+        }
+
+        function showPollDetails(poll) {
+            selectedPollId = poll.id;
+            document.getElementById('pollDetailsPlaceholder').style.display = 'none';
+            document.getElementById('pollFormContainer').style.display = 'none';
+            document.getElementById('pollDetailsView').style.display = 'block';
+
+            const details = document.getElementById('pollDetailsContent');
+            const lastRun = poll.lastCheckedAt ? new Date(poll.lastCheckedAt).toLocaleString('ru-RU') : 'нет запусков';
+            const status = poll.enabled !== false ? 'Включено' : 'Выключено';
+            const lastState = poll.lastError ? `Ошибка: ${poll.lastError}` : (poll.lastMatch ? 'Условие совпало' : 'Нет совпадений');
+
+            details.innerHTML = `
+                <div style="display: grid; gap: 0.75rem;">
+                    <div><strong>Название:</strong> ${escapeHtml(poll.name || '')}</div>
+                    <div><strong>URL:</strong> <code>${escapeHtml(poll.url || '')}</code></div>
+                    <div><strong>Метод:</strong> ${escapeHtml(poll.method || 'GET')}</div>
+                    <div><strong>Интервал:</strong> ${poll.intervalSec || 60} сек</div>
+                    <div><strong>Таймаут:</strong> ${poll.timeoutSec || 10} сек</div>
+                    <div><strong>Статус:</strong> ${status}</div>
+                    <div><strong>Последний запуск:</strong> ${lastRun}</div>
+                    <div><strong>Последний результат:</strong> ${escapeHtml(lastState)}</div>
+                    <div><strong>Headers:</strong><pre style="margin-top:0.5rem; white-space: pre-wrap;">${escapeHtml(poll.headersJson || '')}</pre></div>
+                    <div><strong>Body:</strong><pre style="margin-top:0.5rem; white-space: pre-wrap;">${escapeHtml(poll.bodyJson || '')}</pre></div>
+                    <div><strong>Условия:</strong><pre style="margin-top:0.5rem; white-space: pre-wrap;">${escapeHtml(poll.conditionJson || '')}</pre></div>
+                    <div><strong>Шаблон:</strong><pre style="margin-top:0.5rem; white-space: pre-wrap;">${escapeHtml(poll.messageTemplate || '')}</pre></div>
+                    <div><strong>Chat ID:</strong> ${escapeHtml(poll.chatId || '')}</div>
+                </div>
+            `;
+            renderPollsTable();
+        }
+
+        async function runPollNow(id) {
+            if (!id) return;
+            try {
+                const response = await fetch(`${API_BASE}/polls/${id}/run`, {
+                    method: 'POST',
+                    headers: getHeaders()
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.error || 'Ошибка запуска');
+                }
+                showAlert('pollingAlert', 'Запуск выполнен', 'success');
                 await loadPollHistory();
+                await loadPolls();
             } catch (error) {
                 showAlert('pollingAlert', error.message, 'error');
             }
         }
 
         function selectPoll(id) {
-            selectedPollId = id;
-            const poll = pollsCache.find(p => p.id === id);
-            if (poll) {
-                fillPollForm(poll);
-            }
-            renderPollsTable();
-            loadPollHistory();
-        }
-
-        function editPoll(id) {
             const poll = pollsCache.find(p => p.id === id);
             if (!poll) return;
-            editingPollId = id;
-            fillPollForm(poll);
+            showPollDetails(poll);
         }
 
         async function deletePoll(id) {
@@ -4505,6 +4645,10 @@
                     throw new Error(data.error || 'Ошибка удаления');
                 }
                 await loadPolls();
+                if (selectedPollId === id) {
+                    selectedPollId = null;
+                }
+                showPollPlaceholder();
                 await loadPollHistory();
             } catch (error) {
                 showAlert('pollingAlert', error.message, 'error');
@@ -4545,23 +4689,61 @@
             if (!tbody) return;
 
             if (!pollHistoryCache || pollHistoryCache.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 1.5rem;">Запусков нет</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem;">Запусков нет</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = pollHistoryCache.map(run => {
+            tbody.innerHTML = pollHistoryCache.map((run, index) => {
                 const statusLabel = run.status === 'error' ? '❌ Ошибка' : '✅ OK';
-                const matchedLabel = run.matched ? '✅ Да' : '—';
-                const resultText = run.error_message || run.response_snippet || '';
+                const requestText = `${run.request_method || ''} ${run.request_url || ''}`.trim();
+                const requestHeaders = run.request_headers || '';
+                const requestBody = run.request_body || '';
+                const requestTooltip = [requestHeaders, requestBody].filter(Boolean).join('\n\n');
+                const responseText = run.response_snippet || run.error_message || '';
+                const responseStatus = run.response_status ? `HTTP ${run.response_status}` : '';
+                const responseHeaders = run.response_headers || '';
+                const responseTooltip = [responseHeaders, responseText].filter(Boolean).join('\n\n');
+                const pollName = run.poll_name || (pollsCache.find(p => p.id === run.poll_id)?.name || '');
                 return `
                     <tr>
                         <td>${run.created_at ? new Date(run.created_at).toLocaleString('ru-RU') : ''}</td>
+                        <td>${escapeHtml(pollName)}</td>
+                        <td>
+                            <div style="max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(requestTooltip)}">${escapeHtml(requestText)}</div>
+                        </td>
+                        <td>
+                            <div style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(responseTooltip)}">${escapeHtml(responseStatus || responseText)}</div>
+                        </td>
                         <td>${statusLabel}</td>
-                        <td>${matchedLabel}</td>
-                        <td><div style="max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(resultText)}">${escapeHtml(resultText)}</div></td>
+                        <td><button class="btn-secondary btn-small" onclick="showPollRunModal(${index})">Просмотр</button></td>
                     </tr>
                 `;
             }).join('');
+        }
+
+        function showPollRunModal(index) {
+            const run = pollHistoryCache[index];
+            if (!run) return;
+            const requestParts = [];
+            if (run.request_method || run.request_url) {
+                requestParts.push(`${run.request_method || ''} ${run.request_url || ''}`.trim());
+            }
+            if (run.request_headers) requestParts.push(`Headers:\n${run.request_headers}`);
+            if (run.request_body) requestParts.push(`Body:\n${run.request_body}`);
+            const responseParts = [];
+            if (run.response_status) responseParts.push(`HTTP ${run.response_status}`);
+            if (run.response_headers) responseParts.push(`Headers:\n${run.response_headers}`);
+            if (run.response_snippet) responseParts.push(`Body:\n${run.response_snippet}`);
+            if (run.error_message) responseParts.push(`Error:\n${run.error_message}`);
+
+            document.getElementById('pollRunRequest').textContent = requestParts.join('\n\n') || 'Нет данных';
+            document.getElementById('pollRunResponse').textContent = responseParts.join('\n\n') || 'Нет данных';
+            document.getElementById('pollRunModal').style.display = 'flex';
+        }
+
+        function closePollRunModal(event) {
+            if (event && event.target && event.target.id !== 'pollRunModal') return;
+            document.getElementById('pollRunModal').style.display = 'none';
         }
 
         // User management functions

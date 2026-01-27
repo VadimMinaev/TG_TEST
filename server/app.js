@@ -110,9 +110,21 @@ if (process.env.DATABASE_URL) {
                     sent BOOLEAN DEFAULT false,
                     error_message TEXT,
                     response_snippet TEXT,
+                    request_method TEXT,
+                    request_url TEXT,
+                    request_headers TEXT,
+                    request_body TEXT,
+                    response_status INTEGER,
+                    response_headers TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS request_method TEXT`);
+            await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS request_url TEXT`);
+            await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS request_headers TEXT`);
+            await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS request_body TEXT`);
+            await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS response_status INTEGER`);
+            await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS response_headers TEXT`);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -764,21 +776,53 @@ async function logPollRun(poll, data) {
         sent: data.sent === true,
         errorMessage: data.errorMessage || null,
         responseSnippet: data.responseSnippet || null,
+        requestMethod: data.requestMethod || null,
+        requestUrl: data.requestUrl || null,
+        requestHeaders: data.requestHeaders || null,
+        requestBody: data.requestBody || null,
+        responseStatus: data.responseStatus || null,
+        responseHeaders: data.responseHeaders || null,
         createdAt: new Date().toISOString()
     };
 
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             await db.query(
-                `INSERT INTO poll_runs (poll_id, status, matched, sent, error_message, response_snippet)
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [run.pollId, run.status, run.matched, run.sent, run.errorMessage, run.responseSnippet]
+                `INSERT INTO poll_runs (
+                    poll_id, status, matched, sent, error_message, response_snippet,
+                    request_method, request_url, request_headers, request_body,
+                    response_status, response_headers
+                 )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                [
+                    run.pollId,
+                    run.status,
+                    run.matched,
+                    run.sent,
+                    run.errorMessage,
+                    run.responseSnippet,
+                    run.requestMethod,
+                    run.requestUrl,
+                    run.requestHeaders,
+                    run.requestBody,
+                    run.responseStatus,
+                    run.responseHeaders
+                ]
+            );
+            await db.query(
+                `DELETE FROM poll_runs
+                 WHERE id NOT IN (
+                    SELECT id FROM poll_runs ORDER BY created_at DESC LIMIT 100
+                 )`
             );
         } catch (e) {
             console.error('Error saving poll run to database:', e);
         }
     } else {
         db.pollRuns.push(run);
+        if (db.pollRuns.length > 100) {
+            db.pollRuns = db.pollRuns.slice(-100);
+        }
         savePollRuns();
     }
 }
@@ -791,6 +835,9 @@ async function executePoll(poll) {
     const timeout = poll.timeoutSec * 1000;
     const method = poll.method || 'GET';
 
+    const requestHeadersText = poll.headersJson || '';
+    const requestBodyText = poll.bodyJson || '';
+
     try {
         const response = await axios({
             url: poll.url,
@@ -802,6 +849,7 @@ async function executePoll(poll) {
 
         const payload = response.data ?? {};
         const matched = evaluatePollCondition(poll.conditionJson, payload);
+        const responseHeadersText = response.headers ? JSON.stringify(response.headers) : null;
         const responseSnippet = (() => {
             try {
                 const json = JSON.stringify(payload, null, 2);
@@ -826,16 +874,45 @@ async function executePoll(poll) {
 
         poll.lastMatch = matched;
         await persistPoll(poll);
-        await logPollRun(poll, { status: 'success', matched, sent, responseSnippet });
+        await logPollRun(poll, {
+            status: 'success',
+            matched,
+            sent,
+            responseSnippet,
+            requestMethod: method,
+            requestUrl: poll.url,
+            requestHeaders: requestHeadersText,
+            requestBody: requestBodyText,
+            responseStatus: response.status,
+            responseHeaders: responseHeadersText
+        });
     } catch (error) {
         poll.lastCheckedAt = new Date().toISOString();
         poll.lastError = error.response?.data?.description || error.message || 'Unknown error';
         await persistPoll(poll);
+        const errorResponse = error.response?.data;
+        const errorSnippet = errorResponse
+            ? (() => {
+                try {
+                    const json = JSON.stringify(errorResponse, null, 2);
+                    return json.length > 1000 ? `${json.slice(0, 997)}...` : json;
+                } catch {
+                    return null;
+                }
+            })()
+            : null;
         await logPollRun(poll, {
             status: 'error',
             matched: false,
             sent: false,
-            errorMessage: poll.lastError
+            errorMessage: poll.lastError,
+            responseSnippet: errorSnippet,
+            requestMethod: method,
+            requestUrl: poll.url,
+            requestHeaders: requestHeadersText,
+            requestBody: requestBodyText,
+            responseStatus: error.response?.status || null,
+            responseHeaders: error.response?.headers ? JSON.stringify(error.response.headers) : null
         });
     }
 }
@@ -1414,6 +1491,33 @@ app.delete('/api/polls/:id', auth, async (req, res) => {
     }
 });
 
+app.post('/api/polls/:id/run', auth, async (req, res) => {
+    try {
+        const pollId = parseInt(req.params.id, 10);
+        let poll;
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
+            poll = result.rows[0].data;
+        } else {
+            poll = pollsCache.find(p => p.id === pollId);
+            if (!poll) return res.status(404).json({ error: 'not found' });
+        }
+
+        if (!canModifyPoll(poll, req.user)) {
+            return res.status(403).json({ error: 'Only the author or vadmin can run this poll' });
+        }
+
+        const normalized = normalizePoll(poll);
+        await executePoll(normalized);
+        res.json({ status: 'ok' });
+    } catch (error) {
+        console.error('Error running poll:', error);
+        res.status(500).json({ error: 'Failed to run poll' });
+    }
+});
+
 app.get('/api/polls/history', auth, async (req, res) => {
     try {
         const pollIdRaw = req.query.pollId;
@@ -1422,7 +1526,9 @@ app.get('/api/polls/history', auth, async (req, res) => {
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
             const result = await db.query(
-                `SELECT id, poll_id, status, matched, sent, error_message, response_snippet, created_at
+                `SELECT id, poll_id, status, matched, sent, error_message, response_snippet,
+                        request_method, request_url, request_headers, request_body,
+                        response_status, response_headers, created_at
                  FROM poll_runs
                  WHERE ($1::bigint IS NULL OR poll_id = $1)
                  ORDER BY created_at DESC
@@ -1437,7 +1543,22 @@ app.get('/api/polls/history', auth, async (req, res) => {
             runs = runs.filter(r => r.pollId === pollId);
         }
         runs = runs.slice(-limit).reverse();
-        res.json(runs);
+        res.json(runs.map(run => ({
+            id: run.id,
+            poll_id: run.pollId,
+            status: run.status,
+            matched: run.matched,
+            sent: run.sent,
+            error_message: run.errorMessage,
+            response_snippet: run.responseSnippet,
+            request_method: run.requestMethod,
+            request_url: run.requestUrl,
+            request_headers: run.requestHeaders,
+            request_body: run.requestBody,
+            response_status: run.responseStatus,
+            response_headers: run.responseHeaders,
+            created_at: run.createdAt
+        })));
     } catch (error) {
         console.error('Error loading poll history:', error);
         res.status(500).json({ error: 'Failed to load poll history' });
