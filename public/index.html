@@ -4753,7 +4753,7 @@
 
         async function loadPollHistory() {
             const filter = document.getElementById('pollHistoryFilter');
-            const pollId = filter && filter.value ? filter.value : (selectedPollId || '');
+            const pollId = filter && filter.value ? filter.value : '';
             const params = new URLSearchParams();
             if (pollId) params.set('pollId', pollId);
             params.set('limit', '100');
