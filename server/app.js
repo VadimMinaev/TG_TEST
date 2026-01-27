@@ -856,7 +856,7 @@ async function executePoll(poll, options = {}) {
         const responseSnippet = (() => {
             try {
                 const json = JSON.stringify(payload, null, 2);
-                return json.length > 1000 ? `${json.slice(0, 997)}...` : json;
+                return json.length > 10000 ? `${json.slice(0, 9997)}...` : json;
             } catch {
                 return null;
             }
@@ -898,7 +898,7 @@ async function executePoll(poll, options = {}) {
             ? (() => {
                 try {
                     const json = JSON.stringify(errorResponse, null, 2);
-                    return json.length > 1000 ? `${json.slice(0, 997)}...` : json;
+                    return json.length > 10000 ? `${json.slice(0, 9997)}...` : json;
                 } catch {
                     return null;
                 }

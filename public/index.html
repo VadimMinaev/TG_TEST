@@ -844,6 +844,32 @@
             padding: 1.5rem;
         }
 
+        .poll-condition-examples {
+            display: grid;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .poll-condition-examples pre {
+            margin: 0;
+            padding: 0.6rem 0.75rem;
+            border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--muted) / 0.25);
+            font-size: 0.85rem;
+            white-space: pre-wrap;
+        }
+
+        .poll-run-response {
+            min-height: 260px;
+            max-height: 60vh;
+            overflow: auto;
+            border-radius: calc(var(--radius) - 2px);
+            border: 1px solid hsl(var(--border));
+            background: hsl(var(--muted) / 0.2);
+            padding: 0.75rem;
+        }
+
         /* Tabs styles */
         .tabs-container {
             margin-bottom: 0;
@@ -2060,6 +2086,14 @@
                                                     <label for="pollCondition">Условия (JSON)</label>
                                                     <textarea id="pollCondition" placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'></textarea>
                                                     <small class="form-hint">Поддерживаются операторы: ==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists.</small>
+                                                    <div class="poll-condition-examples">
+                                                        <pre>{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}</pre>
+                                                        <pre>{"logic":"OR","conditions":[{"path":"data.priority","op":">=","value":3},{"path":"data.tags","op":"includes","value":"vip"}]}</pre>
+                                                        <pre>{"logic":"AND","conditions":[{"path":"data.assignee","op":"exists"},{"path":"data.assignee.name","op":"!=","value":""}]}</pre>
+                                                        <pre>{"logic":"AND","conditions":[{"path":"items[0].state","op":"==","value":"open"},{"path":"items.length","op":">","value":0}]}</pre>
+                                                        <pre>{"logic":"OR","conditions":[{"path":"data.type","op":"==","value":"incident"},{"path":"data.type","op":"==","value":"problem"}]}</pre>
+                                                        <pre>{"logic":"AND","conditions":[{"path":"data.created_at","op":">=","value":"2026-01-01T00:00:00Z"},{"path":"data.score","op":">","value":80}]}</pre>
+                                                    </div>
                                                 </div>
 
                                                 <div class="form-group">
@@ -2144,7 +2178,7 @@
                     </div>
 
                     <div id="pollRunModal" class="modal" style="display: none;" onclick="closePollRunModal(event)">
-                        <div class="modal-content" onclick="event.stopPropagation();" style="max-width: 900px;">
+                        <div class="modal-content" onclick="event.stopPropagation();" style="max-width: 1100px; width: 95%;">
                             <div class="modal-header">
                                 <h2>📄 Детали запроса/ответа</h2>
                                 <button class="icon-btn" onclick="closePollRunModal()">✕</button>
@@ -2157,7 +2191,7 @@
                                     </div>
                                     <div>
                                         <h3 style="margin-bottom: 0.5rem;">Ответ</h3>
-                                        <pre id="pollRunResponse" style="white-space: pre-wrap;"></pre>
+                                        <pre id="pollRunResponse" class="poll-run-response" style="white-space: pre-wrap;"></pre>
                                     </div>
                                 </div>
                             </div>
