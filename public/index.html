@@ -2510,13 +2510,15 @@
         }
 
         function renderMessageTemplate(template, payload) {
+            const safePayload = payload && typeof payload === 'object' ? payload : null;
             return template.replace(/\$\{([^}]+)\}/g, (match, expr) => {
                 const trimmed = expr.trim();
                 if (trimmed === 'payload') {
-                    return JSON.stringify(payload, null, 2);
+                    return safePayload ? JSON.stringify(safePayload, null, 2) : '';
                 }
                 if (trimmed.startsWith('payload.')) {
-                    const value = getValueByPath(payload, trimmed.slice('payload.'.length));
+                    if (!safePayload) return '';
+                    const value = getValueByPath(safePayload, trimmed.slice('payload.'.length));
                     if (value === undefined || value === null) return '';
                     if (typeof value === 'object') {
                         return JSON.stringify(value, null, 2);
@@ -2528,7 +2530,12 @@
         }
 
         function getValueByPath(obj, path) {
-            return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+            if (!obj || !path) return undefined;
+            const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+            return normalizedPath
+                .split('.')
+                .filter(Boolean)
+                .reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
         }
 
         async function checkAuthStatus() {
