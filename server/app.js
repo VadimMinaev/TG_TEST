@@ -827,8 +827,8 @@ async function logPollRun(poll, data) {
     }
 }
 
-async function executePoll(poll) {
-    if (!poll.enabled) return;
+async function executePoll(poll, options = {}) {
+    if (!poll.enabled && !options.force) return;
 
     const headers = parseJsonSafe(poll.headersJson, {});
     const body = parseJsonSafe(poll.bodyJson, null);
@@ -1510,7 +1510,7 @@ app.post('/api/polls/:id/run', auth, async (req, res) => {
         }
 
         const normalized = normalizePoll(poll);
-        await executePoll(normalized);
+        await executePoll(normalized, { force: true });
         res.json({ status: 'ok' });
     } catch (error) {
         console.error('Error running poll:', error);
