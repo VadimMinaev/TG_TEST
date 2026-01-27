@@ -839,13 +839,16 @@ async function executePoll(poll, options = {}) {
     const requestBodyText = poll.bodyJson || '';
 
     try {
-        const response = await axios({
+        const requestConfig = {
             url: poll.url,
             method,
             headers,
-            data: body,
             timeout
-        });
+        };
+        if (body !== null && !['GET', 'HEAD'].includes(method.toUpperCase())) {
+            requestConfig.data = body;
+        }
+        const response = await axios(requestConfig);
 
         const payload = response.data ?? {};
         const matched = evaluatePollCondition(poll.conditionJson, payload);
