@@ -14,6 +14,7 @@ let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
+const POLLS_FILE = path.join(__dirname, '../data/polls.json');
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 const SESSIONS_FILE = path.join(__dirname, '../data/sessions.json');
 
@@ -86,7 +87,8 @@ function getFieldTranslation(path) {
     return typeof current === 'string' ? current : path;
 }
 
-let db = { rules: [], logs: [] };
+let db = { rules: [], logs: [], polls: [] };
+let pollsCache = [];
 
 if (process.env.DATABASE_URL) {
     const { Client } = require('pg');
@@ -97,6 +99,7 @@ if (process.env.DATABASE_URL) {
             await client.connect();
             await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
             await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
+            await client.query(`CREATE TABLE IF NOT EXISTS polls (id BIGINT PRIMARY KEY, data JSONB)`);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -145,7 +148,9 @@ if (process.env.DATABASE_URL) {
 
             db = client;
             console.log('DB connected and tables created');
+            await loadPollsCache();
             startMessageQueueWorker();
+            startPollWorkers();
         } catch (err) {
             console.error('DB init error:', err);
         }
@@ -167,6 +172,16 @@ if (process.env.DATABASE_URL) {
     } catch (e) {
         console.error('Error loading logs from file:', e);
     }
+    try {
+        if (fs.existsSync(POLLS_FILE)) {
+            db.polls = JSON.parse(fs.readFileSync(POLLS_FILE, 'utf8'));
+            console.log('Polls loaded from file');
+        }
+    } catch (e) {
+        console.error('Error loading polls from file:', e);
+    }
+    pollsCache = db.polls;
+    startPollWorkers();
 }
 
 function saveRules() {
@@ -186,6 +201,30 @@ function saveLogs() {
         } catch (e) {
             console.error('Error saving logs to file:', e);
         }
+    }
+}
+
+function savePolls() {
+    if (!process.env.DATABASE_URL) {
+        try {
+            fs.writeFileSync(POLLS_FILE, JSON.stringify(db.polls, null, 2), 'utf8');
+        } catch (e) {
+            console.error('Error saving polls to file:', e);
+        }
+    }
+}
+
+async function loadPollsCache() {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT id, data FROM polls');
+            pollsCache = result.rows.map(r => ({ ...r.data, id: r.id }));
+        } catch (e) {
+            console.error('Error loading polls from database:', e);
+            pollsCache = [];
+        }
+    } else {
+        pollsCache = db.polls || [];
     }
 }
 
@@ -255,6 +294,13 @@ const vadminOnly = (req, res, next) => {
 
 function canModifyRule(rule, user) {
     const authorId = rule.authorId ?? 'vadmin';
+    if (user.username === 'vadmin') return true;
+    if (typeof authorId === 'number' && authorId === user.userId) return true;
+    return false;
+}
+
+function canModifyPoll(poll, user) {
+    const authorId = poll.authorId ?? 'vadmin';
     if (user.username === 'vadmin') return true;
     if (typeof authorId === 'number' && authorId === user.userId) return true;
     return false;
@@ -566,6 +612,180 @@ function startMessageQueueWorker() {
             console.error('Error cleaning old queue messages:', error);
         }
     }, 3600000);
+}
+
+// ────────────────────────────────────────────────────────────────
+// POLLING WORKER
+// ────────────────────────────────────────────────────────────────
+
+const pollTimers = new Map();
+
+function normalizePoll(poll) {
+    const intervalSec = Math.max(5, parseInt(poll.intervalSec, 10) || 60);
+    return {
+        id: poll.id,
+        name: (poll.name || '').trim(),
+        url: (poll.url || '').trim(),
+        method: (poll.method || 'GET').toUpperCase(),
+        headersJson: typeof poll.headersJson === 'string' ? poll.headersJson : '',
+        bodyJson: typeof poll.bodyJson === 'string' ? poll.bodyJson : '',
+        conditionJson: typeof poll.conditionJson === 'string' ? poll.conditionJson : '',
+        messageTemplate: typeof poll.messageTemplate === 'string' ? poll.messageTemplate : '',
+        chatId: (poll.chatId || '').toString().trim(),
+        botToken: typeof poll.botToken === 'string' ? poll.botToken.trim() : '',
+        enabled: poll.enabled !== false,
+        onlyOnChange: poll.onlyOnChange !== false,
+        timeoutSec: Math.max(3, parseInt(poll.timeoutSec, 10) || 10),
+        intervalSec,
+        lastCheckedAt: poll.lastCheckedAt || null,
+        lastMatch: poll.lastMatch === true,
+        lastError: poll.lastError || null,
+        authorId: poll.authorId ?? 'vadmin'
+    };
+}
+
+function parseJsonSafe(text, fallback) {
+    if (!text || typeof text !== 'string') return fallback;
+    try {
+        return JSON.parse(text);
+    } catch {
+        return fallback;
+    }
+}
+
+function getValueByPath(obj, path) {
+    if (!obj || !path) return undefined;
+    const normalizedPath = path.replace(/\[(\d+)\]/g, '.$1');
+    return normalizedPath
+        .split('.')
+        .filter(Boolean)
+        .reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+}
+
+function evaluateConditionItem(item, payload) {
+    const path = typeof item.path === 'string' ? item.path.trim() : '';
+    if (!path) return false;
+    const actual = getValueByPath(payload, path);
+    const expected = item.value;
+    const op = (item.op || '==').toString();
+
+    if (op === 'exists') return actual !== undefined && actual !== null;
+
+    const actualNum = Number(actual);
+    const expectedNum = Number(expected);
+    const bothNumeric = !Number.isNaN(actualNum) && !Number.isNaN(expectedNum);
+
+    switch (op) {
+        case '==':
+            return actual == expected;
+        case '!=':
+            return actual != expected;
+        case '>':
+            return bothNumeric ? actualNum > expectedNum : false;
+        case '<':
+            return bothNumeric ? actualNum < expectedNum : false;
+        case '>=':
+            return bothNumeric ? actualNum >= expectedNum : false;
+        case '<=':
+            return bothNumeric ? actualNum <= expectedNum : false;
+        case 'includes':
+            if (Array.isArray(actual)) return actual.includes(expected);
+            if (typeof actual === 'string') return actual.includes(String(expected));
+            return false;
+        default:
+            return false;
+    }
+}
+
+function evaluatePollCondition(conditionJson, payload) {
+    if (!conditionJson) return true;
+    const condition = typeof conditionJson === 'string' ? parseJsonSafe(conditionJson, null) : conditionJson;
+    if (!condition || !Array.isArray(condition.conditions) || condition.conditions.length === 0) return true;
+    const logic = (condition.logic || 'AND').toUpperCase();
+    const results = condition.conditions.map(item => evaluateConditionItem(item, payload));
+    return logic === 'OR' ? results.some(Boolean) : results.every(Boolean);
+}
+
+async function persistPoll(poll) {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            await db.query('UPDATE polls SET data = $1 WHERE id = $2', [poll, poll.id]);
+        } catch (e) {
+            console.error('Error updating poll in database:', e);
+        }
+    } else {
+        const idx = pollsCache.findIndex(p => p.id === poll.id);
+        if (idx >= 0) {
+            pollsCache[idx] = poll;
+            db.polls = pollsCache;
+            savePolls();
+        }
+    }
+}
+
+async function executePoll(poll) {
+    if (!poll.enabled) return;
+
+    const headers = parseJsonSafe(poll.headersJson, {});
+    const body = parseJsonSafe(poll.bodyJson, null);
+    const timeout = poll.timeoutSec * 1000;
+    const method = poll.method || 'GET';
+
+    try {
+        const response = await axios({
+            url: poll.url,
+            method,
+            headers,
+            data: body,
+            timeout
+        });
+
+        const payload = response.data ?? {};
+        const matched = evaluatePollCondition(poll.conditionJson, payload);
+
+        poll.lastCheckedAt = new Date().toISOString();
+        poll.lastError = null;
+
+        if (matched && (!poll.onlyOnChange || !poll.lastMatch)) {
+            const botToken = poll.botToken || TELEGRAM_BOT_TOKEN;
+            const messageText = formatMessage(payload, payload, { messageTemplate: poll.messageTemplate });
+            if (botToken && poll.chatId) {
+                await addMessageToQueue(botToken, poll.chatId, messageText, 0, null);
+            }
+        }
+
+        poll.lastMatch = matched;
+        await persistPoll(poll);
+    } catch (error) {
+        poll.lastCheckedAt = new Date().toISOString();
+        poll.lastError = error.response?.data?.description || error.message || 'Unknown error';
+        await persistPoll(poll);
+    }
+}
+
+function stopPollWorkers() {
+    for (const timer of pollTimers.values()) {
+        clearInterval(timer);
+    }
+    pollTimers.clear();
+}
+
+function startPollWorkers() {
+    stopPollWorkers();
+    if (!pollsCache || pollsCache.length === 0) return;
+
+    pollsCache.forEach(rawPoll => {
+        const poll = normalizePoll(rawPoll);
+        const timer = setInterval(() => {
+            executePoll(poll).catch(err => console.error('Poll error:', err));
+        }, poll.intervalSec * 1000);
+        pollTimers.set(poll.id, timer);
+    });
+}
+
+async function refreshPollWorkers() {
+    await loadPollsCache();
+    startPollWorkers();
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -989,6 +1209,131 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
     } catch (error) {
         console.error('Error in /api/rules DELETE:', error.response?.data || error.message);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// ────────────────────────────────────────────────────────────────
+// POLLING CONFIG
+// ────────────────────────────────────────────────────────────────
+
+app.get('/api/polls', auth, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT id, data FROM polls');
+            const polls = result.rows.map(r => ({ ...r.data, id: r.id }));
+            return res.json(polls);
+        }
+        return res.json(pollsCache || []);
+    } catch (error) {
+        console.error('Error loading polls:', error);
+        res.status(500).json({ error: 'Failed to load polls' });
+    }
+});
+
+app.post('/api/polls', auth, async (req, res) => {
+    try {
+        const authorId = req.user.userId || (req.user.username === 'vadmin' ? 'vadmin' : null);
+        if (authorId === null) {
+            return res.status(400).json({ error: 'Unable to determine poll author' });
+        }
+
+        const newPoll = normalizePoll({
+            id: Date.now(),
+            ...req.body,
+            authorId
+        });
+
+        if (!newPoll.name || !newPoll.url || !newPoll.chatId) {
+            return res.status(400).json({ error: 'name, url and chatId are required' });
+        }
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('INSERT INTO polls (id, data) VALUES ($1, $2)', [newPoll.id, newPoll]);
+        } else {
+            pollsCache.push(newPoll);
+            db.polls = pollsCache;
+            savePolls();
+        }
+
+        await refreshPollWorkers();
+        res.json(newPoll);
+    } catch (error) {
+        console.error('Error creating poll:', error);
+        res.status(500).json({ error: 'Failed to create poll' });
+    }
+});
+
+app.put('/api/polls/:id', auth, async (req, res) => {
+    try {
+        const pollId = parseInt(req.params.id, 10);
+        let poll;
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
+            poll = result.rows[0].data;
+        } else {
+            poll = pollsCache.find(p => p.id === pollId);
+            if (!poll) return res.status(404).json({ error: 'not found' });
+        }
+
+        if (!canModifyPoll(poll, req.user)) {
+            return res.status(403).json({ error: 'Only the author or vadmin can modify this poll' });
+        }
+
+        const updated = normalizePoll({
+            ...poll,
+            ...req.body,
+            id: pollId,
+            authorId: poll.authorId ?? 'vadmin'
+        });
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('UPDATE polls SET data = $1 WHERE id = $2', [updated, pollId]);
+        } else {
+            const idx = pollsCache.findIndex(p => p.id === pollId);
+            pollsCache[idx] = updated;
+            db.polls = pollsCache;
+            savePolls();
+        }
+
+        await refreshPollWorkers();
+        res.json(updated);
+    } catch (error) {
+        console.error('Error updating poll:', error);
+        res.status(500).json({ error: 'Failed to update poll' });
+    }
+});
+
+app.delete('/api/polls/:id', auth, async (req, res) => {
+    try {
+        const pollId = parseInt(req.params.id, 10);
+        let poll;
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
+            poll = result.rows[0].data;
+            if (!canModifyPoll(poll, req.user)) {
+                return res.status(403).json({ error: 'Only the author or vadmin can delete this poll' });
+            }
+            await db.query('DELETE FROM polls WHERE id = $1', [pollId]);
+        } else {
+            poll = pollsCache.find(p => p.id === pollId);
+            if (!poll) return res.status(404).json({ error: 'not found' });
+            if (!canModifyPoll(poll, req.user)) {
+                return res.status(403).json({ error: 'Only the author or vadmin can delete this poll' });
+            }
+            pollsCache = pollsCache.filter(p => p.id !== pollId);
+            db.polls = pollsCache;
+            savePolls();
+        }
+
+        await refreshPollWorkers();
+        res.json({ status: 'ok' });
+    } catch (error) {
+        console.error('Error deleting poll:', error);
+        res.status(500).json({ error: 'Failed to delete poll' });
     }
 });
 

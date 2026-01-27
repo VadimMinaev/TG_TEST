@@ -1550,6 +1550,13 @@
                         </svg>
                         Очередь сообщений
                     </button>
+                    <button class="tab" data-tab="polling">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 12a9 9 0 1 1-2.64-6.36"></path>
+                            <polyline points="21 3 21 9 15 9"></polyline>
+                        </svg>
+                        Пуллинг
+                    </button>
                     <button class="tab" data-tab="users" id="usersTab" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -1943,6 +1950,127 @@
                             </div>
                         </div>
                     </div>
+
+                    <div id="polling-tab" class="tab-pane">
+                        <div class="content">
+                            <div class="card">
+                                <div class="rules-toolbar">
+                                    <h2>🔁 Пуллинг</h2>
+                                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                        <button class="btn-secondary btn-small" onclick="loadPolls()">Обновить</button>
+                                    </div>
+                                </div>
+
+                                <div id="pollingAlert" class="alert"></div>
+
+                                <form id="pollForm">
+                                    <input type="hidden" id="pollId">
+
+                                    <div class="form-group">
+                                        <label for="pollName">Название задачи</label>
+                                        <input type="text" id="pollName" placeholder="Например: Проверка статуса заказа" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollUrl">URL внешнего API</label>
+                                        <input type="text" id="pollUrl" placeholder="https://api.example.com/status" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollMethod">Метод</label>
+                                        <select id="pollMethod">
+                                            <option value="GET">GET</option>
+                                            <option value="POST">POST</option>
+                                            <option value="PUT">PUT</option>
+                                            <option value="PATCH">PATCH</option>
+                                            <option value="DELETE">DELETE</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollHeaders">Headers (JSON)</label>
+                                        <textarea id="pollHeaders" placeholder='{"Authorization": "Bearer token"}'></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollBody">Body (JSON)</label>
+                                        <textarea id="pollBody" placeholder='{"id": 123}'></textarea>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollCondition">Условия (JSON)</label>
+                                        <textarea id="pollCondition" placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'></textarea>
+                                        <small class="form-hint">Поддерживаются операторы: ==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists.</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollInterval">Интервал (сек)</label>
+                                        <input type="number" id="pollInterval" min="5" value="60">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollTimeout">Таймаут (сек)</label>
+                                        <input type="number" id="pollTimeout" min="3" value="10">
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollChatId">ID Telegram чата</label>
+                                        <input type="text" id="pollChatId" placeholder="-1001234567890" required>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollBotToken">Токен бота (опционально)</label>
+                                        <input type="password" id="pollBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+                                        <small class="form-hint">Если пусто — будет использован глобальный токен.</small>
+                                    </div>
+
+                                    <div class="form-group">
+                                        <label for="pollMessageTemplate">Шаблон сообщения (опционально)</label>
+                                        <textarea id="pollMessageTemplate" placeholder="Статус: ${payload.data.status}"></textarea>
+                                    </div>
+
+                                    <div class="form-group checkbox-group">
+                                        <input type="checkbox" id="pollOnlyOnChange" checked>
+                                        <label for="pollOnlyOnChange" style="margin: 0;">Отправлять только при смене условия</label>
+                                    </div>
+
+                                    <div class="form-group checkbox-group">
+                                        <input type="checkbox" id="pollEnabled" checked>
+                                        <label for="pollEnabled" style="margin: 0;">Включено</label>
+                                    </div>
+
+                                    <div class="button-group">
+                                        <button type="submit" class="btn-primary">Сохранить</button>
+                                        <button type="reset" class="btn-secondary" onclick="resetPollForm()">Очистить</button>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div class="card" style="margin-top: 1rem;">
+                                <div class="card-header">
+                                    <h2>📋 Список задач</h2>
+                                </div>
+                                <div class="card-content">
+                                    <div style="overflow-x: auto;">
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Название</th>
+                                                    <th>URL</th>
+                                                    <th>Интервал</th>
+                                                    <th>Статус</th>
+                                                    <th>Действия</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="pollsTableBody">
+                                                <tr><td colspan="5" style="text-align: center; padding: 1.5rem;">Загрузка...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div id="users-tab" class="tab-pane">
                         <div class="content">
@@ -2108,6 +2236,8 @@
         let currentPage = 1;
         const logsPerPage = 10;
         let _pendingImportRules = null;
+        let pollsCache = [];
+        let editingPollId = null;
 
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', () => {
@@ -2145,6 +2275,8 @@
                     } else if (tab.dataset.tab === 'queue') {
                         loadQueueHistory();
                         loadQueueStats();
+                    } else if (tab.dataset.tab === 'polling') {
+                        loadPolls();
                     }
                 });
             });
@@ -2191,6 +2323,9 @@
 
             const messageTemplate = document.getElementById('messageTemplate');
             if (messageTemplate) messageTemplate.addEventListener('input', updateMessagePreview);
+
+            const pollForm = document.getElementById('pollForm');
+            if (pollForm) pollForm.addEventListener('submit', savePoll);
             
             // Password toggle
             document.querySelectorAll('.toggle-password').forEach(btn => {
@@ -4173,6 +4308,142 @@
             return text.replace(/[&<>"']/g, m => 
                 ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m])
             );
+        }
+
+        // ────────────────────────────────────────────────────────────────
+        // POLLING UI
+        // ────────────────────────────────────────────────────────────────
+
+        async function loadPolls() {
+            try {
+                const response = await fetch(`${API_BASE}/polls`, { headers: getHeaders() });
+                if (!response.ok) throw new Error('Не удалось загрузить задачи');
+                pollsCache = await response.json();
+                renderPollsTable();
+            } catch (error) {
+                showAlert('pollingAlert', error.message, 'error');
+            }
+        }
+
+        function renderPollsTable() {
+            const tbody = document.getElementById('pollsTableBody');
+            if (!tbody) return;
+
+            if (!pollsCache || pollsCache.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 1.5rem;">Задачи не найдены</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = pollsCache.map(poll => `
+                <tr>
+                    <td>${escapeHtml(poll.name || '')}</td>
+                    <td><code style="font-size: 0.85rem;">${escapeHtml(poll.url || '')}</code></td>
+                    <td>${poll.intervalSec || 60} сек</td>
+                    <td>${poll.enabled !== false ? '✅ Вкл' : '⏸️ Выкл'}</td>
+                    <td>
+                        <button class="btn-secondary btn-small" onclick="editPoll(${poll.id})">Редактировать</button>
+                        <button class="btn-danger btn-small" onclick="deletePoll(${poll.id})">Удалить</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function resetPollForm() {
+            editingPollId = null;
+            const form = document.getElementById('pollForm');
+            if (form) form.reset();
+            const pollId = document.getElementById('pollId');
+            if (pollId) pollId.value = '';
+        }
+
+        function fillPollForm(poll) {
+            document.getElementById('pollId').value = poll.id || '';
+            document.getElementById('pollName').value = poll.name || '';
+            document.getElementById('pollUrl').value = poll.url || '';
+            document.getElementById('pollMethod').value = (poll.method || 'GET').toUpperCase();
+            document.getElementById('pollHeaders').value = poll.headersJson || '';
+            document.getElementById('pollBody').value = poll.bodyJson || '';
+            document.getElementById('pollCondition').value = poll.conditionJson || '';
+            document.getElementById('pollInterval').value = poll.intervalSec || 60;
+            document.getElementById('pollTimeout').value = poll.timeoutSec || 10;
+            document.getElementById('pollChatId').value = poll.chatId || '';
+            document.getElementById('pollBotToken').value = poll.botToken || '';
+            document.getElementById('pollMessageTemplate').value = poll.messageTemplate || '';
+            document.getElementById('pollOnlyOnChange').checked = poll.onlyOnChange !== false;
+            document.getElementById('pollEnabled').checked = poll.enabled !== false;
+        }
+
+        function getPollPayload() {
+            return {
+                name: document.getElementById('pollName').value.trim(),
+                url: document.getElementById('pollUrl').value.trim(),
+                method: document.getElementById('pollMethod').value,
+                headersJson: document.getElementById('pollHeaders').value.trim(),
+                bodyJson: document.getElementById('pollBody').value.trim(),
+                conditionJson: document.getElementById('pollCondition').value.trim(),
+                intervalSec: parseInt(document.getElementById('pollInterval').value, 10) || 60,
+                timeoutSec: parseInt(document.getElementById('pollTimeout').value, 10) || 10,
+                chatId: document.getElementById('pollChatId').value.trim(),
+                botToken: document.getElementById('pollBotToken').value.trim(),
+                messageTemplate: document.getElementById('pollMessageTemplate').value.trim(),
+                onlyOnChange: document.getElementById('pollOnlyOnChange').checked,
+                enabled: document.getElementById('pollEnabled').checked
+            };
+        }
+
+        async function savePoll(event) {
+            event.preventDefault();
+            const payload = getPollPayload();
+            if (!payload.name || !payload.url || !payload.chatId) {
+                showAlert('pollingAlert', 'Заполните название, URL и chatId', 'error');
+                return;
+            }
+
+            const pollId = document.getElementById('pollId').value;
+            const isEdit = Boolean(pollId);
+            const url = isEdit ? `${API_BASE}/polls/${pollId}` : `${API_BASE}/polls`;
+            const method = isEdit ? 'PUT' : 'POST';
+
+            try {
+                const response = await fetch(url, {
+                    method,
+                    headers: getHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.error || 'Ошибка сохранения');
+                }
+                showAlert('pollingAlert', 'Сохранено', 'success');
+                resetPollForm();
+                await loadPolls();
+            } catch (error) {
+                showAlert('pollingAlert', error.message, 'error');
+            }
+        }
+
+        function editPoll(id) {
+            const poll = pollsCache.find(p => p.id === id);
+            if (!poll) return;
+            editingPollId = id;
+            fillPollForm(poll);
+        }
+
+        async function deletePoll(id) {
+            if (!confirm('Удалить задачу пуллинга?')) return;
+            try {
+                const response = await fetch(`${API_BASE}/polls/${id}`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.error || 'Ошибка удаления');
+                }
+                await loadPolls();
+            } catch (error) {
+                showAlert('pollingAlert', error.message, 'error');
+            }
         }
 
         // User management functions
