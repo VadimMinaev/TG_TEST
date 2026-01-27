@@ -2041,6 +2041,7 @@
                                             <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap;">
                                                 <button class="btn-secondary btn-small" onclick="runPollNow(selectedPollId)">▶️ Запустить</button>
                                                 <button class="btn-secondary btn-small" onclick="showPollForm(selectedPollId)">✏️ Редактировать</button>
+                                                <button class="btn-secondary btn-small" onclick="duplicatePoll(selectedPollId)">📄 Дублировать</button>
                                                 <button class="btn-danger btn-small" onclick="deletePoll(selectedPollId)">🗑️ Удалить</button>
                                             </div>
                                             <div id="pollDetailsContent"></div>
@@ -2053,6 +2054,11 @@
                                                 <div class="form-group">
                                                     <label for="pollName">Название задачи</label>
                                                     <input type="text" id="pollName" placeholder="Например: Проверка статуса заказа" required>
+                                                </div>
+
+                                                <div class="form-group checkbox-group">
+                                                    <input type="checkbox" id="pollEnabled" checked>
+                                                    <label for="pollEnabled" style="margin: 0;">Включено</label>
                                                 </div>
 
                                                 <div class="form-group">
@@ -2132,11 +2138,6 @@
                                                 <div class="form-group checkbox-group">
                                                     <input type="checkbox" id="pollContinueAfterMatch" checked>
                                                     <label for="pollContinueAfterMatch" style="margin: 0;">Продолжать выполнять пуллинг после успешного совпадения</label>
-                                                </div>
-
-                                                <div class="form-group checkbox-group">
-                                                    <input type="checkbox" id="pollEnabled" checked>
-                                                    <label for="pollEnabled" style="margin: 0;">Включено</label>
                                                 </div>
 
                                                 <div class="button-group">
@@ -4703,6 +4704,36 @@
                 }
                 showPollPlaceholder();
                 await loadPollHistory();
+            } catch (error) {
+                showAlert('pollingAlert', error.message, 'error');
+            }
+        }
+
+        async function duplicatePoll(id) {
+            if (!id) return;
+            const normalizedId = Number(id);
+            const source = pollsCache.find(p => p.id === normalizedId);
+            if (!source) return;
+            const payload = {
+                ...source,
+                name: `${source.name || 'Без названия'} (копия)`
+            };
+            delete payload.id;
+            try {
+                const response = await fetch(`${API_BASE}/polls`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify(payload)
+                });
+                if (!response.ok) {
+                    const data = await response.json().catch(() => ({}));
+                    throw new Error(data.error || 'Ошибка дублирования');
+                }
+                const saved = await response.json();
+                selectedPollId = saved.id;
+                showAlert('pollingAlert', 'Задача продублирована', 'success');
+                await loadPolls();
+                showPollDetails(saved);
             } catch (error) {
                 showAlert('pollingAlert', error.message, 'error');
             }
