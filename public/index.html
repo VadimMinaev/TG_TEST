@@ -2087,12 +2087,14 @@
                                                     <textarea id="pollCondition" placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'></textarea>
                                                     <small class="form-hint">Поддерживаются операторы: ==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists.</small>
                                                     <div class="poll-condition-examples">
-                                                        <pre>{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}</pre>
-                                                        <pre>{"logic":"OR","conditions":[{"path":"data.priority","op":">=","value":3},{"path":"data.tags","op":"includes","value":"vip"}]}</pre>
-                                                        <pre>{"logic":"AND","conditions":[{"path":"data.assignee","op":"exists"},{"path":"data.assignee.name","op":"!=","value":""}]}</pre>
-                                                        <pre>{"logic":"AND","conditions":[{"path":"items[0].state","op":"==","value":"open"},{"path":"items.length","op":">","value":0}]}</pre>
-                                                        <pre>{"logic":"OR","conditions":[{"path":"data.type","op":"==","value":"incident"},{"path":"data.type","op":"==","value":"problem"}]}</pre>
-                                                        <pre>{"logic":"AND","conditions":[{"path":"data.created_at","op":">=","value":"2026-01-01T00:00:00Z"},{"path":"data.score","op":">","value":80}]}</pre>
+                                                        <pre>{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"},{"path":"data.priority","op":">=","value":3}]}</pre>
+                                                        <div class="form-hint">
+                                                            <code>logic</code> — как объединять условия: AND/OR. 
+                                                            <code>conditions</code> — массив проверок. 
+                                                            <code>path</code> — путь к полю в ответе (например <code>data.status</code>). 
+                                                            <code>op</code> — оператор сравнения. 
+                                                            <code>value</code> — с чем сравнивать.
+                                                        </div>
                                                     </div>
                                                 </div>
 
@@ -2125,6 +2127,11 @@
                                                 <div class="form-group checkbox-group">
                                                     <input type="checkbox" id="pollOnlyOnChange" checked>
                                                     <label for="pollOnlyOnChange" style="margin: 0;">Отправлять только при смене условия</label>
+                                                </div>
+
+                                                <div class="form-group checkbox-group">
+                                                    <input type="checkbox" id="pollContinueAfterMatch" checked>
+                                                    <label for="pollContinueAfterMatch" style="margin: 0;">Продолжать выполнять пуллинг после успешного совпадения</label>
                                                 </div>
 
                                                 <div class="form-group checkbox-group">
@@ -2164,12 +2171,14 @@
                                                 <th>Задача</th>
                                                 <th>Запрос</th>
                                                 <th>Ответ</th>
+                                                <th>Выполнено</th>
+                                                <th>Отправлено</th>
                                                 <th>Статус</th>
                                                 <th></th>
                                             </tr>
                                         </thead>
                                         <tbody id="pollHistoryTableBody">
-                                            <tr><td colspan="6" style="text-align: center; padding: 1.5rem;">Загрузка...</td></tr>
+                                            <tr><td colspan="8" style="text-align: center; padding: 1.5rem;">Загрузка...</td></tr>
                                         </tbody>
                                     </table>
                                 </div>
@@ -4526,6 +4535,7 @@
             document.getElementById('pollBotToken').value = poll.botToken || '';
             document.getElementById('pollMessageTemplate').value = poll.messageTemplate || '';
             document.getElementById('pollOnlyOnChange').checked = poll.onlyOnChange !== false;
+            document.getElementById('pollContinueAfterMatch').checked = poll.continueAfterMatch !== false;
             document.getElementById('pollEnabled').checked = poll.enabled !== false;
         }
 
@@ -4543,6 +4553,7 @@
                 botToken: document.getElementById('pollBotToken').value.trim(),
                 messageTemplate: document.getElementById('pollMessageTemplate').value.trim(),
                 onlyOnChange: document.getElementById('pollOnlyOnChange').checked,
+                continueAfterMatch: document.getElementById('pollContinueAfterMatch').checked,
                 enabled: document.getElementById('pollEnabled').checked
             };
         }
@@ -4625,6 +4636,7 @@
             const lastRun = poll.lastCheckedAt ? new Date(poll.lastCheckedAt).toLocaleString('ru-RU') : 'нет запусков';
             const status = poll.enabled !== false ? 'Включено' : 'Выключено';
             const lastState = poll.lastError ? `Ошибка: ${poll.lastError}` : (poll.lastMatch ? 'Условие совпало' : 'Нет совпадений');
+            const continueAfterMatch = poll.continueAfterMatch !== false ? 'Да' : 'Нет';
 
             details.innerHTML = `
                 <div style="display: grid; gap: 0.75rem;">
@@ -4636,6 +4648,7 @@
                     <div><strong>Статус:</strong> ${status}</div>
                     <div><strong>Последний запуск:</strong> ${lastRun}</div>
                     <div><strong>Последний результат:</strong> ${escapeHtml(lastState)}</div>
+                    <div><strong>Продолжать после совпадения:</strong> ${continueAfterMatch}</div>
                     <div><strong>Headers:</strong><pre style="margin-top:0.5rem; white-space: pre-wrap;">${escapeHtml(poll.headersJson || '')}</pre></div>
                     <div><strong>Body:</strong><pre style="margin-top:0.5rem; white-space: pre-wrap;">${escapeHtml(poll.bodyJson || '')}</pre></div>
                     <div><strong>Условия:</strong><pre style="margin-top:0.5rem; white-space: pre-wrap;">${escapeHtml(poll.conditionJson || '')}</pre></div>
@@ -4729,12 +4742,14 @@
             if (!tbody) return;
 
             if (!pollHistoryCache || pollHistoryCache.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 1.5rem;">Запусков нет</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 1.5rem;">Запусков нет</td></tr>';
                 return;
             }
 
             tbody.innerHTML = pollHistoryCache.map((run, index) => {
                 const statusLabel = run.status === 'error' ? '❌ Ошибка' : '✅ OK';
+                const matchedLabel = run.matched ? 'Да' : 'Нет';
+                const sentLabel = run.sent ? 'Да' : 'Нет';
                 const requestText = `${run.request_method || ''} ${run.request_url || ''}`.trim();
                 const requestHeaders = run.request_headers || '';
                 const requestBody = run.request_body || '';
@@ -4754,6 +4769,8 @@
                         <td>
                             <div style="max-width: 240px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(responseTooltip)}">${escapeHtml(responseStatus || responseText)}</div>
                         </td>
+                        <td>${matchedLabel}</td>
+                        <td>${sentLabel}</td>
                         <td>${statusLabel}</td>
                         <td><button class="btn-secondary btn-small" onclick="showPollRunModal(${index})">Просмотр</button></td>
                     </tr>

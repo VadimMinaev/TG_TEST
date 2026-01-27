@@ -679,6 +679,7 @@ function normalizePoll(poll) {
         botToken: typeof poll.botToken === 'string' ? poll.botToken.trim() : '',
         enabled: poll.enabled !== false,
         onlyOnChange: poll.onlyOnChange !== false,
+        continueAfterMatch: poll.continueAfterMatch !== false,
         timeoutSec: Math.max(3, parseInt(poll.timeoutSec, 10) || 10),
         intervalSec,
         lastCheckedAt: poll.lastCheckedAt || null,
@@ -873,6 +874,10 @@ async function executePoll(poll, options = {}) {
                 const result = await addMessageToQueue(botToken, poll.chatId, messageText, 0, null);
                 sent = result && result.success !== false;
             }
+        }
+
+        if (matched && sent && poll.continueAfterMatch === false) {
+            poll.enabled = false;
         }
 
         poll.lastMatch = matched;
