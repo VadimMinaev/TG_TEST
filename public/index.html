@@ -4417,7 +4417,10 @@
             try {
                 const response = await fetch(`${API_BASE}/polls`, { headers: getHeaders() });
                 if (!response.ok) throw new Error('Не удалось загрузить задачи');
-                pollsCache = await response.json();
+                const rawPolls = await response.json();
+                pollsCache = Array.isArray(rawPolls)
+                    ? rawPolls.map(p => ({ ...p, id: Number(p.id) }))
+                    : [];
                 if (selectedPollId && !pollsCache.some(p => p.id === selectedPollId)) {
                     selectedPollId = null;
                 }
@@ -4555,9 +4558,10 @@
             document.getElementById('pollFormContainer').style.display = 'block';
 
             if (id) {
-                const poll = pollsCache.find(p => p.id === id);
+                const normalizedId = Number(id);
+                const poll = pollsCache.find(p => p.id === normalizedId);
                 if (poll) {
-                    editingPollId = id;
+                    editingPollId = normalizedId;
                     fillPollForm(poll);
                     return;
                 }
@@ -4578,7 +4582,7 @@
         }
 
         function showPollDetails(poll) {
-            selectedPollId = poll.id;
+            selectedPollId = Number(poll.id);
             document.getElementById('pollDetailsPlaceholder').style.display = 'none';
             document.getElementById('pollFormContainer').style.display = 'none';
             document.getElementById('pollDetailsView').style.display = 'block';
@@ -4628,15 +4632,17 @@
         }
 
         function selectPoll(id) {
-            const poll = pollsCache.find(p => p.id === id);
+            const normalizedId = Number(id);
+            const poll = pollsCache.find(p => p.id === normalizedId);
             if (!poll) return;
             showPollDetails(poll);
         }
 
         async function deletePoll(id) {
+            const normalizedId = Number(id);
             if (!confirm('Удалить задачу пуллинга?')) return;
             try {
-                const response = await fetch(`${API_BASE}/polls/${id}`, {
+                const response = await fetch(`${API_BASE}/polls/${normalizedId}`, {
                     method: 'DELETE',
                     headers: getHeaders()
                 });
@@ -4645,7 +4651,7 @@
                     throw new Error(data.error || 'Ошибка удаления');
                 }
                 await loadPolls();
-                if (selectedPollId === id) {
+                if (selectedPollId === normalizedId) {
                     selectedPollId = null;
                 }
                 showPollPlaceholder();
