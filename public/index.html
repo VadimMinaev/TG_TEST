@@ -1686,27 +1686,6 @@
                                                             </div>
                                                             
                                                             <input type="hidden" id="condition" value='payload.category === "incident"'>
-                                                            
-                                                            <h3>📱 Предпросмотр сообщения</h3>
-                                                            <div class="telegram-preview">
-                                                                <div class="telegram-message">
-                                                                    <div class="telegram-avatar">🤖</div>
-                                                                    <div class="telegram-content">
-                                                                        <div class="telegram-sender">Webhook Bot</div>
-                                                                        <div class="telegram-text" id="messagePreview">
-                                                                            🆔 ID: 141<br><br>
-                                                                            📋 Тема: Ноутбук CMP00035 больше не загружается<br><br>
-                                                                            👤 Инициатор запроса: Мокосеева Ксения @АО ПроПродукт<br><br>
-                                                                            Команда: Поддержка конечных пользователей<br>
-                                                                            Категория: incident<br>
-                                                                            Влияние: medium<br><br>
-                                                                            📝 Комментарий:<br>
-                                                                            1. Афанасенко Валерий @АО ПроПродукт (07.01.2026, 16:36): avwqrgw
-                                                                        </div>
-                                                                        <div class="telegram-time">Только что</div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1729,7 +1708,20 @@
                                                 <div class="form-group">
                                                     <label for="messageTemplate">Шаблон сообщения (опционально)</label>
                                                     <textarea id="messageTemplate" placeholder="Оставьте пусто для отправки полного payload"></textarea>
-                                                    <small class="form-hint">Используйте <code>${'{payload}'}</code> для вставки данных. По умолчанию используется стандартный шаблон.</small>
+                                                    <small class="form-hint">Используйте <code>${payload}</code> для вставки данных. Пример: <code>Заявка ${payload.id}: ${payload.subject}</code>. По умолчанию используется стандартный шаблон.</small>
+                                                    <div class="preview-section" style="margin-top: 1rem;">
+                                                        <h3>📱 Предпросмотр сообщения</h3>
+                                                        <div class="telegram-preview">
+                                                            <div class="telegram-message">
+                                                                <div class="telegram-avatar">🤖</div>
+                                                                <div class="telegram-content">
+                                                                    <div class="telegram-sender">Webhook Bot</div>
+                                                                    <div class="telegram-text" id="messagePreview"></div>
+                                                                    <div class="telegram-time">Только что</div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 </div>
 
                                                 <div class="form-group checkbox-group">
@@ -2196,6 +2188,9 @@
             // Code condition editor
             const conditionCode = document.getElementById('conditionCode');
             if (conditionCode) conditionCode.addEventListener('input', updateCodeCondition);
+
+            const messageTemplate = document.getElementById('messageTemplate');
+            if (messageTemplate) messageTemplate.addEventListener('input', updateMessagePreview);
             
             // Password toggle
             document.querySelectorAll('.toggle-password').forEach(btn => {
@@ -2358,7 +2353,7 @@
             document.getElementById('conditionPreview').textContent = finalCondition;
             document.getElementById('condition').value = finalCondition;
             document.getElementById('testCondition').value = finalCondition;
-            updateMessagePreview(finalCondition);
+            updateMessagePreview();
         }
 
         function updateCodeCondition() {
@@ -2366,11 +2361,13 @@
             document.getElementById('condition').value = condition;
             document.getElementById('conditionPreview').textContent = condition;
             document.getElementById('testCondition').value = condition;
-            updateMessagePreview(condition);
+            updateMessagePreview();
         }
 
-        function updateMessagePreview(condition) {
-            // This is a simplified preview - in real app you would evaluate the condition
+        function updateMessagePreview() {
+            const previewEl = document.getElementById('messagePreview');
+            if (!previewEl) return;
+
             const payload = {
                 id: 141,
                 team_id: 40,
@@ -2401,7 +2398,14 @@
                 response_target_at: '2024-07-26T21:50:00Z'
             };
             
+            const template = (document.getElementById('messageTemplate')?.value || '').trim();
             let message = '';
+
+            if (template) {
+                message = renderMessageTemplate(template, payload);
+                previewEl.innerHTML = escapeHtml(message).replace(/\n/g, '<br>');
+                return;
+            }
             
             // ID
             if (payload.id) {
@@ -2502,7 +2506,29 @@
                 });
             }
             
-            document.getElementById('messagePreview').innerHTML = message.replace(/\n/g, '<br>');
+            previewEl.innerHTML = escapeHtml(message).replace(/\n/g, '<br>');
+        }
+
+        function renderMessageTemplate(template, payload) {
+            return template.replace(/\$\{([^}]+)\}/g, (match, expr) => {
+                const trimmed = expr.trim();
+                if (trimmed === 'payload') {
+                    return JSON.stringify(payload, null, 2);
+                }
+                if (trimmed.startsWith('payload.')) {
+                    const value = getValueByPath(payload, trimmed.slice('payload.'.length));
+                    if (value === undefined || value === null) return '';
+                    if (typeof value === 'object') {
+                        return JSON.stringify(value, null, 2);
+                    }
+                    return String(value);
+                }
+                return match;
+            });
+        }
+
+        function getValueByPath(obj, path) {
+            return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
         }
 
         async function checkAuthStatus() {
@@ -3230,6 +3256,7 @@
                 document.getElementById('chatId').value = rule.chatId || '';
                 document.getElementById('botToken').value = rule.botToken || '';
                 document.getElementById('messageTemplate').value = rule.messageTemplate || '';
+                updateMessagePreview();
                 document.getElementById('enabled').checked = rule.enabled !== false;
                 
                 // Убеждаемся, что поле condition заполнено
