@@ -15,6 +15,7 @@ let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const POLLS_FILE = path.join(__dirname, '../data/polls.json');
+const POLL_RUNS_FILE = path.join(__dirname, '../data/poll_runs.json');
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 const SESSIONS_FILE = path.join(__dirname, '../data/sessions.json');
 
@@ -87,7 +88,7 @@ function getFieldTranslation(path) {
     return typeof current === 'string' ? current : path;
 }
 
-let db = { rules: [], logs: [], polls: [] };
+let db = { rules: [], logs: [], polls: [], pollRuns: [] };
 let pollsCache = [];
 
 if (process.env.DATABASE_URL) {
@@ -100,6 +101,18 @@ if (process.env.DATABASE_URL) {
             await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
             await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
             await client.query(`CREATE TABLE IF NOT EXISTS polls (id BIGINT PRIMARY KEY, data JSONB)`);
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS poll_runs (
+                    id BIGSERIAL PRIMARY KEY,
+                    poll_id BIGINT NOT NULL,
+                    status VARCHAR(20) NOT NULL,
+                    matched BOOLEAN DEFAULT false,
+                    sent BOOLEAN DEFAULT false,
+                    error_message TEXT,
+                    response_snippet TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -134,6 +147,7 @@ if (process.env.DATABASE_URL) {
             `);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_status ON message_queue(status, created_at)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_chat_id ON message_queue(chat_id)`);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_poll_runs_poll_id ON poll_runs(poll_id, created_at)`);
 
             // Загружаем глобальный токен из БД
             try {
@@ -180,6 +194,14 @@ if (process.env.DATABASE_URL) {
     } catch (e) {
         console.error('Error loading polls from file:', e);
     }
+    try {
+        if (fs.existsSync(POLL_RUNS_FILE)) {
+            db.pollRuns = JSON.parse(fs.readFileSync(POLL_RUNS_FILE, 'utf8'));
+            console.log('Poll runs loaded from file');
+        }
+    } catch (e) {
+        console.error('Error loading poll runs from file:', e);
+    }
     pollsCache = db.polls;
     startPollWorkers();
 }
@@ -210,6 +232,16 @@ function savePolls() {
             fs.writeFileSync(POLLS_FILE, JSON.stringify(db.polls, null, 2), 'utf8');
         } catch (e) {
             console.error('Error saving polls to file:', e);
+        }
+    }
+}
+
+function savePollRuns() {
+    if (!process.env.DATABASE_URL) {
+        try {
+            fs.writeFileSync(POLL_RUNS_FILE, JSON.stringify(db.pollRuns, null, 2), 'utf8');
+        } catch (e) {
+            console.error('Error saving poll runs to file:', e);
         }
     }
 }
@@ -723,6 +755,34 @@ async function persistPoll(poll) {
     }
 }
 
+async function logPollRun(poll, data) {
+    const run = {
+        id: Date.now(),
+        pollId: poll.id,
+        status: data.status || 'success',
+        matched: data.matched === true,
+        sent: data.sent === true,
+        errorMessage: data.errorMessage || null,
+        responseSnippet: data.responseSnippet || null,
+        createdAt: new Date().toISOString()
+    };
+
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            await db.query(
+                `INSERT INTO poll_runs (poll_id, status, matched, sent, error_message, response_snippet)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
+                [run.pollId, run.status, run.matched, run.sent, run.errorMessage, run.responseSnippet]
+            );
+        } catch (e) {
+            console.error('Error saving poll run to database:', e);
+        }
+    } else {
+        db.pollRuns.push(run);
+        savePollRuns();
+    }
+}
+
 async function executePoll(poll) {
     if (!poll.enabled) return;
 
@@ -742,24 +802,41 @@ async function executePoll(poll) {
 
         const payload = response.data ?? {};
         const matched = evaluatePollCondition(poll.conditionJson, payload);
+        const responseSnippet = (() => {
+            try {
+                const json = JSON.stringify(payload, null, 2);
+                return json.length > 1000 ? `${json.slice(0, 997)}...` : json;
+            } catch {
+                return null;
+            }
+        })();
 
         poll.lastCheckedAt = new Date().toISOString();
         poll.lastError = null;
 
+        let sent = false;
         if (matched && (!poll.onlyOnChange || !poll.lastMatch)) {
             const botToken = poll.botToken || TELEGRAM_BOT_TOKEN;
             const messageText = formatMessage(payload, payload, { messageTemplate: poll.messageTemplate });
             if (botToken && poll.chatId) {
-                await addMessageToQueue(botToken, poll.chatId, messageText, 0, null);
+                const result = await addMessageToQueue(botToken, poll.chatId, messageText, 0, null);
+                sent = result && result.success !== false;
             }
         }
 
         poll.lastMatch = matched;
         await persistPoll(poll);
+        await logPollRun(poll, { status: 'success', matched, sent, responseSnippet });
     } catch (error) {
         poll.lastCheckedAt = new Date().toISOString();
         poll.lastError = error.response?.data?.description || error.message || 'Unknown error';
         await persistPoll(poll);
+        await logPollRun(poll, {
+            status: 'error',
+            matched: false,
+            sent: false,
+            errorMessage: poll.lastError
+        });
     }
 }
 
@@ -1334,6 +1411,36 @@ app.delete('/api/polls/:id', auth, async (req, res) => {
     } catch (error) {
         console.error('Error deleting poll:', error);
         res.status(500).json({ error: 'Failed to delete poll' });
+    }
+});
+
+app.get('/api/polls/history', auth, async (req, res) => {
+    try {
+        const pollIdRaw = req.query.pollId;
+        const pollId = pollIdRaw ? parseInt(pollIdRaw, 10) : null;
+        const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query(
+                `SELECT id, poll_id, status, matched, sent, error_message, response_snippet, created_at
+                 FROM poll_runs
+                 WHERE ($1::bigint IS NULL OR poll_id = $1)
+                 ORDER BY created_at DESC
+                 LIMIT $2`,
+                [pollId, limit]
+            );
+            return res.json(result.rows);
+        }
+
+        let runs = db.pollRuns || [];
+        if (pollId) {
+            runs = runs.filter(r => r.pollId === pollId);
+        }
+        runs = runs.slice(-limit).reverse();
+        res.json(runs);
+    } catch (error) {
+        console.error('Error loading poll history:', error);
+        res.status(500).json({ error: 'Failed to load poll history' });
     }
 });
 
