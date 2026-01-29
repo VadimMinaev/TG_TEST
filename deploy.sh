@@ -4,6 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
+# Ensure script is executable
+chmod +x "$0"
+
 echo "Updating repo..."
 # Stash local changes if any (silently)
 git stash > /dev/null 2>&1 || true
