@@ -28,6 +28,12 @@ fi
 echo "Stopping and removing old containers..."
 docker compose down || true
 
+# Free port 3000 if it's in use
+if [ -f "./free-port.sh" ]; then
+    chmod +x ./free-port.sh
+    ./free-port.sh || true
+fi
+
 echo "Cleaning old Docker images and cache..."
 docker system prune -f
 
