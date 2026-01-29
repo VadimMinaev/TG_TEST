@@ -40,7 +40,20 @@ export COMPOSE_DOCKER_CLI_BUILD=1
 docker compose build --no-cache
 
 # Stop any containers using port 3000
-docker ps --filter "publish=3000" --format "{{.ID}}" | xargs -r docker stop || true
+echo "Freeing port 3000..."
+# Stop all containers that might use port 3000
+docker ps -q --filter "publish=3000" | xargs -r docker stop 2>/dev/null || true
+docker ps -a -q --filter "publish=3000" | xargs -r docker rm -f 2>/dev/null || true
+
+# Also check for processes directly using port 3000 (not in Docker)
+if command -v lsof >/dev/null 2>&1; then
+    lsof -ti:3000 | xargs -r kill -9 2>/dev/null || true
+elif command -v fuser >/dev/null 2>&1; then
+    fuser -k 3000/tcp 2>/dev/null || true
+fi
+
+# Wait a moment for port to be freed
+sleep 2
 
 # Start containers
 docker compose up -d
