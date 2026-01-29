@@ -1,7 +1,11 @@
 node_modules
 npm-debug.log
-.env
 .git
 .gitignore
-README.md
+.env
+.env.local
+.DS_Store
+*.md
 .vscode
+.idea
+public/index.html

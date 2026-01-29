@@ -7,7 +7,14 @@ require('dotenv').config();
 
 const app = express();
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '../public')));
+
+// Serve static files from build directory in production, or public in development
+const isProduction = process.env.NODE_ENV === 'production';
+if (isProduction) {
+    app.use(express.static(path.join(__dirname, '../build')));
+} else {
+    app.use(express.static(path.join(__dirname, '../public')));
+}
 
 const PORT = process.env.PORT || 3000;
 let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
@@ -1811,7 +1818,11 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
 
 // SPA fallback
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../public', 'index.html'));
+    if (isProduction) {
+        res.sendFile(path.join(__dirname, '../build', 'index.html'));
+    } else {
+        res.sendFile(path.join(__dirname, '../public', 'index.html'));
+    }
 });
 
 const server = app.listen(PORT, () => {
