@@ -5,9 +5,9 @@ WORKDIR /app
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install all dependencies (including dev dependencies for build)
-# Use npm ci for faster, reliable installs
-RUN npm ci
+# Install all dependencies with memory and CPU limits
+# Use single-threaded install to reduce memory usage
+RUN npm ci --prefer-offline --no-audit --maxsockets=1
 
 # Copy only necessary source files for build
 COPY src ./src
@@ -16,7 +16,9 @@ COPY vite.config.ts ./
 COPY tsconfig.json ./
 COPY tsconfig.node.json ./
 
-# Build React application
+# Build React application with memory limits
+# Node.js memory limit for Vite build
+ENV NODE_OPTIONS="--max-old-space-size=512"
 RUN npm run build
 
 # Production stage
@@ -27,8 +29,8 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies (faster)
-RUN npm ci --omit=dev && npm cache clean --force
+# Install only production dependencies with limits
+RUN npm ci --omit=dev --prefer-offline --no-audit --maxsockets=1 && npm cache clean --force
 
 # Copy built files from builder
 COPY --from=builder /app/build ./build
