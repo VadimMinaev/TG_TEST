@@ -5,7 +5,15 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
 echo "Updating repo..."
-git pull --ff-only origin main
+# Stash local changes if any
+git stash
+
+# Pull latest changes
+git pull --ff-only origin main || {
+    echo "⚠️  Pull failed, trying to reset to remote state..."
+    git fetch origin main
+    git reset --hard origin/main
+}
 
 echo "Checking for pre-built files..."
 if [ ! -d "build" ] || [ -z "$(ls -A build 2>/dev/null)" ]; then
