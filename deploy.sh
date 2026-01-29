@@ -104,7 +104,16 @@ done
 echo "Starting containers..."
 docker compose up -d
 
-echo "Showing app logs (last 20 lines)..."
-docker compose logs app --tail=20
+echo "Waiting for container to start..."
+sleep 3
 
-echo "Done."
+echo "Checking container status..."
+docker ps --filter "name=tg_test-app" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+echo "Showing app logs (last 30 lines)..."
+docker compose logs app --tail=30
+
+echo ""
+echo "✅ Done! Container should be running on port 3000"
+echo "Check with: docker ps"
+echo "View logs: docker compose logs -f app"
