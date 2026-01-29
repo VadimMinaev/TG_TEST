@@ -129,13 +129,14 @@ docker ps -aq | xargs -r docker rm 2>/dev/null || true
 # Free ports before starting containers
 echo "Freeing ports before starting containers..."
 
-# Free port 3000 (app)
-free_port 3000 "(node|docker|tg_test|app\.js)"
-
-# If using production compose (with Caddy), also free ports 80 and 443
+# If using production compose (with Caddy), only free ports 80 and 443
+# Port 3000 is not exposed to host, so no need to free it
 if [ "$COMPOSE_FILE" = "docker-compose.prod.yml" ]; then
     free_port 80 "(caddy|docker|nginx|apache|tg_test)"
     free_port 443 "(caddy|docker|nginx|apache|tg_test)"
+else
+    # For regular compose, free port 3000 (it's exposed to host)
+    free_port 3000 "(node|docker|tg_test|app\.js)"
 fi
 
 # Start containers
