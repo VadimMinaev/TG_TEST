@@ -8,12 +8,11 @@ require('dotenv').config();
 const app = express();
 app.use(express.json({ limit: '10mb' }));
 
-// Serve static files from build directory in production, or public in development
+// Serve static files from build directory in production
+// In development, Vite dev server handles frontend (port 5173)
 const isProduction = process.env.NODE_ENV === 'production';
 if (isProduction) {
     app.use(express.static(path.join(__dirname, '../build')));
-} else {
-    app.use(express.static(path.join(__dirname, '../public')));
 }
 
 const PORT = process.env.PORT || 3000;
@@ -1816,14 +1815,13 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
     }
 });
 
-// SPA fallback
-app.get('*', (req, res) => {
-    if (isProduction) {
+// SPA fallback - only in production
+// In development, Vite dev server handles all frontend routes
+if (isProduction) {
+    app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, '../build', 'index.html'));
-    } else {
-        res.sendFile(path.join(__dirname, '../public', 'index.html'));
-    }
-});
+    });
+}
 
 const server = app.listen(PORT, () => {
     console.log(`Server on http://localhost:${PORT}`);
