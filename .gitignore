@@ -1,7 +1,7 @@
-node_modules/
 .env
-.env.local
+node_modules/
+logs/
+backup/
+data/
 *.log
-data/*.json
 .DS_Store
-build/
