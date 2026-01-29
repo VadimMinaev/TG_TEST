@@ -26,7 +26,13 @@ else
 fi
 
 echo "Stopping and removing old containers..."
-docker compose down || true
+# Use production compose file if it exists, otherwise use default
+COMPOSE_FILE="docker-compose.yml"
+if [ -f "docker-compose.prod.yml" ]; then
+    COMPOSE_FILE="docker-compose.prod.yml"
+    echo "Using docker-compose.prod.yml (with Caddy)"
+fi
+docker compose -f $COMPOSE_FILE down || true
 
 echo "Cleaning old Docker images and cache..."
 docker system prune -f
@@ -37,7 +43,7 @@ export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
 # Build without cache to ensure fresh build
-docker compose build --no-cache
+docker compose -f $COMPOSE_FILE build --no-cache
 
 # Free port 3000 RIGHT BEFORE starting containers
 echo "Freeing port 3000 before starting containers..."
@@ -102,7 +108,7 @@ done
 
 # Start containers
 echo "Starting containers..."
-docker compose up -d
+docker compose -f $COMPOSE_FILE up -d
 
 echo "Waiting for container to start..."
 sleep 3
@@ -111,7 +117,10 @@ echo "Checking container status..."
 docker ps --filter "name=tg_test-app" --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
 
 echo "Showing app logs (last 30 lines)..."
-docker compose logs app --tail=30
+docker compose -f $COMPOSE_FILE logs app --tail=30
+
+echo "Showing Caddy logs (if running)..."
+docker compose -f $COMPOSE_FILE logs caddy --tail=10 2>/dev/null || true
 
 echo ""
 echo "✅ Done! Container should be running on port 3000"
