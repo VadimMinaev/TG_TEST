@@ -41,32 +41,67 @@ docker compose build --no-cache
 
 # Free port 3000 RIGHT BEFORE starting containers
 echo "Freeing port 3000 before starting containers..."
-# Stop all Docker containers using port 3000
-docker ps -q --filter "publish=3000" | xargs -r docker stop 2>/dev/null || true
-docker ps -a -q --filter "publish=3000" | xargs -r docker rm -f 2>/dev/null || true
 
-# Check what's using port 3000 and only kill if it's our app
+# Stop ALL containers first
+docker ps -aq | xargs -r docker stop 2>/dev/null || true
+docker ps -aq | xargs -r docker rm 2>/dev/null || true
+
+# Remove all iptables rules for port 3000 (Docker creates these)
+if command -v iptables >/dev/null 2>&1 && [ "$(id -u)" = "0" ]; then
+    echo "Cleaning iptables rules for port 3000..."
+    iptables -t nat -D DOCKER -p tcp --dport 3000 -j DNAT 2>/dev/null || true
+    iptables -t filter -D DOCKER -p tcp --dport 3000 -j ACCEPT 2>/dev/null || true
+fi
+
+# Check what's using port 3000 with multiple methods
+echo "Checking what's using port 3000..."
+
+# Method 1: lsof
 if command -v lsof >/dev/null 2>&1; then
     PIDS=$(sudo lsof -ti:3000 2>/dev/null || true)
     if [ -n "$PIDS" ]; then
         for PID in $PIDS; do
-            # Check if it's a node process or docker process
             CMD=$(ps -p $PID -o cmd= 2>/dev/null || echo "")
-            if echo "$CMD" | grep -qE "(node|docker|tg_test)" || [ -z "$CMD" ]; then
-                echo "Killing process $PID (likely our app): $CMD"
+            if echo "$CMD" | grep -qE "(node|docker|tg_test|app\.js)" || [ -z "$CMD" ]; then
+                echo "Killing process $PID: $CMD"
                 sudo kill -9 $PID 2>/dev/null || true
-            else
-                echo "⚠️  WARNING: Port 3000 is used by another app: PID $PID - $CMD"
-                echo "⚠️  Not killing it. Please stop it manually if needed."
             fi
         done
     fi
 fi
 
-# Wait a moment for port to be freed
-sleep 3
+# Method 2: ss (more reliable)
+if command -v ss >/dev/null 2>&1; then
+    PIDS=$(sudo ss -tlnp 2>/dev/null | grep ":3000 " | grep -oP 'pid=\K[0-9]+' | sort -u || true)
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            CMD=$(ps -p $PID -o cmd= 2>/dev/null || echo "")
+            if echo "$CMD" | grep -qE "(node|docker|tg_test|app\.js)" || [ -z "$CMD" ]; then
+                echo "Killing process $PID (from ss): $CMD"
+                sudo kill -9 $PID 2>/dev/null || true
+            fi
+        done
+    fi
+fi
+
+# Method 3: fuser
+if command -v fuser >/dev/null 2>&1; then
+    sudo fuser -k 3000/tcp 2>/dev/null || true
+fi
+
+# Wait for port to be fully freed
+echo "Waiting for port 3000 to be freed..."
+for i in {1..10}; do
+    if ! (sudo lsof -ti:3000 >/dev/null 2>&1 || sudo ss -tln | grep -q ":3000 "); then
+        echo "Port 3000 is free!"
+        break
+    fi
+    echo "Port still in use, waiting... ($i/10)"
+    sleep 1
+done
 
 # Start containers
+echo "Starting containers..."
 docker compose up -d
 
 echo "Showing app logs (last 20 lines)..."
