@@ -28,12 +28,6 @@ fi
 echo "Stopping and removing old containers..."
 docker compose down || true
 
-# Free port 3000 if it's in use
-if [ -f "./free-port.sh" ]; then
-    chmod +x ./free-port.sh
-    ./free-port.sh || true
-fi
-
 echo "Cleaning old Docker images and cache..."
 docker system prune -f
 
@@ -45,21 +39,32 @@ export COMPOSE_DOCKER_CLI_BUILD=1
 # Build without cache to ensure fresh build
 docker compose build --no-cache
 
-# Stop any containers using port 3000
-echo "Freeing port 3000..."
-# Stop all containers that might use port 3000
+# Free port 3000 RIGHT BEFORE starting containers
+echo "Freeing port 3000 before starting containers..."
+# Stop all Docker containers using port 3000
 docker ps -q --filter "publish=3000" | xargs -r docker stop 2>/dev/null || true
 docker ps -a -q --filter "publish=3000" | xargs -r docker rm -f 2>/dev/null || true
 
-# Also check for processes directly using port 3000 (not in Docker)
+# Check what's using port 3000 and only kill if it's our app
 if command -v lsof >/dev/null 2>&1; then
-    lsof -ti:3000 | xargs -r kill -9 2>/dev/null || true
-elif command -v fuser >/dev/null 2>&1; then
-    fuser -k 3000/tcp 2>/dev/null || true
+    PIDS=$(sudo lsof -ti:3000 2>/dev/null || true)
+    if [ -n "$PIDS" ]; then
+        for PID in $PIDS; do
+            # Check if it's a node process or docker process
+            CMD=$(ps -p $PID -o cmd= 2>/dev/null || echo "")
+            if echo "$CMD" | grep -qE "(node|docker|tg_test)" || [ -z "$CMD" ]; then
+                echo "Killing process $PID (likely our app): $CMD"
+                sudo kill -9 $PID 2>/dev/null || true
+            else
+                echo "⚠️  WARNING: Port 3000 is used by another app: PID $PID - $CMD"
+                echo "⚠️  Not killing it. Please stop it manually if needed."
+            fi
+        done
+    fi
 fi
 
 # Wait a moment for port to be freed
-sleep 2
+sleep 3
 
 # Start containers
 docker compose up -d
