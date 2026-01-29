@@ -14,13 +14,20 @@ else
     echo "✅ Found pre-built files in build/ directory"
 fi
 
+echo "Cleaning old Docker images and cache..."
+docker compose down
+docker system prune -f
+
 echo "Rebuilding and restarting containers..."
 # Enable BuildKit for faster builds
 export DOCKER_BUILDKIT=1
 export COMPOSE_DOCKER_CLI_BUILD=1
 
-# Build and start (Dockerfile uses pre-built files if available)
-docker compose up -d --build
+# Build without cache to ensure fresh build
+docker compose build --no-cache
+
+# Start containers
+docker compose up -d
 
 echo "Showing app logs (last 20 lines)..."
 docker compose logs app --tail=20
