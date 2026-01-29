@@ -25,8 +25,10 @@ else
     echo "✅ Found pre-built files in build/ directory"
 fi
 
+echo "Stopping and removing old containers..."
+docker compose down || true
+
 echo "Cleaning old Docker images and cache..."
-docker compose down
 docker system prune -f
 
 echo "Rebuilding and restarting containers..."
@@ -36,6 +38,9 @@ export COMPOSE_DOCKER_CLI_BUILD=1
 
 # Build without cache to ensure fresh build
 docker compose build --no-cache
+
+# Stop any containers using port 3000
+docker ps --filter "publish=3000" --format "{{.ID}}" | xargs -r docker stop || true
 
 # Start containers
 docker compose up -d
