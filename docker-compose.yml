@@ -1,13 +1,15 @@
-version: '3.8'
-
 services:
   app:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
       - "3000:3000"
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - DATABASE_URL=${DATABASE_URL}
       - PORT=3000
+      - NODE_ENV=production
     volumes:
       - ./data:/app/data
+    restart: unless-stopped
