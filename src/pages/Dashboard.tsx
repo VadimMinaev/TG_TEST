@@ -49,8 +49,8 @@ export function Dashboard() {
   }
 
   return (
-    <div className="mx-auto min-h-screen w-full max-w-[1440px] px-8 py-6">
-      <header className="mx-auto mb-6 flex w-fit items-center gap-3 rounded-xl border border-[hsl(var(--border)_/_0.8)] bg-[hsl(var(--card)_/_0.85)] px-4 py-3 shadow-md backdrop-blur-sm">
+    <div className="mx-auto min-h-screen w-full max-w-[1560px] px-10 py-8">
+      <header className="mx-auto mb-8 flex w-fit items-center gap-3 rounded-xl border border-[hsl(var(--border)_/_0.8)] bg-[hsl(var(--card)_/_0.85)] px-5 py-3 shadow-md backdrop-blur-sm">
         <h1 className="flex items-center gap-2 text-xl font-semibold">
           📱 Интеграция с TG 💲VadminLink
         </h1>
@@ -85,8 +85,8 @@ export function Dashboard() {
         </div>
       </header>
 
-      <div className="flex gap-6">
-        <nav className="flex h-fit flex-col gap-2 rounded-xl border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.85)] p-3 shadow-sm backdrop-blur-sm">
+      <div className="flex gap-8">
+        <nav className="flex h-fit flex-col gap-2 rounded-xl border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.85)] p-4 shadow-sm backdrop-blur-sm">
           {tabs.map((tab) => {
             const isActive = location.pathname === tab.path;
             return (
@@ -105,7 +105,7 @@ export function Dashboard() {
           })}
         </nav>
 
-        <main className="min-w-0 flex-1">
+        <main className="min-w-0 flex-1 px-2">
           <Outlet />
         </main>
       </div>
