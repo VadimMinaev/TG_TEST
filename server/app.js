@@ -105,7 +105,21 @@ if (process.env.DATABASE_URL) {
 
     (async () => {
         try {
-            await client.connect();
+            // Wait for DB to become ready (cold start)
+            const connectWithRetry = async (attempts = 10, delayMs = 2000) => {
+                for (let i = 1; i <= attempts; i += 1) {
+                    try {
+                        await client.connect();
+                        return;
+                    } catch (err) {
+                        if (i === attempts) throw err;
+                        console.warn(`DB not ready (attempt ${i}/${attempts}), retrying in ${delayMs}ms...`);
+                        await new Promise(resolve => setTimeout(resolve, delayMs));
+                    }
+                }
+            };
+
+            await connectWithRetry();
             await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
             await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
             await client.query(`CREATE TABLE IF NOT EXISTS polls (id BIGINT PRIMARY KEY, data JSONB)`);
