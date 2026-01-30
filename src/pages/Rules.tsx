@@ -191,14 +191,14 @@ export function Rules() {
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-4">
         <h2 className="text-xl font-semibold">📋 Правила</h2>
         <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+          <div className="flex items-center gap-2 rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm transition-all focus-within:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring)_/_0.2)]">
+            <Search className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <input
               type="text"
               placeholder="Поиск правил..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-64 rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] py-2 pl-12 pr-3 text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+              className="w-56 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
             />
           </div>
           <input
