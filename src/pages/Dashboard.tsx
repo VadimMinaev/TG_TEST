@@ -49,7 +49,7 @@ export function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen p-3">
+    <div className="mx-auto min-h-screen w-full max-w-[1400px] px-6 py-4">
       <header className="mx-auto mb-6 flex w-fit items-center gap-3 rounded-xl border border-[hsl(var(--border)_/_0.8)] bg-[hsl(var(--card)_/_0.85)] px-4 py-3 shadow-md backdrop-blur-sm">
         <h1 className="flex items-center gap-2 text-xl font-semibold">
           📱 Интеграция с TG 💲VadminLink
