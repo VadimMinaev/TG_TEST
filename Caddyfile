@@ -1,4 +1,4 @@
-{$DOMAIN} {
+{$DOMAIN:localhost} {
     reverse_proxy app:3000
 }
 integration.vadminaev.ru {
