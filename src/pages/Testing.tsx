@@ -71,9 +71,12 @@ export function Testing() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-semibold">🧪 Тестирование условий</h2>
+    <div className="space-y-6">
+      <div className="card">
+        <div className="card-header">
+          <h2 className="text-xl font-semibold">🧪 Тестирование условий</h2>
+        </div>
+        <div className="card-body">
 
         <div className="mb-4">
           <label className="mb-2 block text-sm font-medium">Условие</label>
@@ -113,10 +116,14 @@ export function Testing() {
             {testResult.message}
           </div>
         )}
+        </div>
       </div>
 
-      <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] p-6 shadow-md">
-        <h2 className="mb-4 text-xl font-semibold">📤 Тест отправки в Telegram</h2>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="text-xl font-semibold">📤 Тест отправки в Telegram</h2>
+        </div>
+        <div className="card-body">
 
         <div className="mb-4">
           <label className="mb-2 block text-sm font-medium">Токен бота для тестирования</label>
@@ -174,6 +181,7 @@ export function Testing() {
             {telegramResult.message}
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -48,8 +48,8 @@ export function Queue() {
   };
 
   return (
-    <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] shadow-md">
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-4">
+    <div className="card">
+      <div className="card-header">
         <h2 className="text-xl font-semibold">📬 Очередь сообщений</h2>
         <div className="flex items-center gap-2">
           <select
@@ -74,27 +74,27 @@ export function Queue() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-4 gap-4 p-4">
-          <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+        <div className="grid grid-cols-4 gap-4 p-6">
+          <div className="panel">
             <div className="text-xs text-[hsl(var(--muted-foreground))]">Всего</div>
             <div className="text-2xl font-semibold">{stats.total || 0}</div>
           </div>
-          <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+          <div className="panel">
             <div className="text-xs text-[hsl(var(--muted-foreground))]">Ожидает</div>
             <div className="text-2xl font-semibold text-orange-500">{stats.stats?.pending || 0}</div>
           </div>
-          <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+          <div className="panel">
             <div className="text-xs text-[hsl(var(--muted-foreground))]">Отправлено</div>
             <div className="text-2xl font-semibold text-green-500">{stats.stats?.sent || 0}</div>
           </div>
-          <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+          <div className="panel">
             <div className="text-xs text-[hsl(var(--muted-foreground))]">Ошибка</div>
             <div className="text-2xl font-semibold text-red-500">{stats.stats?.failed || 0}</div>
           </div>
         </div>
       )}
 
-      <div className="p-4">
+      <div className="p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
@@ -103,38 +103,38 @@ export function Queue() {
           <p className="py-20 text-center text-[hsl(var(--muted-foreground))]">История очереди пуста</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
+            <table className="table-basic w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-[hsl(var(--border))] text-left">
-                  <th className="p-2 text-sm font-semibold">ID</th>
-                  <th className="p-2 text-sm font-semibold">Статус</th>
-                  <th className="p-2 text-sm font-semibold">Chat ID</th>
-                  <th className="p-2 text-sm font-semibold">Сообщение</th>
-                  <th className="p-2 text-sm font-semibold">Попытки</th>
-                  <th className="p-2 text-sm font-semibold">Создано</th>
+                  <th className="text-sm font-semibold">ID</th>
+                  <th className="text-sm font-semibold">Статус</th>
+                  <th className="text-sm font-semibold">Chat ID</th>
+                  <th className="text-sm font-semibold">Сообщение</th>
+                  <th className="text-sm font-semibold">Попытки</th>
+                  <th className="text-sm font-semibold">Создано</th>
                 </tr>
               </thead>
               <tbody>
                 {messages.map((msg) => (
                   <tr key={msg.id} className="border-b border-[hsl(var(--border))]">
-                    <td className="p-2">
+                    <td>
                       <code className="text-xs">{msg.id}</code>
                     </td>
-                    <td className="p-2">{getStatusBadge(msg.status)}</td>
-                    <td className="p-2">
+                    <td>{getStatusBadge(msg.status)}</td>
+                    <td>
                       <code className="text-xs">{msg.chatId}</code>
                     </td>
-                    <td className="max-w-xs p-2">
+                    <td className="max-w-xs">
                       <div className="overflow-hidden text-ellipsis whitespace-nowrap text-sm" title={msg.messageTextFull}>
                         {msg.messageText}
                       </div>
                     </td>
-                    <td className="p-2 text-sm">
+                    <td className="text-sm">
                       <span className={msg.attempts >= msg.maxAttempts ? 'text-red-500' : ''}>
                         {msg.attempts}/{msg.maxAttempts}
                       </span>
                     </td>
-                    <td className="p-2 text-xs">{new Date(msg.createdAt).toLocaleString('ru-RU')}</td>
+                    <td className="text-xs">{new Date(msg.createdAt).toLocaleString('ru-RU')}</td>
                   </tr>
                 ))}
               </tbody>

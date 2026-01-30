@@ -60,10 +60,12 @@ export function Users() {
 
   if (user?.username !== 'vadmin') {
     return (
-      <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] p-6 shadow-md">
+      <div className="card">
+        <div className="card-body">
         <p className="text-center text-[hsl(var(--destructive))]">
           У вас нет доступа к этому разделу. Только vadmin может управлять пользователями.
         </p>
+        </div>
       </div>
     );
   }
@@ -71,8 +73,8 @@ export function Users() {
   return (
     <div className="space-y-4">
       {showCreateForm && (
-        <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] p-6 shadow-md">
-          <div className="mb-4 flex items-center justify-between">
+        <div className="card">
+          <div className="card-header">
             <h2 className="text-xl font-semibold">👤 Создать нового пользователя</h2>
             <button
               onClick={() => setShowCreateForm(false)}
@@ -82,64 +84,66 @@ export function Users() {
             </button>
           </div>
 
-          {message && (
-            <div
-              className={`mb-4 animate-fade-in rounded border p-3 text-sm ${
-                message.type === 'success'
-                  ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                  : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-              }`}
-            >
-              {message.text}
-            </div>
-          )}
-
-          <form onSubmit={handleCreateUser} className="space-y-4">
-            <div>
-              <label className="mb-2 block text-sm font-medium">Логин</label>
-              <input
-                type="text"
-                value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
-                placeholder="username"
-                required
-                className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-              />
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-medium">Пароль</label>
-              <input
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="••••••"
-                required
-                className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-              />
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                type="submit"
-                className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+          <div className="card-body">
+            {message && (
+              <div
+                className={`mb-4 animate-fade-in rounded border p-3 text-sm ${
+                  message.type === 'success'
+                    ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                    : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+                }`}
               >
-                Создать пользователя
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))] transition-all hover:bg-[hsl(var(--accent))]"
-              >
-                Отмена
-              </button>
-            </div>
-          </form>
+                {message.text}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateUser} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">Логин</label>
+                <input
+                  type="text"
+                  value={newUsername}
+                  onChange={(e) => setNewUsername(e.target.value)}
+                  placeholder="username"
+                  required
+                  className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium">Пароль</label>
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="••••••"
+                  required
+                  className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                />
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+                >
+                  Создать пользователя
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateForm(false)}
+                  className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))] transition-all hover:bg-[hsl(var(--accent))]"
+                >
+                  Отмена
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
-      <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] shadow-md">
-        <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-4">
+      <div className="card">
+        <div className="card-header">
           <h2 className="text-xl font-semibold">👥 Пользователи</h2>
           <button
             onClick={() => setShowCreateForm(true)}
@@ -150,19 +154,18 @@ export function Users() {
           </button>
         </div>
 
-        {message && !showCreateForm && (
-          <div
-            className={`mx-4 mt-4 animate-fade-in rounded border p-3 text-sm ${
-              message.type === 'success'
-                ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-            }`}
-          >
-            {message.text}
-          </div>
-        )}
-
-        <div className="p-4">
+        <div className="card-body">
+          {message && !showCreateForm && (
+            <div
+              className={`mb-4 animate-fade-in rounded border p-3 text-sm ${
+                message.type === 'success'
+                  ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                  : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+              }`}
+            >
+              {message.text}
+            </div>
+          )}
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />

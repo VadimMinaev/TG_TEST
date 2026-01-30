@@ -45,8 +45,8 @@ export function History() {
   };
 
   return (
-    <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] shadow-md">
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-4">
+    <div className="card">
+      <div className="card-header">
         <h2 className="text-xl font-semibold">📊 История вебхуков</h2>
         <div className="flex gap-2">
           <button
@@ -66,8 +66,8 @@ export function History() {
         </div>
       </div>
 
-      <div className="flex gap-4 p-4">
-        <div className="w-[400px] border-r border-[hsl(var(--border))] pr-4">
+      <div className="flex gap-8 p-6">
+        <div className="w-[420px] border-r border-[hsl(var(--border))] pr-6">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
@@ -76,12 +76,12 @@ export function History() {
             <p className="py-20 text-center text-[hsl(var(--muted-foreground))]">История пуста</p>
           ) : (
             <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
-              <table className="w-full border-collapse">
+              <table className="table-basic w-full border-collapse">
                 <thead>
                   <tr className="border-b-2 border-[hsl(var(--border))] text-left">
-                    <th className="p-2 text-xs font-semibold">Дата/Время</th>
-                    <th className="p-2 text-xs font-semibold">Статус</th>
-                    <th className="p-2 text-xs font-semibold">Совпадения</th>
+                    <th className="text-xs font-semibold">Дата/Время</th>
+                    <th className="text-xs font-semibold">Статус</th>
+                    <th className="text-xs font-semibold">Совпадения</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -93,8 +93,8 @@ export function History() {
                         selectedLog?.id === log.id ? 'bg-[hsl(var(--accent))]' : ''
                       }`}
                     >
-                      <td className="p-2 text-xs">{new Date(log.timestamp).toLocaleString('ru-RU')}</td>
-                      <td className="p-2">
+                      <td className="text-xs">{new Date(log.timestamp).toLocaleString('ru-RU')}</td>
+                      <td>
                         <span
                           className={`rounded px-2 py-1 text-xs ${
                             log.status === 'matched'
@@ -105,7 +105,7 @@ export function History() {
                           {log.status === 'matched' ? '✅ Совпадения' : '⛔ Нет'}
                         </span>
                       </td>
-                      <td className="p-2 text-xs">
+                      <td className="text-xs">
                         {log.matched}/{log.total_rules}
                       </td>
                     </tr>
@@ -116,12 +116,12 @@ export function History() {
           )}
         </div>
 
-        <div className="flex-1 pl-4">
+        <div className="flex-1">
           {selectedLog ? (
             <div className="space-y-4">
               <div>
                 <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о выполнении</h4>
-                <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                <div className="panel">
                   <div className="mb-2">
                     <strong>ID:</strong> <code>{selectedLog.id}</code>
                   </div>
@@ -136,7 +136,7 @@ export function History() {
 
               <div>
                 <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Payload</h4>
-                <div className="max-h-96 overflow-auto rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                <div className="panel max-h-96 overflow-auto">
                   <pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(selectedLog.payload, null, 2)}</pre>
                 </div>
               </div>
@@ -146,7 +146,7 @@ export function History() {
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">
                     Результаты отправки в Telegram
                   </h4>
-                  <div className="space-y-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                  <div className="panel space-y-2">
                     {selectedLog.telegram_results.map((result, idx) => (
                       <div key={idx} className="border-b border-[hsl(var(--border))] pb-2 last:border-0">
                         <div>
