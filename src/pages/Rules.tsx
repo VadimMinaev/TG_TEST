@@ -187,8 +187,8 @@ export function Rules() {
   };
 
   return (
-    <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] shadow-md backdrop-blur-sm">
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-6 py-4">
+    <div className="card">
+      <div className="card-header">
         <h2 className="text-xl font-semibold">📋 Правила</h2>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm transition-all focus-within:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring)_/_0.2)]">
@@ -240,7 +240,7 @@ export function Rules() {
         </div>
       )}
 
-      <div className="flex gap-6 p-6">
+      <div className="flex gap-8 p-6">
         <div className="w-[520px] border-r border-[hsl(var(--border))] pr-6">
           <RulesList
             rules={filteredRules}

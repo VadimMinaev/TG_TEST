@@ -26,13 +26,13 @@ export function RulesList({ rules, selectedId, onSelect, loading }: RulesListPro
 
   return (
     <div className="max-h-[calc(100vh-350px)] overflow-y-auto rounded-md border border-[hsl(var(--border)_/_0.6)]">
-      <table className="w-full border-collapse">
+      <table className="table-basic w-full border-collapse">
         <thead>
           <tr className="border-b-2 border-[hsl(var(--border))] text-left text-sm">
-            <th className="px-4 py-3 font-semibold">Статус</th>
-            <th className="px-4 py-3 font-semibold">Название</th>
-            <th className="px-4 py-3 font-semibold">Условие</th>
-            <th className="px-4 py-3 font-semibold">Канал</th>
+            <th className="font-semibold">Статус</th>
+            <th className="font-semibold">Название</th>
+            <th className="font-semibold">Условие</th>
+            <th className="font-semibold">Канал</th>
           </tr>
         </thead>
         <tbody>
@@ -44,7 +44,7 @@ export function RulesList({ rules, selectedId, onSelect, loading }: RulesListPro
                 selectedId === rule.id ? 'bg-[hsl(var(--accent))]' : ''
               }`}
             >
-              <td className="px-4 py-3">
+              <td>
                 <span
                   className={`rounded px-2 py-1 text-xs ${
                     rule.enabled
@@ -55,13 +55,13 @@ export function RulesList({ rules, selectedId, onSelect, loading }: RulesListPro
                   {rule.enabled ? '✅ Вкл' : '⏸️ Выкл'}
                 </span>
               </td>
-              <td className="px-4 py-3 font-medium">{rule.name}</td>
-              <td className="px-4 py-3">
+              <td className="font-medium">{rule.name}</td>
+              <td>
                 <code className="inline-block max-w-[260px] overflow-hidden text-ellipsis whitespace-nowrap text-xs">
                   {rule.condition}
                 </code>
               </td>
-              <td className="px-4 py-3">
+              <td>
                 <code className="text-xs">{rule.chatId}</code>
               </td>
             </tr>

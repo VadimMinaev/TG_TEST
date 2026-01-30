@@ -162,8 +162,8 @@ export function Polling() {
   };
 
   return (
-    <div className="rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.9)] shadow-md backdrop-blur-sm">
-      <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-6 py-4">
+    <div className="card">
+      <div className="card-header">
         <h2 className="text-xl font-semibold">🔁 Пуллинг</h2>
         <div className="flex items-center gap-2">
           <button
@@ -197,9 +197,9 @@ export function Polling() {
         </div>
       )}
 
-      <div className="flex gap-6 p-6">
+      <div className="flex gap-8 p-6">
         <div className="w-[420px] border-r border-[hsl(var(--border))] pr-6">
-          <div className="rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-4">
+          <div className="panel">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold">📋 Список задач</h3>
               <button
@@ -217,7 +217,7 @@ export function Polling() {
               <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Задачи не найдены</p>
             ) : (
               <div className="max-h-[calc(100vh-320px)] overflow-y-auto">
-                <table className="w-full border-collapse text-sm">
+                <table className="table-basic w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
                       <th className="px-2 py-2">Название</th>
@@ -248,7 +248,7 @@ export function Polling() {
 
         <div className="flex-1 pl-2">
           {editingPollId !== null ? (
-            <div className="rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-5">
+            <div className="panel">
               <h3 className="mb-4 text-lg font-semibold">
                 {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
