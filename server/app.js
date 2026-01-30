@@ -96,6 +96,7 @@ function getFieldTranslation(path) {
 
 let db = { rules: [], logs: [], polls: [], pollRuns: [] };
 let pollsCache = [];
+const pollTimers = new Map();
 
 if (process.env.DATABASE_URL) {
     const { Client } = require('pg');
@@ -667,8 +668,6 @@ function startMessageQueueWorker() {
 // ────────────────────────────────────────────────────────────────
 // POLLING WORKER
 // ────────────────────────────────────────────────────────────────
-
-const pollTimers = new Map();
 
 function normalizePoll(poll) {
     const intervalSec = Math.max(5, parseInt(poll.intervalSec, 10) || 60);
