@@ -23,7 +23,8 @@ services:
       timeout: 10s
       retries: 3
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   db:
     image: postgres:15-alpine
