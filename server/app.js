@@ -97,6 +97,7 @@ function getFieldTranslation(path) {
 let db = { rules: [], logs: [], polls: [], pollRuns: [] };
 let pollsCache = [];
 const pollTimers = new Map();
+let dbConnected = false;
 
 if (process.env.DATABASE_URL) {
     const { Client } = require('pg');
@@ -180,12 +181,16 @@ if (process.env.DATABASE_URL) {
             }
 
             db = client;
+            dbConnected = true;
             console.log('DB connected and tables created');
             await loadPollsCache();
             startMessageQueueWorker();
             startPollWorkers();
         } catch (err) {
             console.error('DB init error:', err);
+            dbConnected = false;
+            // Fallback to file mode if DB is unreachable
+            process.env.DATABASE_URL = '';
         }
     })();
 } else {
