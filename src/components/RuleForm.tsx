@@ -42,7 +42,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
     e.preventDefault();
     setError('');
 
-    if (!name || !condition || !chatId || !botToken) {
+    if (!name || !condition || !chatId) {
       setError('Заполните все обязательные поля');
       return;
     }
@@ -53,7 +53,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         name,
         condition,
         chatId,
-        botToken,
+        botToken: botToken || undefined,
         messageTemplate: messageTemplate || undefined,
         enabled,
       });
@@ -128,7 +128,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
 
       <div>
         <label htmlFor="botToken" className="mb-2 block text-sm font-medium">
-          Токен Telegram бота (обязательно)
+          Токен Telegram бота (опционально)
         </label>
         <input
           type="password"
@@ -136,11 +136,10 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           value={botToken}
           onChange={(e) => setBotToken(e.target.value)}
           placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-          required
           className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
         <small className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">
-          Получите от @BotFather в Telegram
+          Оставьте пустым, чтобы использовать глобальный токен
         </small>
       </div>
 

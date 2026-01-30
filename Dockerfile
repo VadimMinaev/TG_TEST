@@ -1,19 +1,28 @@
-# Production stage - uses pre-built files if available
+# Builder stage
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Install dependencies (including dev for build)
+COPY package*.json ./
+RUN npm ci --prefer-offline --no-audit --maxsockets=1 && npm cache clean --force
+
+# Copy source and build
+COPY . .
+RUN npm run build
+
+# Production stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-
 # Install only production dependencies
+COPY package*.json ./
 RUN npm ci --omit=dev --prefer-offline --no-audit --maxsockets=1 && npm cache clean --force
 
-# Copy built files (should be built locally)
-COPY build ./build
-
-# Copy server files
-COPY server ./server
+# Copy built files and server
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/server ./server
 
 # Create data directory if it doesn't exist
 RUN mkdir -p ./data

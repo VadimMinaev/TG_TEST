@@ -1237,14 +1237,18 @@ app.get('/api/rules/:id', auth, async (req, res) => {
 app.post('/api/rules', auth, async (req, res) => {
     try {
         const { botToken, messageTemplate = '', ...ruleData } = req.body;
+        const trimmedToken = typeof botToken === 'string' ? botToken.trim() : '';
+        const resolvedToken = trimmedToken || TELEGRAM_BOT_TOKEN;
 
-        if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
+        if (!resolvedToken || resolvedToken === 'YOUR_TOKEN') {
             return res.status(400).json({ error: 'Bot token is required' });
         }
 
-        const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
-        if (!response.data.ok) {
-            return res.status(400).json({ error: 'Invalid bot token' });
+        if (trimmedToken) {
+            const response = await axios.get(`https://api.telegram.org/bot${trimmedToken}/getMe`);
+            if (!response.data.ok) {
+                return res.status(400).json({ error: 'Invalid bot token' });
+            }
         }
 
         const authorId = req.user.userId || (req.user.username === 'vadmin' ? 'vadmin' : null);
@@ -1256,7 +1260,7 @@ app.post('/api/rules', auth, async (req, res) => {
         const newRule = {
             id: Date.now(),
             ...ruleData,
-            botToken,
+            botToken: trimmedToken,
             messageTemplate: safeMessageTemplate.trim(),
             enabled: req.body.enabled !== false,
             encoding: 'utf8',
@@ -1303,14 +1307,17 @@ app.put('/api/rules/:id', auth, async (req, res) => {
         const { botToken, messageTemplate, ...ruleData } = req.body;
 
         if ('botToken' in req.body) {
-            if (!botToken || typeof botToken !== 'string' || !botToken.trim()) {
-                return res.status(400).json({ error: 'Bot token is required' });
+            if (typeof botToken !== 'string') {
+                return res.status(400).json({ error: 'Bot token must be a string' });
             }
-            const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
-            if (!response.data.ok) {
-                return res.status(400).json({ error: 'Invalid bot token' });
+            const trimmedToken = botToken.trim();
+            if (trimmedToken) {
+                const response = await axios.get(`https://api.telegram.org/bot${trimmedToken}/getMe`);
+                if (!response.data.ok) {
+                    return res.status(400).json({ error: 'Invalid bot token' });
+                }
             }
-            ruleData.botToken = botToken;
+            ruleData.botToken = trimmedToken;
         }
 
         const updated = {
@@ -1320,7 +1327,7 @@ app.put('/api/rules/:id', auth, async (req, res) => {
             updated_at: new Date().toISOString()
         };
 
-        if (!updated.botToken) {
+        if (!updated.botToken && (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_TOKEN')) {
             return res.status(400).json({ error: 'Bot token is required' });
         }
 
