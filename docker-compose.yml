@@ -1,9 +1,6 @@
-version: '3.8'
 services:
   app:
     build: .
-    ports:
-      - "${HOST_PORT}:3000"
     environment:
       - NODE_ENV=production
       - DOMAIN=${DOMAIN}
@@ -11,6 +8,8 @@ services:
       - ./data:/app/data
       - ./logs:/app/logs
     restart: unless-stopped
+    expose:
+      - "3000"
     healthcheck:
       test:
         [
@@ -22,3 +21,20 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - app
+    restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:
