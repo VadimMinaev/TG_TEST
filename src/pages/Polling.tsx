@@ -172,7 +172,7 @@ export function Polling() {
               placeholder='{"Authorization": "Bearer token"}'
             />
             <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-              Пример: <code>{"{"}{"\"Authorization\"":"\"Bearer <TOKEN>\""},{"\"Content-Type\"":"\"application/json\""}{"}"}</code>
+              Пример: <code>{'{"Authorization":"Bearer <TOKEN>","Content-Type":"application/json"}'}</code>
             </p>
           </div>
           <div className="col-span-2">
