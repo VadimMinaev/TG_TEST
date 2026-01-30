@@ -71,18 +71,31 @@ echo "🔄 Перезапуск сервиса..."
 "${COMPOSE_CMD[@]}" up -d 2>&1
 
 # Проверка здоровья
-sleep 10
-if curl -s --max-time 10 --fail "http://localhost:${HOST_PORT}/health" > /dev/null 2>&1; then
+echo "🔎 Проверка здоровья..."
+HEALTH_OK=0
+for i in $(seq 1 12); do
+  if curl -s --max-time 5 --fail "http://localhost:${HOST_PORT}/health" > /dev/null 2>&1; then
+    HEALTH_OK=1
+    break
+  fi
+  echo "  Ждём ответ /health... ($i/12)"
+  sleep 5
+done
+
+if [ "$HEALTH_OK" -eq 1 ]; then
   echo -e "✅ Успех: $PROJECT_NAME работает на порту $HOST_PORT"
   echo -e "   Доступ: https://$DOMAIN"
   # Очистка старых бэкапов (оставить последние 5)
   ls -td ./backup/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf
 else
-  echo "❌ Сервис не отвечает. Откат из бэкапа..."
+  echo "❌ Сервис не отвечает. Логи контейнера:"
+  "${COMPOSE_CMD[@]}" ps 2>/dev/null || true
+  "${COMPOSE_CMD[@]}" logs --tail=200 app 2>/dev/null || true
+  echo "❌ Откат из бэкапа..."
   "${COMPOSE_CMD[@]}" down 2>&1 || true
   cp -r "$BACKUP_DIR/data" ./ 2>/dev/null || true
   "${COMPOSE_CMD[@]}" up -d 2>&1
   sleep 5
-  curl -s "http://localhost:${HOST_PORT}/" && echo "⚠️  Частичное восстановление" || echo "❌ Полный откат не удался"
+  curl -s "http://localhost:${HOST_PORT}/health" && echo "⚠️  Частичное восстановление" || echo "❌ Полный откат не удался"
   exit 1
 fi
