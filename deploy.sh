@@ -29,22 +29,41 @@ fi
 [ -f .env ] || { echo "❌ .env не найден. Скопируй .env.example → .env"; exit 1; }
 # Безопасная загрузка переменных из .env (игнорируем комментарии и пустые строки)
 while IFS= read -r line || [ -n "$line" ]; do
+  # Убираем CR и лишние пробелы по краям
+  line="${line%%$'\r'}"
+  line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   # Пропускаем комментарии и пустые строки
-  [[ "$line" =~ ^[[:space:]]*# ]] && continue
-  [[ -z "${line// }" ]] && continue
-  # Экспортируем переменную
-  export "$line" 2>/dev/null || true
+  [[ -z "$line" ]] && continue
+  [[ "$line" =~ ^# ]] && continue
+  # Поддерживаем KEY=VALUE с возможными пробелами вокруг "="
+  if [[ "$line" == *"="* ]]; then
+    key="$(echo "${line%%=*}" | sed 's/[[:space:]]*$//')"
+    val="$(echo "${line#*=}" | sed 's/^[[:space:]]*//')"
+    export "${key}=${val}" 2>/dev/null || true
+  fi
 done < .env
+
+if [ -z "${DOMAIN:-}" ] || [ -z "${HOST_PORT:-}" ] || [ -z "${PROJECT_NAME:-}" ]; then
+  echo "❌ В .env должны быть заданные DOMAIN, HOST_PORT и PROJECT_NAME"
+  exit 1
+fi
 
 echo "🚀 Деплой $PROJECT_NAME → $DOMAIN (порт $HOST_PORT)"
 
+# Определяем команду docker compose
+if command -v docker-compose >/dev/null 2>&1; then
+  COMPOSE_CMD="docker-compose"
+else
+  COMPOSE_CMD="docker compose"
+fi
+
 # Сборка и запуск (только этот проект)
 echo "📦 Сборка контейнера..."
-docker-compose build --pull --no-cache 2>&1
+$COMPOSE_CMD build --pull --no-cache 2>&1
 
 echo "🔄 Перезапуск сервиса..."
-docker-compose down 2>&1 || true
-docker-compose up -d 2>&1
+$COMPOSE_CMD down 2>&1 || true
+$COMPOSE_CMD up -d 2>&1
 
 # Проверка здоровья
 sleep 10
@@ -55,9 +74,9 @@ if curl -s --max-time 10 --fail "http://localhost:${HOST_PORT}/health" > /dev/nu
   ls -td ./backup/*/ 2>/dev/null | tail -n +6 | xargs -r rm -rf
 else
   echo "❌ Сервис не отвечает. Откат из бэкапа..."
-  docker-compose down 2>&1 || true
+  $COMPOSE_CMD down 2>&1 || true
   cp -r "$BACKUP_DIR/data" ./ 2>/dev/null || true
-  docker-compose up -d 2>&1
+  $COMPOSE_CMD up -d 2>&1
   sleep 5
   curl -s "http://localhost:${HOST_PORT}/" && echo "⚠️  Частичное восстановление" || echo "❌ Полный откат не удался"
   exit 1
