@@ -6,6 +6,9 @@ const DEFAULT_FORM = {
   name: '',
   url: '',
   method: 'GET',
+  headersJson: '',
+  bodyJson: '',
+  conditionJson: '',
   intervalSec: 60,
   timeoutSec: 10,
   chatId: '',
@@ -53,6 +56,9 @@ export function Polling() {
         ...form,
         intervalSec: Number(form.intervalSec) || 60,
         timeoutSec: Number(form.timeoutSec) || 10,
+        headersJson: form.headersJson || undefined,
+        bodyJson: form.bodyJson || undefined,
+        conditionJson: form.conditionJson || undefined,
         botToken: form.botToken || undefined,
         messageTemplate: form.messageTemplate || undefined,
       };
@@ -103,7 +109,7 @@ export function Polling() {
       )}
 
       {creating && (
-        <form onSubmit={handleCreatePoll} className="mx-4 mt-4 grid grid-cols-2 gap-4 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
+        <form onSubmit={handleCreatePoll} className="mx-6 mt-4 grid grid-cols-2 gap-4 rounded border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-6">
           <div>
             <label className="mb-2 block text-sm font-medium">Название</label>
             <input
@@ -121,6 +127,17 @@ export function Polling() {
               onChange={(e) => setForm({ ...form, url: e.target.value })}
               placeholder="https://api.example.com/status"
             />
+          </div>
+          <div>
+            <label className="mb-2 block text-sm font-medium">Токен бота (опционально)</label>
+            <input
+              className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+              type="password"
+              value={form.botToken}
+              onChange={(e) => setForm({ ...form, botToken: e.target.value })}
+              placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+            />
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">Если пусто — будет использован глобальный токен.</p>
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium">Chat ID</label>
@@ -141,7 +158,50 @@ export function Polling() {
               <option value="GET">GET</option>
               <option value="POST">POST</option>
               <option value="PUT">PUT</option>
+              <option value="PATCH">PATCH</option>
+              <option value="DELETE">DELETE</option>
             </select>
+          </div>
+          <div className="col-span-2">
+            <label className="mb-2 block text-sm font-medium">Headers (JSON)</label>
+            <textarea
+              rows={3}
+              className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+              value={form.headersJson}
+              onChange={(e) => setForm({ ...form, headersJson: e.target.value })}
+              placeholder='{"Authorization": "Bearer token"}'
+            />
+            <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+              Пример: <code>{"{"}{"\"Authorization\"":"\"Bearer <TOKEN>\""},{"\"Content-Type\"":"\"application/json\""}{"}"}</code>
+            </p>
+          </div>
+          <div className="col-span-2">
+            <label className="mb-2 block text-sm font-medium">Body (JSON)</label>
+            <textarea
+              rows={3}
+              className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+              value={form.bodyJson}
+              onChange={(e) => setForm({ ...form, bodyJson: e.target.value })}
+              placeholder='{"id": 123}'
+            />
+          </div>
+          <div className="col-span-2">
+            <label className="mb-2 block text-sm font-medium">Условия (JSON)</label>
+            <textarea
+              rows={4}
+              className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+              value={form.conditionJson}
+              onChange={(e) => setForm({ ...form, conditionJson: e.target.value })}
+              placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'
+            />
+            <div className="mt-2 rounded border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--muted)_/_0.2)] p-3 text-xs">
+              <div className="mb-1 font-semibold">Пример:</div>
+              <pre className="whitespace-pre-wrap">{`{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"},{"path":"data.priority","op":">=","value":3}]}`}</pre>
+              <div className="mt-2 text-[hsl(var(--muted-foreground))]">
+                <code>logic</code> — AND/OR. <code>conditions</code> — массив проверок. <code>path</code> — путь к полю
+                в ответе. <code>op</code> — оператор (==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists).
+              </div>
+            </div>
           </div>
           <div>
             <label className="mb-2 block text-sm font-medium">Интервал (сек)</label>
@@ -217,7 +277,7 @@ export function Polling() {
         </form>
       )}
 
-      <div className="p-4">
+      <div className="p-6">
         {loading ? (
           <div className="flex items-center justify-center py-16">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
