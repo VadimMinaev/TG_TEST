@@ -66,8 +66,8 @@ export function History() {
         </div>
       </div>
 
-      <div className="flex gap-8 p-6">
-        <div className="w-[420px] border-r border-[hsl(var(--border))] pr-6">
+      <div className="split-layout p-6">
+        <div className="split-left">
           {loading ? (
             <div className="flex items-center justify-center py-20">
               <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
@@ -116,7 +116,7 @@ export function History() {
           )}
         </div>
 
-        <div className="flex-1">
+        <div className="split-right">
           {selectedLog ? (
             <div className="space-y-4">
               <div>

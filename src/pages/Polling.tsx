@@ -197,8 +197,8 @@ export function Polling() {
         </div>
       )}
 
-      <div className="flex gap-8 p-6">
-        <div className="w-[420px] border-r border-[hsl(var(--border))] pr-6">
+      <div className="split-layout p-6">
+        <div className="split-left">
           <div className="panel">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold">📋 Список задач</h3>
@@ -246,7 +246,7 @@ export function Polling() {
           </div>
         </div>
 
-        <div className="flex-1 pl-2">
+        <div className="split-right">
           {editingPollId !== null ? (
             <div className="panel">
               <h3 className="mb-4 text-lg font-semibold">

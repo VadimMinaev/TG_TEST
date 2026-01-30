@@ -240,8 +240,8 @@ export function Rules() {
         </div>
       )}
 
-      <div className="flex gap-8 p-6">
-        <div className="w-[520px] border-r border-[hsl(var(--border))] pr-6">
+      <div className="split-layout p-6">
+        <div className="split-left split-left-wide">
           <RulesList
             rules={filteredRules}
             selectedId={selectedRuleId}
@@ -250,7 +250,7 @@ export function Rules() {
           />
         </div>
 
-        <div className="flex-1 pl-6">
+        <div className="split-right">
           {editingRuleId !== null ? (
             <RuleForm
               ruleId={editingRuleId === -1 ? null : editingRuleId}

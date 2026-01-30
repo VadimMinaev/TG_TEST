@@ -65,8 +65,8 @@ export function PollingHistory() {
         </div>
       )}
 
-      <div className="flex gap-8 p-6">
-        <div className="w-[420px] border-r border-[hsl(var(--border))] pr-6">
+      <div className="split-layout p-6">
+        <div className="split-left">
           <div className="panel">
             <div className="mb-3 text-sm font-semibold">Список запусков</div>
             {loading ? (
@@ -106,7 +106,7 @@ export function PollingHistory() {
           </div>
         </div>
 
-        <div className="flex-1">
+        <div className="split-right">
           {selectedRun ? (
             <div className="panel space-y-4 text-sm">
               <div>
