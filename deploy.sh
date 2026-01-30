@@ -31,6 +31,8 @@ fi
 while IFS= read -r line || [ -n "$line" ]; do
   # Убираем CR и лишние пробелы по краям
   line="${line%%$'\r'}"
+  # Убираем BOM (UTF-8) в начале файла/строки
+  line="$(printf '%s' "$line" | sed '1s/^\xEF\xBB\xBF//')"
   line="$(echo "$line" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   # Пропускаем комментарии и пустые строки
   [[ -z "$line" ]] && continue
