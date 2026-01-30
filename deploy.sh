@@ -3,6 +3,9 @@ set -e
 export PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$PROJECT_DIR"
 
+# Ensure script is executable
+chmod +x "$0" 2>/dev/null || true
+
 # Безопасное создание папок
 mkdir -p ./data ./logs ./backup ./tmp 2>/dev/null || true
 
