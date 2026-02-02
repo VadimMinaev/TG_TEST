@@ -35,7 +35,7 @@ function TooltipTrigger({
 
 function TooltipContent({
   className,
-  sideOffset = 4,
+  sideOffset = 8,
   children,
   ...props
 }: React.ComponentProps<typeof TooltipPrimitive.Content>) {
@@ -44,7 +44,7 @@ function TooltipContent({
       <TooltipPrimitive.Content
         sideOffset={sideOffset}
         className={cn(
-          "z-50 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] px-3 py-2 text-sm shadow-md",
+          "z-50 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-sm shadow-lg",
           className,
         )}
         {...props}
