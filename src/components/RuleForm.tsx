@@ -1,5 +1,32 @@
 import { useEffect, useState } from 'react';
+import { Info } from 'lucide-react';
 import { api, Rule } from '../lib/api';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from './ui/tooltip';
+
+function InfoTooltip({ children }: { children: React.ReactNode }) {
+  return (
+    <TooltipProvider delayDuration={200}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+          >
+            <Info className="h-3 w-3" />
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" className="max-w-xs text-left">
+          {children}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
 
 interface RuleFormProps {
   ruleId: number | null;
@@ -73,8 +100,11 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       )}
 
       <div>
-        <label htmlFor="ruleName" className="mb-2 block text-sm font-medium">
+        <label htmlFor="ruleName" className="mb-2 flex items-center text-sm font-medium">
           Название правила
+          <InfoTooltip>
+            Уникальное имя для идентификации правила в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
+          </InfoTooltip>
         </label>
         <input
           type="text"
@@ -85,14 +115,26 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           required
           className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
-        <small className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">
-          Краткое описание правила для быстрой идентификации
-        </small>
       </div>
 
       <div>
-        <label htmlFor="condition" className="mb-2 block text-sm font-medium">
+        <label htmlFor="condition" className="mb-2 flex items-center text-sm font-medium">
           Условие (JavaScript выражение)
+          <InfoTooltip>
+            <div className="space-y-2">
+              <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания правила.</p>
+              <p><strong>Доступные переменные:</strong></p>
+              <ul className="list-inside list-disc text-xs">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload</code> — данные вебхука</li>
+              </ul>
+              <p><strong>Примеры:</strong></p>
+              <ul className="list-inside list-disc text-xs">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.status === "open"</code></li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.priority &gt; 3</code></li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.category === "incident" && payload.team === "support"</code></li>
+              </ul>
+            </div>
+          </InfoTooltip>
         </label>
         <textarea
           id="condition"
@@ -103,14 +145,22 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           rows={4}
           className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
-        <small className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">
-          Доступна переменная <code>payload</code> с данными вебхука
-        </small>
       </div>
 
       <div>
-        <label htmlFor="chatId" className="mb-2 block text-sm font-medium">
+        <label htmlFor="chatId" className="mb-2 flex items-center text-sm font-medium">
           ID Telegram чата
+          <InfoTooltip>
+            <div className="space-y-2">
+              <p>Числовой идентификатор чата/канала в Telegram.</p>
+              <p><strong>Как получить:</strong></p>
+              <ul className="list-inside list-disc text-xs">
+                <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
+                <li>Или перешлите сообщение из чата боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
+              </ul>
+              <p className="text-xs"><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
+            </div>
+          </InfoTooltip>
         </label>
         <input
           type="text"
@@ -121,43 +171,57 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           required
           className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
-        <small className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">
-          Для группы/канала используйте отрицательное число
-        </small>
       </div>
 
       <div>
-        <label htmlFor="botToken" className="mb-2 block text-sm font-medium">
-          Токен Telegram бота (опционально)
+        <label htmlFor="botToken" className="mb-2 flex items-center text-sm font-medium">
+          Токен Telegram бота
+          <InfoTooltip>
+            <div className="space-y-2">
+              <p>Токен бота для отправки сообщений. Если оставить пустым — используется глобальный токен из настроек.</p>
+              <p><strong>Как получить:</strong></p>
+              <ul className="list-inside list-disc text-xs">
+                <li>Создайте бота через <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
+                <li>Скопируйте токен из сообщения</li>
+              </ul>
+              <p className="text-xs text-[hsl(var(--muted-foreground))]">Формат: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABC...</code></p>
+            </div>
+          </InfoTooltip>
         </label>
         <input
           type="password"
           id="botToken"
           value={botToken}
           onChange={(e) => setBotToken(e.target.value)}
-          placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+          placeholder="Оставьте пустым для глобального токена"
           className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
-        <small className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">
-          Оставьте пустым, чтобы использовать глобальный токен
-        </small>
       </div>
 
       <div>
-        <label htmlFor="messageTemplate" className="mb-2 block text-sm font-medium">
-          Шаблон сообщения (опционально)
+        <label htmlFor="messageTemplate" className="mb-2 flex items-center text-sm font-medium">
+          Шаблон сообщения
+          <InfoTooltip>
+            <div className="space-y-2">
+              <p>Шаблон для форматирования сообщения. Если оставить пустым — используется автоформатирование.</p>
+              <p><strong>Синтаксис:</strong> JavaScript template literals</p>
+              <p><strong>Примеры:</strong></p>
+              <ul className="list-inside list-disc text-xs space-y-1">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${payload.subject}`}</code> — тема</li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${payload.status}`}</code> — статус</li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${JSON.stringify(payload, null, 2)}`}</code> — весь payload</li>
+              </ul>
+            </div>
+          </InfoTooltip>
         </label>
         <textarea
           id="messageTemplate"
           value={messageTemplate}
           onChange={(e) => setMessageTemplate(e.target.value)}
-          placeholder="Оставьте пусто для отправки полного payload"
+          placeholder="Оставьте пусто для автоформатирования"
           rows={4}
           className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
-        <small className="mt-1 block text-xs text-[hsl(var(--muted-foreground))]">
-          Используйте <code>{'${payload}'}</code> для вставки данных
-        </small>
       </div>
 
       <div className="flex items-center gap-2">
