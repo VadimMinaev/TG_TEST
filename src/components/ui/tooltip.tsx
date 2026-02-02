@@ -45,10 +45,10 @@ function TooltipContent({
       <TooltipPrimitive.Content
         sideOffset={sideOffset}
         className={cn(
-          "z-50 max-w-[320px] rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs shadow-md",
+          "z-50 max-w-[320px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs shadow-md",
           className,
         )}
-        style={{ padding: '16px', ...style }}
+        style={{ padding: '16px', borderRadius: '12px', ...style }}
         {...props}
       >
         {children}
