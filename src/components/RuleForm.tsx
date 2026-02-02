@@ -102,7 +102,9 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       <div>
         <label htmlFor="ruleName" className="mb-2 flex items-center text-sm font-medium">
           Название правила
-          <InfoTooltip>Понятное имя для идентификации правила</InfoTooltip>
+          <InfoTooltip>
+            Уникальное имя для идентификации правила в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
+          </InfoTooltip>
         </label>
         <input
           type="text"
@@ -119,10 +121,18 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         <label htmlFor="condition" className="mb-2 flex items-center text-sm font-medium">
           Условие (JavaScript выражение)
           <InfoTooltip>
-            <div>
-              <code className="text-[10px]">payload.status === "open"</code>
-              <br />
-              <code className="text-[10px]">payload.category === "incident"</code>
+            <div className="space-y-2">
+              <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания правила.</p>
+              <p><strong>Доступные переменные:</strong></p>
+              <ul className="list-inside list-disc">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload</code> — данные вебхука</li>
+              </ul>
+              <p><strong>Примеры:</strong></p>
+              <ul className="list-inside list-disc">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.status === "open"</code></li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.priority &gt; 3</code></li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.category === "incident"</code></li>
+              </ul>
             </div>
           </InfoTooltip>
         </label>
@@ -141,7 +151,15 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         <label htmlFor="chatId" className="mb-2 flex items-center text-sm font-medium">
           ID Telegram чата
           <InfoTooltip>
-            Получить через @userinfobot или @getmyid_bot
+            <div className="space-y-2">
+              <p>Числовой идентификатор чата/канала в Telegram.</p>
+              <p><strong>Как получить:</strong></p>
+              <ul className="list-inside list-disc">
+                <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
+                <li>Или перешлите сообщение боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
+              </ul>
+              <p><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
+            </div>
           </InfoTooltip>
         </label>
         <input
@@ -159,7 +177,15 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         <label htmlFor="botToken" className="mb-2 flex items-center text-sm font-medium">
           Токен Telegram бота
           <InfoTooltip>
-            Пустое = глобальный токен. Получить через @BotFather
+            <div className="space-y-2">
+              <p>Токен бота для отправки сообщений. Если оставить пустым — используется глобальный токен из настроек.</p>
+              <p><strong>Как получить:</strong></p>
+              <ul className="list-inside list-disc">
+                <li>Создайте бота через <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
+                <li>Скопируйте токен из сообщения</li>
+              </ul>
+              <p>Формат: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABC...</code></p>
+            </div>
           </InfoTooltip>
         </label>
         <input
@@ -176,7 +202,16 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         <label htmlFor="messageTemplate" className="mb-2 flex items-center text-sm font-medium">
           Шаблон сообщения
           <InfoTooltip>
-            Пустое = авто. Пример: {`\${payload.subject}`}
+            <div className="space-y-2">
+              <p>Шаблон для форматирования сообщения. Если оставить пустым — используется автоформатирование.</p>
+              <p><strong>Синтаксис:</strong> JavaScript template literals</p>
+              <p><strong>Примеры:</strong></p>
+              <ul className="list-inside list-disc">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${payload.subject}`}</code> — тема</li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${payload.status}`}</code> — статус</li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${JSON.stringify(payload)}`}</code> — весь payload</li>
+              </ul>
+            </div>
           </InfoTooltip>
         </label>
         <textarea
