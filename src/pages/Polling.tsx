@@ -67,12 +67,22 @@ export function Polling() {
     loadPolls();
   }, []);
 
-  // Проверяем параметр create в URL
+  // Проверяем параметры create и select в URL
   useEffect(() => {
-    if (searchParams.get('create') === 'true') {
+    const createParam = searchParams.get('create');
+    const selectParam = searchParams.get('select');
+    
+    if (createParam === 'true') {
       setSelectedPollId(null);
       setEditingPollId(-1);
       setForm(DEFAULT_FORM);
+      setSearchParams({}, { replace: true });
+    } else if (selectParam) {
+      const id = parseInt(selectParam, 10);
+      if (!isNaN(id)) {
+        setSelectedPollId(id);
+        setEditingPollId(null);
+      }
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);

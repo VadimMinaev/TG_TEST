@@ -34,11 +34,21 @@ export function Rules() {
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // Проверяем параметр create в URL
+  // Проверяем параметры create и select в URL
   useEffect(() => {
-    if (searchParams.get('create') === 'true') {
+    const createParam = searchParams.get('create');
+    const selectParam = searchParams.get('select');
+    
+    if (createParam === 'true') {
       setSelectedRuleId(null);
       setEditingRuleId(-1);
+      setSearchParams({}, { replace: true });
+    } else if (selectParam) {
+      const id = parseInt(selectParam, 10);
+      if (!isNaN(id)) {
+        setSelectedRuleId(id);
+        setEditingRuleId(null);
+      }
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);

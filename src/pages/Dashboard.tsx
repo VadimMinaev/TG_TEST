@@ -6,7 +6,6 @@ import {
   Moon,
   LogOut,
   Lock,
-  Search,
   Plus,
   Bell,
   Settings,
@@ -19,6 +18,7 @@ import {
   Users,
 } from 'lucide-react';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
+import { GlobalSearch } from '../components/GlobalSearch';
 
 export function Dashboard() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
@@ -116,10 +116,7 @@ export function Dashboard() {
             📱 Интеграция с TG 💲VadminLink
           </div>
 
-          <div className="topbar-search">
-            <Search className="h-4 w-4" />
-            <input placeholder="Нажмите (/) для поиска или создайте..." />
-          </div>
+          <GlobalSearch />
 
           <div className="topbar-actions">
             <button
