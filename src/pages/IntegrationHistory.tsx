@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { api, IntegrationRun } from '../lib/api';
+import { api, Integration, IntegrationRun } from '../lib/api';
 import { RefreshCw, Trash2 } from 'lucide-react';
 
 export function IntegrationHistory() {
   const [runs, setRuns] = useState<IntegrationRun[]>([]);
+  const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRunId, setSelectedRunId] = useState<number | null>(null);
 
@@ -12,11 +13,24 @@ export function IntegrationHistory() {
     [runs, selectedRunId]
   );
 
+  // Маппинг ID интеграции -> название
+  const integrationNames = useMemo(() => {
+    const map: Record<number, string> = {};
+    integrations.forEach((i) => {
+      map[i.id] = i.name;
+    });
+    return map;
+  }, [integrations]);
+
   const loadHistory = async () => {
     try {
       setLoading(true);
-      const data = await api.getIntegrationHistory();
-      setRuns(data);
+      const [historyData, integrationsData] = await Promise.all([
+        api.getIntegrationHistory(),
+        api.getIntegrations(),
+      ]);
+      setRuns(historyData);
+      setIntegrations(integrationsData);
     } catch (error) {
       console.error(error);
     } finally {
@@ -79,8 +93,8 @@ export function IntegrationHistory() {
                 <table className="table-basic w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
+                      <th className="px-2 py-2">Интеграция</th>
                       <th className="px-2 py-2">Дата/Время</th>
-                      <th className="px-2 py-2">Триггер</th>
                       <th className="px-2 py-2">Статус</th>
                     </tr>
                   </thead>
@@ -93,10 +107,17 @@ export function IntegrationHistory() {
                           selectedRunId === run.id ? 'bg-[hsl(var(--accent))]' : ''
                         }`}
                       >
-                        <td className="px-2 py-2 text-xs">{new Date(run.created_at).toLocaleString('ru-RU')}</td>
-                        <td className="px-2 py-2 text-xs">
-                          {run.trigger_type === 'webhook' ? '📥' : run.trigger_type === 'polling' ? '🔄' : '▶️'}
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">
+                              {run.trigger_type === 'webhook' ? '📥' : run.trigger_type === 'polling' ? '🔄' : '▶️'}
+                            </span>
+                            <span className="font-medium text-xs truncate max-w-[150px]" title={integrationNames[run.integration_id] || `#${run.integration_id}`}>
+                              {integrationNames[run.integration_id] || `#${run.integration_id}`}
+                            </span>
+                          </div>
                         </td>
+                        <td className="px-2 py-2 text-xs">{new Date(run.created_at).toLocaleString('ru-RU')}</td>
                         <td className="px-2 py-2">
                           <span
                             className={`rounded px-1.5 py-0.5 text-[10px] ${
@@ -124,16 +145,16 @@ export function IntegrationHistory() {
                 <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация</h4>
                 <div className="panel">
                   <div className="mb-2">
-                    <strong>ID:</strong> <code>{selectedRun.id}</code>
-                  </div>
-                  <div className="mb-2">
-                    <strong>Integration ID:</strong> <code>{selectedRun.integration_id}</code>
+                    <strong>Интеграция:</strong>{' '}
+                    <span className="font-medium">{integrationNames[selectedRun.integration_id] || '—'}</span>
+                    <code className="ml-2 text-xs text-[hsl(var(--muted-foreground))]">#{selectedRun.integration_id}</code>
                   </div>
                   <div className="mb-2">
                     <strong>Дата:</strong> {new Date(selectedRun.created_at).toLocaleString('ru-RU')}
                   </div>
                   <div className="mb-2">
-                    <strong>Триггер:</strong> {selectedRun.trigger_type}
+                    <strong>Триггер:</strong>{' '}
+                    {selectedRun.trigger_type === 'webhook' ? '📥 Webhook' : selectedRun.trigger_type === 'polling' ? '🔄 Polling' : '▶️ Ручной'}
                   </div>
                   <div className="mb-2">
                     <strong>Статус:</strong>{' '}
@@ -144,7 +165,7 @@ export function IntegrationHistory() {
                           : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
                       }`}
                     >
-                      {selectedRun.status}
+                      {selectedRun.status === 'success' ? 'Успех' : 'Ошибка'}
                     </span>
                   </div>
                   <div>
