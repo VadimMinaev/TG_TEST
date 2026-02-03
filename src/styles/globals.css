@@ -165,17 +165,26 @@ body {
   font-weight: 600;
 }
 
-.topbar-search {
+.topbar-search-container {
+  position: relative;
   flex: 1;
-  max-width: 520px;
+  max-width: 400px;
+}
+
+.topbar-search {
   display: flex;
   align-items: center;
   gap: 8px;
-  border-radius: 999px;
+  border-radius: 10px;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));
-  padding: 8px 14px;
-  color: hsl(var(--muted-foreground));
+  padding: 8px 12px;
+  transition: all 0.2s ease;
+}
+
+.topbar-search-focused {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
 }
 
 .topbar-search input {
@@ -185,6 +194,21 @@ body {
   background: transparent;
   color: hsl(var(--foreground));
   font-size: 14px;
+}
+
+.topbar-search-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  border-radius: 12px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow: 0 10px 40px -10px hsl(var(--foreground) / 0.2);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 50;
+  animation: fadeIn 0.15s ease;
 }
 
 .topbar-actions {
