@@ -52,11 +52,12 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   const handlePreventClose = (e: Event) => {
     e.preventDefault();
+    e.stopPropagation();
   };
   
   return (
     <DialogPortal>
-      <DialogOverlay />
+      <DialogOverlay onClick={(e) => e.stopPropagation()} />
       <DialogPrimitive.Content
         {...props}
         style={{ padding: '20px', maxWidth: '480px', pointerEvents: 'auto' }}
@@ -67,6 +68,8 @@ function DialogContent({
         onPointerDownOutside={handlePreventClose}
         onInteractOutside={handlePreventClose}
         onEscapeKeyDown={handlePreventClose}
+        onFocusOutside={handlePreventClose}
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         {children}
         <DialogPrimitive.Close 
