@@ -50,6 +50,43 @@ export interface User {
   created_at?: string;
 }
 
+export interface Integration {
+  id: number;
+  name: string;
+  enabled: boolean;
+  triggerType: 'webhook' | 'polling';
+  triggerCondition?: string;
+  pollingUrl?: string;
+  pollingMethod?: string;
+  pollingHeaders?: string;
+  pollingBody?: string;
+  pollingInterval?: number;
+  pollingCondition?: string;
+  actionUrl?: string;
+  actionMethod?: string;
+  actionHeaders?: string;
+  actionBody?: string;
+  timeoutSec?: number;
+  chatId?: string;
+  botToken?: string;
+  messageTemplate?: string;
+  authorId?: string | number;
+}
+
+export interface IntegrationRun {
+  id: number;
+  integration_id: number;
+  trigger_type: string;
+  status: string;
+  trigger_data?: string;
+  action_request?: string;
+  action_response?: string;
+  action_status?: number;
+  telegram_sent: boolean;
+  error_message?: string;
+  created_at: string;
+}
+
 function getHeaders(): Record<string, string> {
   const token = localStorage.getItem('authToken');
   const headers: Record<string, string> = {
@@ -256,6 +293,71 @@ export const api = {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error('Failed to clear poll history');
+  },
+
+  // Integrations
+  getIntegrations: async (): Promise<Integration[]> => {
+    const res = await fetch(`${API_BASE}/integrations`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch integrations');
+    return res.json();
+  },
+
+  getIntegration: async (id: number): Promise<Integration> => {
+    const res = await fetch(`${API_BASE}/integrations/${id}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch integration');
+    return res.json();
+  },
+
+  createIntegration: async (data: Partial<Integration>): Promise<Integration> => {
+    const res = await fetch(`${API_BASE}/integrations`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to create integration');
+    return res.json();
+  },
+
+  updateIntegration: async (id: number, data: Partial<Integration>): Promise<Integration> => {
+    const res = await fetch(`${API_BASE}/integrations/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) throw new Error('Failed to update integration');
+    return res.json();
+  },
+
+  deleteIntegration: async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE}/integrations/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to delete integration');
+  },
+
+  runIntegration: async (id: number, testData?: any): Promise<any> => {
+    const res = await fetch(`${API_BASE}/integrations/${id}/run`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ testData }),
+    });
+    if (!res.ok) throw new Error('Failed to run integration');
+    return res.json();
+  },
+
+  getIntegrationHistory: async (): Promise<IntegrationRun[]> => {
+    const res = await fetch(`${API_BASE}/integrations/history/all`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch integration history');
+    return res.json();
+  },
+
+  clearIntegrationHistory: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE}/integrations/history/all`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to clear history');
   },
 
   // Users

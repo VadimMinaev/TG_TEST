@@ -8,6 +8,8 @@ import { History } from './pages/History';
 import { Queue } from './pages/Queue';
 import { Polling } from './pages/Polling';
 import { PollingHistory } from './pages/PollingHistory';
+import { Integrations } from './pages/Integrations';
+import { IntegrationHistory } from './pages/IntegrationHistory';
 import { Users } from './pages/Users';
 
 export const router = createBrowserRouter([
@@ -26,6 +28,8 @@ export const router = createBrowserRouter([
           { path: 'queue', Component: Queue },
           { path: 'polling', Component: Polling },
           { path: 'polling-history', Component: PollingHistory },
+          { path: 'integrations', Component: Integrations },
+          { path: 'integration-history', Component: IntegrationHistory },
           { path: 'users', Component: Users },
         ],
       },

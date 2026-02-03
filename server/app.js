@@ -97,6 +97,8 @@ function getFieldTranslation(path) {
 let db = { rules: [], logs: [], polls: [], pollRuns: [] };
 let pollsCache = [];
 const pollTimers = new Map();
+let integrationsCache = [];
+const integrationTimers = new Map();
 let dbConnected = false;
 
 if (process.env.DATABASE_URL) {
@@ -182,6 +184,30 @@ if (process.env.DATABASE_URL) {
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_status ON message_queue(status, created_at)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_chat_id ON message_queue(chat_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_poll_runs_poll_id ON poll_runs(poll_id, created_at)`);
+
+            // Интеграции
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS integrations (
+                    id BIGINT PRIMARY KEY,
+                    data JSONB NOT NULL
+                )
+            `);
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS integration_runs (
+                    id BIGSERIAL PRIMARY KEY,
+                    integration_id BIGINT NOT NULL,
+                    trigger_type VARCHAR(20) NOT NULL,
+                    status VARCHAR(20) NOT NULL,
+                    trigger_data TEXT,
+                    action_request TEXT,
+                    action_response TEXT,
+                    action_status INTEGER,
+                    telegram_sent BOOLEAN DEFAULT false,
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_integration_runs_integration_id ON integration_runs(integration_id, created_at)`);
 
             // Загружаем глобальный токен из БД
             try {
@@ -1852,6 +1878,304 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
         db.logs = [];
         saveLogs();
         res.json({ status: 'ok' });
+    }
+});
+
+// ============ INTEGRATIONS API ============
+
+async function loadIntegrationsCache() {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT id, data FROM integrations');
+            integrationsCache = result.rows.map(r => ({ ...r.data, id: r.id }));
+        } catch (e) {
+            console.error('Error loading integrations cache:', e);
+        }
+    }
+}
+
+async function logIntegrationRun(integrationId, data) {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            await db.query(
+                `INSERT INTO integration_runs (
+                    integration_id, trigger_type, status, trigger_data,
+                    action_request, action_response, action_status,
+                    telegram_sent, error_message
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                [
+                    integrationId,
+                    data.triggerType || 'manual',
+                    data.status || 'success',
+                    data.triggerData || null,
+                    data.actionRequest || null,
+                    data.actionResponse || null,
+                    data.actionStatus || null,
+                    data.telegramSent || false,
+                    data.errorMessage || null
+                ]
+            );
+            // Cleanup old runs
+            await db.query(
+                `DELETE FROM integration_runs WHERE id NOT IN (
+                    SELECT id FROM integration_runs ORDER BY created_at DESC LIMIT 200
+                )`
+            );
+        } catch (e) {
+            console.error('Error logging integration run:', e);
+        }
+    }
+}
+
+async function executeIntegration(integration, triggerData = null, triggerType = 'manual') {
+    if (!integration.enabled && triggerType !== 'manual') return null;
+
+    const runData = {
+        triggerType,
+        triggerData: triggerData ? JSON.stringify(triggerData).slice(0, 2000) : null,
+        status: 'success',
+        telegramSent: false
+    };
+
+    try {
+        // Выполняем action если указан URL
+        if (integration.actionUrl) {
+            const actionHeaders = integration.actionHeaders ? JSON.parse(integration.actionHeaders) : {};
+            let actionBody = integration.actionBody || '';
+            
+            // Подставляем данные триггера в body если есть шаблон
+            if (triggerData && actionBody) {
+                actionBody = actionBody.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
+                    const keys = path.split('.');
+                    let value = triggerData;
+                    for (const key of keys) {
+                        value = value?.[key];
+                    }
+                    return value !== undefined ? String(value) : match;
+                });
+            }
+
+            runData.actionRequest = JSON.stringify({
+                method: integration.actionMethod || 'POST',
+                url: integration.actionUrl,
+                headers: actionHeaders,
+                body: actionBody
+            }).slice(0, 2000);
+
+            const response = await fetch(integration.actionUrl, {
+                method: integration.actionMethod || 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...actionHeaders
+                },
+                body: ['GET', 'HEAD'].includes(integration.actionMethod) ? undefined : actionBody,
+                signal: AbortSignal.timeout((integration.timeoutSec || 30) * 1000)
+            });
+
+            const responseText = await response.text();
+            runData.actionStatus = response.status;
+            runData.actionResponse = responseText.slice(0, 2000);
+
+            if (!response.ok) {
+                runData.status = 'error';
+                runData.errorMessage = `Action API returned ${response.status}`;
+            }
+        }
+
+        // Отправляем в Telegram если настроено
+        if (integration.chatId && runData.status === 'success') {
+            const botToken = integration.botToken || TELEGRAM_BOT_TOKEN;
+            let message = integration.messageTemplate || `Интеграция "${integration.name}" выполнена`;
+            
+            // Подставляем данные в шаблон сообщения
+            if (triggerData) {
+                message = message.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
+                    const keys = path.split('.');
+                    let value = triggerData;
+                    for (const key of keys) {
+                        value = value?.[key];
+                    }
+                    return value !== undefined ? String(value) : match;
+                });
+            }
+
+            try {
+                await addMessageToQueue(botToken, integration.chatId, message, 0, null);
+                runData.telegramSent = true;
+            } catch (tgError) {
+                console.error('Telegram send error:', tgError);
+            }
+        }
+
+    } catch (error) {
+        runData.status = 'error';
+        runData.errorMessage = error.message;
+    }
+
+    await logIntegrationRun(integration.id, runData);
+    return runData;
+}
+
+// CRUD для интеграций
+app.get('/api/integrations', auth, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT id, data FROM integrations ORDER BY id DESC');
+            return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
+        }
+        res.json(integrationsCache);
+    } catch (error) {
+        console.error('Error loading integrations:', error);
+        res.status(500).json({ error: 'Failed to load integrations' });
+    }
+});
+
+app.get('/api/integrations/:id', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT id, data FROM integrations WHERE id = $1', [id]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'Integration not found' });
+            return res.json({ ...result.rows[0].data, id: result.rows[0].id });
+        }
+        const integration = integrationsCache.find(i => i.id === id);
+        if (!integration) return res.status(404).json({ error: 'Integration not found' });
+        res.json(integration);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get integration' });
+    }
+});
+
+app.post('/api/integrations', auth, async (req, res) => {
+    try {
+        const newIntegration = {
+            id: Date.now(),
+            name: req.body.name || 'Новая интеграция',
+            enabled: req.body.enabled ?? true,
+            triggerType: req.body.triggerType || 'webhook',
+            triggerCondition: req.body.triggerCondition || '',
+            pollingUrl: req.body.pollingUrl || '',
+            pollingMethod: req.body.pollingMethod || 'GET',
+            pollingHeaders: req.body.pollingHeaders || '',
+            pollingBody: req.body.pollingBody || '',
+            pollingInterval: req.body.pollingInterval || 60,
+            pollingCondition: req.body.pollingCondition || '',
+            actionUrl: req.body.actionUrl || '',
+            actionMethod: req.body.actionMethod || 'POST',
+            actionHeaders: req.body.actionHeaders || '',
+            actionBody: req.body.actionBody || '',
+            timeoutSec: req.body.timeoutSec || 30,
+            chatId: req.body.chatId || '',
+            botToken: req.body.botToken || '',
+            messageTemplate: req.body.messageTemplate || '',
+            authorId: req.user.userId || req.user.username
+        };
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('INSERT INTO integrations (id, data) VALUES ($1, $2)', [newIntegration.id, newIntegration]);
+        } else {
+            integrationsCache.push(newIntegration);
+        }
+
+        await loadIntegrationsCache();
+        res.json(newIntegration);
+    } catch (error) {
+        console.error('Error creating integration:', error);
+        res.status(500).json({ error: 'Failed to create integration' });
+    }
+});
+
+app.put('/api/integrations/:id', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        const updated = { ...req.body, id };
+        
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('UPDATE integrations SET data = $1 WHERE id = $2 RETURNING id', [updated, id]);
+            if (result.rowCount === 0) return res.status(404).json({ error: 'Integration not found' });
+        } else {
+            const idx = integrationsCache.findIndex(i => i.id === id);
+            if (idx === -1) return res.status(404).json({ error: 'Integration not found' });
+            integrationsCache[idx] = updated;
+        }
+
+        await loadIntegrationsCache();
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update integration' });
+    }
+});
+
+app.delete('/api/integrations/:id', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('DELETE FROM integrations WHERE id = $1', [id]);
+            await db.query('DELETE FROM integration_runs WHERE integration_id = $1', [id]);
+        } else {
+            integrationsCache = integrationsCache.filter(i => i.id !== id);
+        }
+        
+        await loadIntegrationsCache();
+        res.json({ status: 'deleted' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete integration' });
+    }
+});
+
+// Ручной запуск интеграции
+app.post('/api/integrations/:id/run', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        let integration;
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT id, data FROM integrations WHERE id = $1', [id]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'Integration not found' });
+            integration = { ...result.rows[0].data, id: result.rows[0].id };
+        } else {
+            integration = integrationsCache.find(i => i.id === id);
+            if (!integration) return res.status(404).json({ error: 'Integration not found' });
+        }
+
+        const result = await executeIntegration(integration, req.body.testData || null, 'manual');
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to run integration' });
+    }
+});
+
+// История интеграций
+app.get('/api/integrations/history/all', auth, async (req, res) => {
+    try {
+        const limit = Math.min(200, parseInt(req.query.limit) || 100);
+        
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query(
+                `SELECT id, integration_id, trigger_type, status, trigger_data,
+                        action_request, action_response, action_status,
+                        telegram_sent, error_message, created_at
+                 FROM integration_runs
+                 ORDER BY created_at DESC
+                 LIMIT $1`,
+                [limit]
+            );
+            return res.json(result.rows);
+        }
+        res.json([]);
+    } catch (error) {
+        console.error('Error loading integration history:', error);
+        res.status(500).json({ error: 'Failed to load history' });
+    }
+});
+
+app.delete('/api/integrations/history/all', auth, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('DELETE FROM integration_runs');
+        }
+        res.json({ status: 'cleared' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to clear history' });
     }
 });
 
