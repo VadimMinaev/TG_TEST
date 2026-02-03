@@ -1709,14 +1709,14 @@ app.post('/webhook', async (req, res) => {
             if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
                 token = TELEGRAM_BOT_TOKEN;
                 if (!token || token === 'YOUR_TOKEN') {
-                    telegram_results.push({ chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
+                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
                     continue;
                 }
             }
 
             const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
             if (chatIds.length === 0) {
-                telegram_results.push({ chatId: null, success: false, error: 'No chatId configured' });
+                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: null, success: false, error: 'No chatId configured' });
                 continue;
             }
 
@@ -1724,16 +1724,16 @@ app.post('/webhook', async (req, res) => {
                 try {
                     const queueResult = await addMessageToQueue(token, chat, messageText, 0, null);
                     if (queueResult.queued) {
-                        telegram_results.push({ chatId: chat, success: true, queued: true, queueId: queueResult.id });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
                     } else if (queueResult.success) {
-                        telegram_results.push({ chatId: chat, success: true, response: queueResult.response });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, response: queueResult.response });
                     } else {
-                        telegram_results.push({ chatId: chat, success: false, error: queueResult.error });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: queueResult.error });
                     }
                 } catch (error) {
                     const errDetail = error.response?.data || error.message;
                     console.error('Error queuing message for chat', chat, errDetail);
-                    telegram_results.push({ chatId: chat, success: false, error: errDetail });
+                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: errDetail });
                 }
             }
         }

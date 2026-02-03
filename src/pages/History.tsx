@@ -84,13 +84,15 @@ export function History() {
                 <table className="table-basic w-full border-collapse text-sm">
                 <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
+                      <th className="px-2 py-2">Правила</th>
                       <th className="px-2 py-2">Дата/Время</th>
                       <th className="px-2 py-2">Статус</th>
-                      <th className="px-2 py-2">Совпадения</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {logs.map((log) => (
+                  {logs.map((log) => {
+                    const matchedRules = log.telegram_results?.filter(r => r.success).map(r => r.ruleName).filter((v, i, a) => v && a.indexOf(v) === i) || [];
+                    return (
                     <tr
                       key={log.id}
                       onClick={() => loadLogDetails(log.id)}
@@ -98,6 +100,15 @@ export function History() {
                         selectedLog?.id === log.id ? 'bg-[hsl(var(--accent))]' : ''
                       }`}
                     >
+                        <td className="px-2 py-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">{log.matched > 0 ? '📨' : '📭'}</span>
+                            <span className="font-medium text-xs truncate max-w-[150px]" title={matchedRules.join(', ') || 'Нет совпадений'}>
+                              {matchedRules.length > 0 ? matchedRules[0] : 'Нет совпадений'}
+                              {matchedRules.length > 1 && <span className="text-[hsl(var(--muted-foreground))]"> +{matchedRules.length - 1}</span>}
+                            </span>
+                          </div>
+                        </td>
                         <td className="px-2 py-2 text-xs">{new Date(log.timestamp).toLocaleString('ru-RU')}</td>
                         <td className="px-2 py-2">
                         <span
@@ -107,14 +118,11 @@ export function History() {
                               : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
                           }`}
                         >
-                            {log.status === 'matched' ? 'Совпадения' : 'Нет'}
+                            {log.matched}/{log.total_rules}
                         </span>
                       </td>
-                        <td className="px-2 py-2 text-xs">
-                        {log.matched}/{log.total_rules}
-                      </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>
@@ -155,6 +163,13 @@ export function History() {
                   <div className="panel space-y-2">
                     {selectedLog.telegram_results.map((result, idx) => (
                       <div key={idx} className="border-b border-[hsl(var(--border))] pb-2 last:border-0">
+                        {result.ruleName && (
+                          <div className="mb-1">
+                            <strong>Правило:</strong>{' '}
+                            <span className="font-medium">{result.ruleName}</span>
+                            {result.ruleId && <code className="ml-2 text-xs text-[hsl(var(--muted-foreground))]">#{result.ruleId}</code>}
+                          </div>
+                        )}
                         <div>
                           <strong>Chat ID:</strong> <code>{result.chatId}</code>
                         </div>
