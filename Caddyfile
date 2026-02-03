@@ -1,10 +1,29 @@
-{$DOMAIN:localhost} {
+# TG_TEST - интеграция с Telegram
+integration.vadminaev.ru {
     reverse_proxy app:3000
     encode gzip
-
     header {
         X-Content-Type-Options "nosniff"
         X-Frame-Options "SAMEORIGIN"
         Referrer-Policy "strict-origin-when-cross-origin"
     }
+}
+
+# Сайт-визитка (Next.js на порту 3003)
+vadminaev.ru {
+    reverse_proxy host.docker.internal:3003
+    encode gzip
+}
+
+# Postman Runner (на порту 3005)
+postman.vadminaev.ru {
+    reverse_proxy host.docker.internal:3005
+    encode gzip
+}
+
+# Balls - статический сайт
+balls.vadminaev.ru {
+    root * /srv/balls
+    file_server
+    encode gzip
 }
