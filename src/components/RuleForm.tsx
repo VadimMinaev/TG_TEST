@@ -93,15 +93,15 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {error && (
-        <div className="animate-fade-in rounded border border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] p-3 text-sm text-[hsl(var(--destructive))]">
+        <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid hsl(var(--destructive) / 0.2)', background: 'hsl(var(--destructive) / 0.1)', color: 'hsl(var(--destructive))', fontSize: '14px' }}>
           {error}
         </div>
       )}
 
       <div>
-        <label htmlFor="ruleName" className="mb-2 flex items-center text-sm font-medium">
+        <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
           Название правила
           <InfoTooltip>
             Уникальное имя для идентификации правила в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
@@ -114,13 +114,12 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Например: Отправить в основной чат"
           required
-          style={{ padding: '12px 16px' }}
-          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
       </div>
 
       <div>
-        <label htmlFor="condition" className="mb-2 flex items-center text-sm font-medium">
+        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
           Условие (JavaScript выражение)
           <InfoTooltip>
             <div className="space-y-2">
@@ -145,13 +144,12 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           placeholder='payload.category === "incident"'
           required
           rows={4}
-          style={{ padding: '12px 16px' }}
-          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
         />
       </div>
 
       <div>
-        <label htmlFor="chatId" className="mb-2 flex items-center text-sm font-medium">
+        <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
           ID Telegram чата
           <InfoTooltip>
             <div className="space-y-2">
@@ -172,13 +170,12 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setChatId(e.target.value)}
           placeholder="Например: -1001234567890"
           required
-          style={{ padding: '12px 16px' }}
-          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
       </div>
 
       <div>
-        <label htmlFor="botToken" className="mb-2 flex items-center text-sm font-medium">
+        <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
           Токен Telegram бота
           <InfoTooltip>
             <div className="space-y-2">
@@ -198,13 +195,12 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           value={botToken}
           onChange={(e) => setBotToken(e.target.value)}
           placeholder="Оставьте пустым для глобального токена"
-          style={{ padding: '12px 16px' }}
-          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
       </div>
 
       <div>
-        <label htmlFor="messageTemplate" className="mb-2 flex items-center text-sm font-medium">
+        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
           Шаблон сообщения
           <TemplateHelp context="rule" />
         </label>
@@ -214,38 +210,35 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setMessageTemplate(e.target.value)}
           placeholder="Оставьте пусто для автоформатирования"
           rows={4}
-          style={{ padding: '12px 16px' }}
-          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
         />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
         <input
           type="checkbox"
           id="enabled"
           checked={enabled}
           onChange={(e) => setEnabled(e.target.checked)}
-          className="h-4 w-4 cursor-pointer"
+          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
         />
-        <label htmlFor="enabled" className="cursor-pointer text-sm font-medium">
+        <label htmlFor="enabled" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
           Включено
         </label>
       </div>
 
-      <div className="flex gap-3">
+      <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
         <button
           type="submit"
           disabled={loading}
-          style={{ padding: '12px 24px' }}
-          className="flex-1 rounded-lg bg-[hsl(var(--primary))] font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)] disabled:opacity-50"
+          style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: loading ? 0.5 : 1 }}
         >
           {loading ? 'Сохранение...' : 'Сохранить правило'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          style={{ padding: '12px 24px' }}
-          className="flex-1 rounded-lg bg-[hsl(var(--secondary))] font-semibold text-[hsl(var(--secondary-foreground))] transition-all hover:bg-[hsl(var(--accent))]"
+          style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
         >
           Отмена
         </button>
