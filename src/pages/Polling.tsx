@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { Copy, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { TemplateHelp } from '../components/TemplateHelp';
 
 const DEFAULT_FORM = {
   name: '',
@@ -378,13 +379,16 @@ export function Polling() {
                   </div>
                 </div>
                 <div className="col-span-2">
-                  <label className="mb-2 block text-sm font-medium">Шаблон сообщения (опционально)</label>
+                  <label className="mb-2 flex items-center text-sm font-medium">
+                    Шаблон сообщения (опционально)
+                    <TemplateHelp context="poll" />
+                  </label>
                   <textarea
                     rows={3}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
                     value={form.messageTemplate}
                     onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
-                    placeholder="Оставьте пусто для полного payload"
+                    placeholder="${payload.name} — ${payload.status}"
                   />
                 </div>
                 <div className="col-span-2 flex items-center gap-4">

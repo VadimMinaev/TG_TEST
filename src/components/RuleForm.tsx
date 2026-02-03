@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { TemplateHelp } from './TemplateHelp';
 
 function InfoTooltip({ children }: { children: React.ReactNode }) {
   return (
@@ -201,18 +202,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       <div>
         <label htmlFor="messageTemplate" className="mb-2 flex items-center text-sm font-medium">
           Шаблон сообщения
-          <InfoTooltip>
-            <div className="space-y-2">
-              <p>Шаблон для форматирования сообщения. Если оставить пустым — используется автоформатирование.</p>
-              <p><strong>Синтаксис:</strong> JavaScript template literals</p>
-              <p><strong>Примеры:</strong></p>
-              <ul className="list-inside list-disc">
-                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${payload.subject}`}</code> — тема</li>
-                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${payload.status}`}</code> — статус</li>
-                <li><code className="rounded bg-[hsl(var(--muted))] px-1">{`\${JSON.stringify(payload)}`}</code> — весь payload</li>
-              </ul>
-            </div>
-          </InfoTooltip>
+          <TemplateHelp context="rule" />
         </label>
         <textarea
           id="messageTemplate"
