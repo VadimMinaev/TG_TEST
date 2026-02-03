@@ -1940,7 +1940,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
     try {
         // Выполняем action если указан URL
         if (integration.actionUrl) {
-            const actionHeaders = integration.actionHeaders ? JSON.parse(integration.actionHeaders) : {};
+            const actionHeaders = integration.actionHeaders ? parseJsonSafe(integration.actionHeaders, {}) : {};
             let actionBody = integration.actionBody || '';
             
             // Подставляем данные триггера в body если есть шаблон
@@ -1955,11 +1955,17 @@ async function executeIntegration(integration, triggerData = null, triggerType =
                 });
             }
 
+            // Парсим body как JSON для лога и для отправки
+            let parsedBody = null;
+            if (actionBody && !['GET', 'HEAD'].includes(integration.actionMethod)) {
+                parsedBody = parseJsonSafe(actionBody, actionBody);
+            }
+
             runData.actionRequest = JSON.stringify({
                 method: integration.actionMethod || 'POST',
                 url: integration.actionUrl,
                 headers: actionHeaders,
-                body: actionBody
+                body: parsedBody
             }).slice(0, 2000);
 
             const response = await fetch(integration.actionUrl, {
@@ -1968,7 +1974,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
                     'Content-Type': 'application/json',
                     ...actionHeaders
                 },
-                body: ['GET', 'HEAD'].includes(integration.actionMethod) ? undefined : actionBody,
+                body: parsedBody ? JSON.stringify(parsedBody) : undefined,
                 signal: AbortSignal.timeout((integration.timeoutSec || 30) * 1000)
             });
 

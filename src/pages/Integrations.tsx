@@ -82,7 +82,6 @@ export function Integrations() {
       }
     } else {
       const poll = polls.find((p) => String(p.id) === sourceId);
-      console.log('Selected poll:', poll, 'sourceId:', sourceId, 'polls:', polls);
       if (poll) {
         setForm({
           ...form,
@@ -644,36 +643,118 @@ export function Integrations() {
                   </button>
                 </div>
 
-                <div className="space-y-4 text-sm">
-                  <div>
-                    <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Название</div>
-                    <div className="font-medium">{selectedIntegration.name}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Статус</div>
-                    <div>{selectedIntegration.enabled ? '✅ Включена' : '⏸️ Выключена'}</div>
-                  </div>
-                  <div>
-                    <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Триггер</div>
-                    <div>{selectedIntegration.triggerType === 'webhook' ? '📥 Webhook' : '🔄 Polling'}</div>
-                  </div>
-                  {selectedIntegration.actionUrl && (
+                <div className="space-y-3 text-sm max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Action</div>
-                      <div className="mt-1 space-y-1">
-                        <code className="text-xs">{selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}</code>
+                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Название</div>
+                      <div className="font-medium">{selectedIntegration.name}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Статус</div>
+                      <div>{selectedIntegration.enabled ? '✅ Включена' : '⏸️ Выключена'}</div>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-[hsl(var(--border))] pt-3">
+                    <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2">
+                      {selectedIntegration.triggerType === 'webhook' ? '📥 Триггер: Webhook' : '🔄 Триггер: Polling'}
+                    </div>
+                    {selectedIntegration.triggerType === 'webhook' ? (
+                      <>
+                        {selectedIntegration.triggerCondition && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Условие</div>
+                            <code className="text-xs break-all">{selectedIntegration.triggerCondition}</code>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="space-y-2">
+                        {selectedIntegration.pollingUrl && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">URL</div>
+                            <code className="text-xs break-all">{selectedIntegration.pollingMethod || 'GET'} {selectedIntegration.pollingUrl}</code>
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Интервал</div>
+                            <span>{selectedIntegration.pollingInterval || 60}s</span>
+                          </div>
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Таймаут</div>
+                            <span>{selectedIntegration.timeoutSec || 30}s</span>
+                          </div>
+                        </div>
+                        {selectedIntegration.pollingHeaders && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Headers</div>
+                            <code className="text-xs break-all">{selectedIntegration.pollingHeaders}</code>
+                          </div>
+                        )}
+                        {selectedIntegration.pollingBody && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Body</div>
+                            <code className="text-xs break-all">{selectedIntegration.pollingBody}</code>
+                          </div>
+                        )}
+                        {selectedIntegration.pollingCondition && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Условие</div>
+                            <code className="text-xs break-all">{selectedIntegration.pollingCondition}</code>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedIntegration.actionUrl && (
+                    <div className="border-t border-[hsl(var(--border))] pt-3">
+                      <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2">🚀 Action (API)</div>
+                      <div className="space-y-2">
+                        <div>
+                          <div className="text-xs text-[hsl(var(--muted-foreground))]">URL</div>
+                          <code className="text-xs break-all">{selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}</code>
+                        </div>
                         {selectedIntegration.actionHeaders && (
-                          <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                            Headers: <code>{selectedIntegration.actionHeaders}</code>
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Headers</div>
+                            <code className="text-xs break-all">{selectedIntegration.actionHeaders}</code>
+                          </div>
+                        )}
+                        {selectedIntegration.actionBody && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Body</div>
+                            <code className="text-xs break-all">{selectedIntegration.actionBody}</code>
                           </div>
                         )}
                       </div>
                     </div>
                   )}
-                  {selectedIntegration.chatId && (
-                    <div>
-                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Telegram Chat</div>
-                      <code className="text-xs">{selectedIntegration.chatId}</code>
+
+                  {(selectedIntegration.chatId || selectedIntegration.messageTemplate) && (
+                    <div className="border-t border-[hsl(var(--border))] pt-3">
+                      <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2">📱 Telegram</div>
+                      <div className="space-y-2">
+                        {selectedIntegration.chatId && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Chat ID</div>
+                            <code className="text-xs">{selectedIntegration.chatId}</code>
+                          </div>
+                        )}
+                        {selectedIntegration.botToken && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Bot Token</div>
+                            <code className="text-xs">***настроен***</code>
+                          </div>
+                        )}
+                        {selectedIntegration.messageTemplate && (
+                          <div>
+                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Шаблон сообщения</div>
+                            <pre className="text-xs whitespace-pre-wrap bg-[hsl(var(--muted)_/_0.3)] p-2 rounded mt-1">{selectedIntegration.messageTemplate}</pre>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
