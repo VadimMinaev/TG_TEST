@@ -1604,6 +1604,21 @@ app.get('/api/polls/history', auth, async (req, res) => {
     }
 });
 
+app.delete('/api/polls/history', auth, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('DELETE FROM poll_runs');
+        } else {
+            db.pollRuns = [];
+            savePollRuns();
+        }
+        res.json({ status: 'cleared' });
+    } catch (error) {
+        console.error('Error clearing poll history:', error);
+        res.status(500).json({ error: 'Failed to clear poll history' });
+    }
+});
+
 // ────────────────────────────────────────────────────────────────
 // WEBHOOK — ОСНОВНОЙ ХЕНДЛЕР
 // ────────────────────────────────────────────────────────────────

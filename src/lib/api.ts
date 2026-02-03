@@ -250,6 +250,14 @@ export const api = {
     return res.json();
   },
 
+  clearPollHistory: async () => {
+    const res = await fetch(`${API_BASE}/polls/history`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to clear poll history');
+  },
+
   // Users
   getUsers: async (): Promise<User[]> => {
     const res = await fetch(`${API_BASE}/users`, { headers: getHeaders() });
