@@ -25,49 +25,34 @@ export function RulesList({ rules, selectedId, onSelect, loading }: RulesListPro
   }
 
   return (
-    <div className="max-h-[calc(100vh-350px)] overflow-y-auto rounded-md border border-[hsl(var(--border)_/_0.6)]">
-      <table className="table-basic w-full border-collapse">
-        <thead>
-          <tr className="border-b-2 border-[hsl(var(--border))] text-left text-sm">
-            <th className="font-semibold">Статус</th>
-            <th className="font-semibold">Название</th>
-            <th className="font-semibold">Условие</th>
-            <th className="font-semibold">Канал</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rules.map((rule) => (
-            <tr
-              key={rule.id}
-              onClick={() => onSelect(rule.id)}
-              className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
-                selectedId === rule.id ? 'bg-[hsl(var(--accent))]' : ''
+    <div className="flex flex-col gap-2 max-h-[calc(100vh-280px)] overflow-y-auto pr-1 scrollbar-thin">
+      {rules.map((rule) => (
+        <div
+          key={rule.id}
+          onClick={() => onSelect(rule.id)}
+          className={`group cursor-pointer rounded-lg border p-3 transition-all ${
+            selectedId === rule.id
+              ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)_/_0.08)] shadow-sm'
+              : 'border-[hsl(var(--border)_/_0.6)] hover:border-[hsl(var(--border))] hover:bg-[hsl(var(--accent)_/_0.5)]'
+          }`}
+        >
+          <div className="flex items-center gap-2 mb-1.5">
+            <span
+              className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide ${
+                rule.enabled
+                  ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                  : 'bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]'
               }`}
             >
-              <td>
-                <span
-                  className={`rounded px-2 py-1 text-xs ${
-                    rule.enabled
-                      ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                      : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                  }`}
-                >
-                  {rule.enabled ? '✅ Вкл' : '⏸️ Выкл'}
-                </span>
-              </td>
-              <td className="font-medium">{rule.name}</td>
-              <td>
-                <code className="inline-block max-w-[260px] overflow-hidden text-ellipsis whitespace-nowrap text-xs">
-                  {rule.condition}
-                </code>
-              </td>
-              <td>
-                <code className="text-xs">{rule.chatId}</code>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+              {rule.enabled ? 'Вкл' : 'Выкл'}
+            </span>
+            <span className="font-medium truncate">{rule.name}</span>
+          </div>
+          <code className="block text-xs text-[hsl(var(--muted-foreground))] truncate">
+            {rule.condition}
+          </code>
+        </div>
+      ))}
     </div>
   );
 }
