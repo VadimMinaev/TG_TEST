@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { api, Integration } from '../lib/api';
+import { api, Integration, Rule, Poll } from '../lib/api';
 import { Copy, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
@@ -27,10 +27,13 @@ const DEFAULT_FORM: Omit<Integration, 'id'> = {
 export function Integrations() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
+  const [selectedSourceId, setSelectedSourceId] = useState<string>('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [running, setRunning] = useState(false);
 
@@ -42,10 +45,16 @@ export function Integrations() {
   const loadIntegrations = async () => {
     try {
       setLoading(true);
-      const data = await api.getIntegrations();
-      setIntegrations(data);
+      const [integrationsData, rulesData, pollsData] = await Promise.all([
+        api.getIntegrations(),
+        api.getRules(),
+        api.getPolls(),
+      ]);
+      setIntegrations(integrationsData);
+      setRules(rulesData);
+      setPolls(pollsData);
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось загрузить интеграции', type: 'error' });
+      setMessage({ text: error.message || 'Не удалось загрузить данные', type: 'error' });
     } finally {
       setLoading(false);
     }
@@ -54,6 +63,42 @@ export function Integrations() {
   useEffect(() => {
     loadIntegrations();
   }, []);
+
+  // Применить настройки из выбранного правила или поллинга
+  const handleApplySource = (sourceId: string) => {
+    setSelectedSourceId(sourceId);
+    if (!sourceId) return;
+
+    if (form.triggerType === 'webhook') {
+      const rule = rules.find((r) => r.id === Number(sourceId));
+      if (rule) {
+        setForm((prev) => ({
+          ...prev,
+          triggerCondition: rule.condition || '',
+          chatId: rule.chatId || '',
+          botToken: rule.botToken || '',
+          messageTemplate: rule.messageTemplate || '',
+        }));
+      }
+    } else {
+      const poll = polls.find((p) => p.id === Number(sourceId));
+      if (poll) {
+        setForm((prev) => ({
+          ...prev,
+          pollingUrl: poll.url || '',
+          pollingMethod: poll.method || 'GET',
+          pollingHeaders: poll.headersJson || '',
+          pollingBody: poll.bodyJson || '',
+          pollingInterval: poll.intervalSec || 60,
+          pollingCondition: poll.conditionJson || '',
+          chatId: poll.chatId || '',
+          botToken: poll.botToken || '',
+          messageTemplate: poll.messageTemplate || '',
+          timeoutSec: poll.timeoutSec || 30,
+        }));
+      }
+    }
+  };
 
   useEffect(() => {
     const createParam = searchParams.get('create');
@@ -83,11 +128,13 @@ export function Integrations() {
     setSelectedId(null);
     setEditingId(-1);
     setForm(DEFAULT_FORM);
+    setSelectedSourceId('');
   };
 
   const handleEdit = (integration: Integration) => {
     setSelectedId(integration.id);
     setEditingId(integration.id);
+    setSelectedSourceId('');
     setForm({
       name: integration.name || '',
       enabled: integration.enabled ?? true,
@@ -290,7 +337,10 @@ export function Integrations() {
                       <select
                         className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                         value={form.triggerType}
-                        onChange={(e) => setForm({ ...form, triggerType: e.target.value as 'webhook' | 'polling' })}
+                        onChange={(e) => {
+                          setForm({ ...form, triggerType: e.target.value as 'webhook' | 'polling' });
+                          setSelectedSourceId('');
+                        }}
                       >
                         <option value="webhook">Webhook (входящий)</option>
                         <option value="polling">Polling (опрос)</option>
@@ -299,24 +349,66 @@ export function Integrations() {
                   </div>
 
                   {form.triggerType === 'webhook' && (
-                    <div>
-                      <label className="mb-1 block text-sm font-medium">Условие срабатывания</label>
-                      <input
-                        className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
-                        value={form.triggerCondition}
-                        onChange={(e) => setForm({ ...form, triggerCondition: e.target.value })}
-                        placeholder='payload.type === "order"'
-                      />
-                      <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                        JavaScript-выражение. Доступна переменная <code>payload</code>
-                      </p>
-                    </div>
+                    <>
+                      {rules.length > 0 && (
+                        <div>
+                          <label className="mb-1 block text-sm font-medium">📋 Использовать правило</label>
+                          <select
+                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            value={selectedSourceId}
+                            onChange={(e) => handleApplySource(e.target.value)}
+                          >
+                            <option value="">— Настроить вручную —</option>
+                            {rules.map((rule) => (
+                              <option key={rule.id} value={rule.id}>
+                                {rule.name} {rule.enabled ? '✅' : '⏸️'}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                            Выберите существующее правило для копирования настроек
+                          </p>
+                        </div>
+                      )}
+                      <div>
+                        <label className="mb-1 block text-sm font-medium">Условие срабатывания</label>
+                        <input
+                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                          value={form.triggerCondition}
+                          onChange={(e) => setForm({ ...form, triggerCondition: e.target.value })}
+                          placeholder='payload.type === "order"'
+                        />
+                        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                          JavaScript-выражение. Доступна переменная <code>payload</code>
+                        </p>
+                      </div>
+                    </>
                   )}
 
                   {form.triggerType === 'polling' && (
                     <>
-                      <div className="grid grid-cols-2 gap-4">
+                      {polls.length > 0 && (
                         <div>
+                          <label className="mb-1 block text-sm font-medium">🔄 Использовать поллинг</label>
+                          <select
+                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            value={selectedSourceId}
+                            onChange={(e) => handleApplySource(e.target.value)}
+                          >
+                            <option value="">— Настроить вручную —</option>
+                            {polls.map((poll) => (
+                              <option key={poll.id} value={poll.id}>
+                                {poll.name} {poll.enabled ? '✅' : '⏸️'}
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                            Выберите существующий поллинг для копирования настроек
+                          </p>
+                        </div>
+                      )}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="col-span-2">
                           <label className="mb-1 block text-sm font-medium">URL для опроса</label>
                           <input
                             className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
@@ -325,6 +417,20 @@ export function Integrations() {
                             placeholder="https://api.example.com/status"
                           />
                         </div>
+                        <div>
+                          <label className="mb-1 block text-sm font-medium">Метод</label>
+                          <select
+                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            value={form.pollingMethod}
+                            onChange={(e) => setForm({ ...form, pollingMethod: e.target.value })}
+                          >
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="mb-1 block text-sm font-medium">Интервал (сек)</label>
                           <input
@@ -335,7 +441,39 @@ export function Integrations() {
                             onChange={(e) => setForm({ ...form, pollingInterval: Number(e.target.value) })}
                           />
                         </div>
+                        <div>
+                          <label className="mb-1 block text-sm font-medium">Таймаут (сек)</label>
+                          <input
+                            type="number"
+                            min={1}
+                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            value={form.timeoutSec}
+                            onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
+                          />
+                        </div>
                       </div>
+                      <div>
+                        <label className="mb-1 block text-sm font-medium">Headers (JSON)</label>
+                        <textarea
+                          rows={2}
+                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                          value={form.pollingHeaders}
+                          onChange={(e) => setForm({ ...form, pollingHeaders: e.target.value })}
+                          placeholder='{"Authorization": "Bearer token"}'
+                        />
+                      </div>
+                      {form.pollingMethod !== 'GET' && (
+                        <div>
+                          <label className="mb-1 block text-sm font-medium">Body (JSON)</label>
+                          <textarea
+                            rows={2}
+                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                            value={form.pollingBody}
+                            onChange={(e) => setForm({ ...form, pollingBody: e.target.value })}
+                            placeholder='{"query": "status"}'
+                          />
+                        </div>
+                      )}
                       <div>
                         <label className="mb-1 block text-sm font-medium">Условие срабатывания</label>
                         <input
@@ -376,18 +514,33 @@ export function Integrations() {
                       </div>
                     </div>
                     <div className="mt-3">
-                      <label className="mb-1 block text-sm font-medium">Body (JSON)</label>
+                      <label className="mb-1 block text-sm font-medium">Headers (JSON)</label>
                       <textarea
-                        rows={3}
+                        rows={2}
                         className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
-                        value={form.actionBody}
-                        onChange={(e) => setForm({ ...form, actionBody: e.target.value })}
-                        placeholder={'{"orderId": "{{payload.id}}"}'}
+                        value={form.actionHeaders}
+                        onChange={(e) => setForm({ ...form, actionHeaders: e.target.value })}
+                        placeholder='{"Authorization": "Bearer token", "X-Api-Key": "key"}'
                       />
                       <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                        Используйте <code>{'{{payload.field}}'}</code> для подстановки данных
+                        Дополнительные заголовки запроса. Content-Type добавляется автоматически.
                       </p>
                     </div>
+                    {form.actionMethod !== 'GET' && (
+                      <div className="mt-3">
+                        <label className="mb-1 block text-sm font-medium">Body (JSON)</label>
+                        <textarea
+                          rows={3}
+                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                          value={form.actionBody}
+                          onChange={(e) => setForm({ ...form, actionBody: e.target.value })}
+                          placeholder={'{"orderId": "{{payload.id}}"}'}
+                        />
+                        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                          Используйте <code>{'{{payload.field}}'}</code> для подстановки данных
+                        </p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="border-t border-[hsl(var(--border))] pt-4">
@@ -505,8 +658,15 @@ export function Integrations() {
                   </div>
                   {selectedIntegration.actionUrl && (
                     <div>
-                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Action URL</div>
-                      <code className="text-xs">{selectedIntegration.actionUrl}</code>
+                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Action</div>
+                      <div className="mt-1 space-y-1">
+                        <code className="text-xs">{selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}</code>
+                        {selectedIntegration.actionHeaders && (
+                          <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                            Headers: <code>{selectedIntegration.actionHeaders}</code>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                   {selectedIntegration.chatId && (

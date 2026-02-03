@@ -98,7 +98,7 @@ export function Rules() {
       (rule.name ?? '').toLowerCase().includes(query) ||
       (rule.condition ?? '').toLowerCase().includes(query) ||
       String(rule.chatId ?? '').includes(searchQuery)
-    );
+  );
   });
 
   const handleSelectRule = (id: number) => {
@@ -287,7 +287,7 @@ export function Rules() {
     <div className="card">
       <div className="card-header">
         <div className="flex items-center gap-3">
-          <h2 className="text-xl font-semibold">📋 Правила</h2>
+        <h2 className="text-xl font-semibold">📋 Правила</h2>
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -391,51 +391,51 @@ export function Rules() {
                 Обновить
               </button>
             </div>
-            <RulesList
-              rules={filteredRules}
-              selectedId={selectedRuleId}
-              onSelect={handleSelectRule}
-              loading={loading}
-            />
+          <RulesList
+            rules={filteredRules}
+            selectedId={selectedRuleId}
+            onSelect={handleSelectRule}
+            loading={loading}
+          />
           </div>
         </div>
 
         <div className="split-right">
           <div className="panel">
-            {editingRuleId !== null ? (
-              <RuleForm
-                ruleId={editingRuleId === -1 ? null : editingRuleId}
-                onSave={handleSaveRule}
-                onCancel={() => {
-                  if (selectedRuleId) {
-                    setEditingRuleId(null);
-                  } else {
-                    handleCreateNew();
-                  }
-                }}
-              />
-            ) : selectedRuleId ? (
-              <RuleDetails
-                ruleId={selectedRuleId}
-                onEdit={handleEditRule}
-                onDelete={handleDeleteRule}
-                onDuplicate={handleDuplicateRule}
-                onCreateNew={handleStartCreate}
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
-                <p className="mb-4">Выберите правило из списка слева для редактирования или просмотра</p>
-                <button
-                  onClick={handleStartCreate}
-                  className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
-                >
-                  <Plus className="h-4 w-4" />
-                  Создать новое правило
-                </button>
-              </div>
-            )}
-          </div>
+          {editingRuleId !== null ? (
+            <RuleForm
+              ruleId={editingRuleId === -1 ? null : editingRuleId}
+              onSave={handleSaveRule}
+              onCancel={() => {
+                if (selectedRuleId) {
+                  setEditingRuleId(null);
+                } else {
+                  handleCreateNew();
+                }
+              }}
+            />
+          ) : selectedRuleId ? (
+            <RuleDetails
+              ruleId={selectedRuleId}
+              onEdit={handleEditRule}
+              onDelete={handleDeleteRule}
+              onDuplicate={handleDuplicateRule}
+              onCreateNew={handleStartCreate}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
+              <p className="mb-4">Выберите правило из списка слева для редактирования или просмотра</p>
+              <button
+                onClick={handleStartCreate}
+                className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+              >
+                <Plus className="h-4 w-4" />
+                Создать новое правило
+              </button>
+            </div>
+          )}
         </div>
+      </div>
       </div>
 
       {/* Export Modal */}

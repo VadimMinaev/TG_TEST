@@ -73,52 +73,52 @@ export function History() {
               <h3 className="text-sm font-semibold">📋 Список вебхуков</h3>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">{logs.length} записей</span>
             </div>
-            {loading ? (
+          {loading ? (
               <div className="flex items-center justify-center py-10">
                 <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-              </div>
-            ) : logs.length === 0 ? (
+            </div>
+          ) : logs.length === 0 ? (
               <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">История пуста</p>
-            ) : (
+          ) : (
               <div className="max-h-[calc(100vh-380px)] overflow-y-auto scrollbar-thin">
                 <table className="table-basic w-full border-collapse text-sm">
-                  <thead>
+                <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
                       <th className="px-2 py-2">Дата/Время</th>
                       <th className="px-2 py-2">Статус</th>
                       <th className="px-2 py-2">Совпадения</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {logs.map((log) => (
-                      <tr
-                        key={log.id}
-                        onClick={() => loadLogDetails(log.id)}
-                        className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
-                          selectedLog?.id === log.id ? 'bg-[hsl(var(--accent))]' : ''
-                        }`}
-                      >
+                  </tr>
+                </thead>
+                <tbody>
+                  {logs.map((log) => (
+                    <tr
+                      key={log.id}
+                      onClick={() => loadLogDetails(log.id)}
+                      className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
+                        selectedLog?.id === log.id ? 'bg-[hsl(var(--accent))]' : ''
+                      }`}
+                    >
                         <td className="px-2 py-2 text-xs">{new Date(log.timestamp).toLocaleString('ru-RU')}</td>
                         <td className="px-2 py-2">
-                          <span
+                        <span
                             className={`rounded px-1.5 py-0.5 text-[10px] ${
-                              log.status === 'matched'
-                                ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                                : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                            }`}
-                          >
+                            log.status === 'matched'
+                              ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                              : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+                          }`}
+                        >
                             {log.status === 'matched' ? 'Совпадения' : 'Нет'}
-                          </span>
-                        </td>
+                        </span>
+                      </td>
                         <td className="px-2 py-2 text-xs">
-                          {log.matched}/{log.total_rules}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                        {log.matched}/{log.total_rules}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
           </div>
         </div>
 

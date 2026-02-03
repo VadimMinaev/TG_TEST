@@ -153,7 +153,7 @@ export function Dashboard() {
 
         <main className="content-area">
           <div className="content-inner">
-            <Outlet />
+          <Outlet />
           </div>
         </main>
       </div>
