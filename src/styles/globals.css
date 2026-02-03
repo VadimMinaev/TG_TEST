@@ -65,50 +65,57 @@ body {
 }
 
 .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  padding: 20px 14px;
+  gap: 6px;
+  padding: 12px 10px;
   border-right: 1px solid hsl(var(--border) / 0.7);
   background: linear-gradient(180deg, hsl(var(--card) / 0.92), hsl(var(--background)));
+  overflow: hidden;
 }
 
 .sidebar-brand {
   display: grid;
   place-items: center;
-  width: 56px;
-  height: 56px;
-  margin: 4px auto 0;
-  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  margin: 0 auto;
+  border-radius: 12px;
   background: hsl(var(--primary));
   color: hsl(var(--primary-foreground));
   font-weight: 700;
-  box-shadow: 0 18px 32px -20px hsl(var(--primary) / 0.6);
+  font-size: 14px;
+  box-shadow: 0 12px 24px -16px hsl(var(--primary) / 0.6);
 }
 
 .sidebar-nav {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 2px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .sidebar-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px 6px;
-  border-radius: 14px;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 10px;
   color: hsl(var(--muted-foreground));
   border: 1px solid transparent;
   transition: all 0.2s ease;
-  font-size: 11px;
+  font-size: 10px;
   text-align: center;
 }
 
 .sidebar-item svg {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
 }
 
 .sidebar-item-active {
@@ -127,7 +134,9 @@ body {
 .sidebar-footer {
   margin-top: auto;
   display: grid;
-  gap: 10px;
+  gap: 2px;
+  padding-top: 4px;
+  border-top: 1px solid hsl(var(--border) / 0.5);
 }
 
 .app-page {
