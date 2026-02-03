@@ -70,21 +70,22 @@ export function Integrations() {
     if (!sourceId) return;
 
     if (form.triggerType === 'webhook') {
-      const rule = rules.find((r) => r.id === Number(sourceId));
+      const rule = rules.find((r) => String(r.id) === sourceId);
       if (rule) {
-        setForm((prev) => ({
-          ...prev,
+        setForm({
+          ...form,
           triggerCondition: rule.condition || '',
           chatId: rule.chatId || '',
           botToken: rule.botToken || '',
           messageTemplate: rule.messageTemplate || '',
-        }));
+        });
       }
     } else {
-      const poll = polls.find((p) => p.id === Number(sourceId));
+      const poll = polls.find((p) => String(p.id) === sourceId);
+      console.log('Selected poll:', poll, 'sourceId:', sourceId, 'polls:', polls);
       if (poll) {
-        setForm((prev) => ({
-          ...prev,
+        setForm({
+          ...form,
           pollingUrl: poll.url || '',
           pollingMethod: poll.method || 'GET',
           pollingHeaders: poll.headersJson || '',
@@ -95,7 +96,7 @@ export function Integrations() {
           botToken: poll.botToken || '',
           messageTemplate: poll.messageTemplate || '',
           timeoutSec: poll.timeoutSec || 30,
-        }));
+        });
       }
     }
   };
