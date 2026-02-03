@@ -92,6 +92,11 @@ export function History() {
                 <tbody>
                   {logs.map((log) => {
                     const matchedRules = log.telegram_results?.filter(r => r.success).map(r => r.ruleName).filter((v, i, a) => v && a.indexOf(v) === i) || [];
+                    const displayText = matchedRules.length > 0 
+                      ? matchedRules[0] 
+                      : log.matched > 0 
+                        ? `${log.matched} правил(о)` 
+                        : 'Нет совпадений';
                     return (
                     <tr
                       key={log.id}
@@ -103,8 +108,8 @@ export function History() {
                         <td className="px-2 py-2">
                           <div className="flex items-center gap-1.5">
                             <span className="text-xs">{log.matched > 0 ? '📨' : '📭'}</span>
-                            <span className="font-medium text-xs truncate max-w-[150px]" title={matchedRules.join(', ') || 'Нет совпадений'}>
-                              {matchedRules.length > 0 ? matchedRules[0] : 'Нет совпадений'}
+                            <span className="font-medium text-xs truncate max-w-[150px]" title={matchedRules.join(', ') || displayText}>
+                              {displayText}
                               {matchedRules.length > 1 && <span className="text-[hsl(var(--muted-foreground))]"> +{matchedRules.length - 1}</span>}
                             </span>
                           </div>
