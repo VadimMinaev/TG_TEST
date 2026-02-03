@@ -370,48 +370,61 @@ export function Rules() {
       )}
 
       <div className="split-layout p-6">
-        <div className="split-left split-left-wide">
-          <RulesList
-            rules={filteredRules}
-            selectedId={selectedRuleId}
-            onSelect={handleSelectRule}
-            loading={loading}
-          />
+        <div className="split-left">
+          <div className="panel">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">📋 Список правил</h3>
+              <button
+                onClick={loadRules}
+                className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))]"
+              >
+                Обновить
+              </button>
+            </div>
+            <RulesList
+              rules={filteredRules}
+              selectedId={selectedRuleId}
+              onSelect={handleSelectRule}
+              loading={loading}
+            />
+          </div>
         </div>
 
         <div className="split-right">
-          {editingRuleId !== null ? (
-            <RuleForm
-              ruleId={editingRuleId === -1 ? null : editingRuleId}
-              onSave={handleSaveRule}
-              onCancel={() => {
-                if (selectedRuleId) {
-                  setEditingRuleId(null);
-                } else {
-                  handleCreateNew();
-                }
-              }}
-            />
-          ) : selectedRuleId ? (
-            <RuleDetails
-              ruleId={selectedRuleId}
-              onEdit={handleEditRule}
-              onDelete={handleDeleteRule}
-              onDuplicate={handleDuplicateRule}
-              onCreateNew={handleStartCreate}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Выберите правило из списка слева для редактирования или просмотра</p>
-              <button
-                onClick={handleStartCreate}
-                className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
-              >
-                <Plus className="h-4 w-4" />
-                Создать новое правило
-              </button>
-            </div>
-          )}
+          <div className="panel">
+            {editingRuleId !== null ? (
+              <RuleForm
+                ruleId={editingRuleId === -1 ? null : editingRuleId}
+                onSave={handleSaveRule}
+                onCancel={() => {
+                  if (selectedRuleId) {
+                    setEditingRuleId(null);
+                  } else {
+                    handleCreateNew();
+                  }
+                }}
+              />
+            ) : selectedRuleId ? (
+              <RuleDetails
+                ruleId={selectedRuleId}
+                onEdit={handleEditRule}
+                onDelete={handleDeleteRule}
+                onDuplicate={handleDuplicateRule}
+                onCreateNew={handleStartCreate}
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
+                <p className="mb-4">Выберите правило из списка слева для редактирования или просмотра</p>
+                <button
+                  onClick={handleStartCreate}
+                  className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Создать новое правило
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
