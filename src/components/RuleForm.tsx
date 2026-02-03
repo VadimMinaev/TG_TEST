@@ -114,7 +114,8 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Например: Отправить в основной чат"
           required
-          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px' }}
+          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
       </div>
 
@@ -144,7 +145,8 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           placeholder='payload.category === "incident"'
           required
           rows={4}
-          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px' }}
+          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
       </div>
 
@@ -170,7 +172,8 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setChatId(e.target.value)}
           placeholder="Например: -1001234567890"
           required
-          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px' }}
+          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
       </div>
 
@@ -195,7 +198,8 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           value={botToken}
           onChange={(e) => setBotToken(e.target.value)}
           placeholder="Оставьте пустым для глобального токена"
-          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px' }}
+          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
       </div>
 
@@ -210,7 +214,8 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setMessageTemplate(e.target.value)}
           placeholder="Оставьте пусто для автоформатирования"
           rows={4}
-          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+          style={{ padding: '12px 16px' }}
+          className="w-full rounded-lg border border-[hsl(var(--input))] bg-[hsl(var(--background))] font-mono text-sm transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
         />
       </div>
 
@@ -231,14 +236,16 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         <button
           type="submit"
           disabled={loading}
-          className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)] disabled:opacity-50"
+          style={{ padding: '12px 24px' }}
+          className="flex-1 rounded-lg bg-[hsl(var(--primary))] font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)] disabled:opacity-50"
         >
           {loading ? 'Сохранение...' : 'Сохранить правило'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))] transition-all hover:bg-[hsl(var(--accent))]"
+          style={{ padding: '12px 24px' }}
+          className="flex-1 rounded-lg bg-[hsl(var(--secondary))] font-semibold text-[hsl(var(--secondary-foreground))] transition-all hover:bg-[hsl(var(--accent))]"
         >
           Отмена
         </button>
