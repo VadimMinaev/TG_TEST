@@ -1999,6 +1999,11 @@ async function executeIntegration(integration, triggerData = null, triggerType =
                 responseData = parseJsonSafe(runData.actionResponse, null);
             }
             
+            // Fallback на пустой объект чтобы избежать null errors
+            const safePayload = responseData || triggerData || {};
+            const safeResponse = responseData || {};
+            const safeTrigger = triggerData || {};
+            
             // Рендерим шаблон с поддержкой ${...} синтаксиса
             if (message && (message.includes('${') || message.includes('{{'))) {
                 try {
@@ -2010,16 +2015,14 @@ async function executeIntegration(integration, triggerData = null, triggerType =
                             return '[Ошибка шаблона]: ' + e.message;
                         }
                     `);
-                    // payload = response для совместимости с Rules/Polls
-                    message = templateFn(responseData || triggerData, responseData, triggerData);
+                    message = templateFn(safePayload, safeResponse, safeTrigger);
                 } catch (templateErr) {
                     console.error('Template error:', templateErr);
                     // Fallback на простую замену {{field}}
-                    const data = responseData || triggerData;
-                    if (data) {
+                    if (safePayload) {
                         message = message.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
                             const keys = path.split('.');
-                            let value = data;
+                            let value = safePayload;
                             for (const key of keys) {
                                 value = value?.[key];
                             }
