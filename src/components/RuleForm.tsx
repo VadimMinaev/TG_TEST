@@ -101,7 +101,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       )}
 
       <div>
-        <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', fontSize: '14px', fontWeight: 500 }}>
           Название правила
           <InfoTooltip>
             Уникальное имя для идентификации правила в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
@@ -119,7 +119,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', fontSize: '14px', fontWeight: 500 }}>
           Условие (JavaScript выражение)
           <InfoTooltip>
             <div className="space-y-2">
@@ -149,7 +149,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', fontSize: '14px', fontWeight: 500 }}>
           ID Telegram чата
           <InfoTooltip>
             <div className="space-y-2">
@@ -175,7 +175,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', fontSize: '14px', fontWeight: 500 }}>
           Токен Telegram бота
           <InfoTooltip>
             <div className="space-y-2">
@@ -200,7 +200,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', marginBottom: '12px', fontSize: '14px', fontWeight: 500 }}>
           Шаблон сообщения
           <TemplateHelp context="rule" />
         </label>
