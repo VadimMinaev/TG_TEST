@@ -117,7 +117,7 @@ export function Dashboard() {
       <div className="app-page">
         <header className="topbar">
           <div className="topbar-title">
-            📱 Интеграция с TG 💲VadminLink
+            📱 Интеграция💲VadminLink
           </div>
 
           <GlobalSearch />
