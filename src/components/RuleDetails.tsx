@@ -120,26 +120,28 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие</h4>
-          <div className="overflow-x-auto rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-            <code className="whitespace-pre-wrap break-words text-sm">{rule.condition}</code>
+          <div className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
+            <code className="block whitespace-pre-wrap break-words p-4 text-sm">{rule.condition}</code>
           </div>
         </div>
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки отправки</h4>
-          <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-            <div className="mb-3">
-              <strong>ID канала/чата:</strong> <code>{rule.chatId}</code>
+          <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+            <div>
+              <strong>ID канала/чата:</strong>{' '}
+              <code className="ml-2 rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{rule.chatId}</code>
             </div>
             {rule.botToken && (
-              <div className="mb-3">
-                <strong>Токен бота:</strong> <code>{rule.botToken.substring(0, 10)}...</code>
+              <div>
+                <strong>Токен бота:</strong>{' '}
+                <code className="ml-2 rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{rule.botToken.substring(0, 10)}...</code>
               </div>
             )}
             {rule.messageTemplate ? (
               <div>
                 <strong>Шаблон сообщения:</strong>
-                <div className="mt-2 whitespace-pre-wrap rounded bg-[hsl(var(--muted)_/_0.3)] p-3 text-sm">
+                <div className="mt-2 whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] p-4 text-sm">
                   {rule.messageTemplate}
                 </div>
               </div>
