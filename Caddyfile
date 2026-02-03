@@ -9,15 +9,15 @@ integration.vadminaev.ru {
     }
 }
 
-# Сайт-визитка (Next.js на порту 3003)
+# Сайт-визитка (Next.js)
 vadminaev.ru {
-    reverse_proxy host.docker.internal:3003
+    reverse_proxy vadim-minaev-systems-analyst-app-1:3000
     encode gzip
 }
 
-# Postman Runner (на порту 3005)
+# Postman Runner
 postmanrunner.vadminaev.ru {
-    reverse_proxy host.docker.internal:3005
+    reverse_proxy postman-runner-app:3000
     encode gzip
 }
 
