@@ -16,7 +16,7 @@ vadminaev.ru {
 }
 
 # Postman Runner (на порту 3005)
-postman.vadminaev.ru {
+postmanrunner.vadminaev.ru {
     reverse_proxy host.docker.internal:3005
     encode gzip
 }
