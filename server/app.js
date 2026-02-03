@@ -1993,16 +1993,40 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             const botToken = integration.botToken || TELEGRAM_BOT_TOKEN;
             let message = integration.messageTemplate || `Интеграция "${integration.name}" выполнена`;
             
-            // Подставляем данные в шаблон сообщения
-            if (triggerData) {
-                message = message.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
-                    const keys = path.split('.');
-                    let value = triggerData;
-                    for (const key of keys) {
-                        value = value?.[key];
+            // Данные для шаблона: response (ответ action API) и trigger (данные триггера)
+            let responseData = null;
+            if (runData.actionResponse) {
+                responseData = parseJsonSafe(runData.actionResponse, null);
+            }
+            
+            // Рендерим шаблон с поддержкой ${...} синтаксиса
+            if (message && (message.includes('${') || message.includes('{{'))) {
+                try {
+                    // Поддержка ${payload.field} и ${response.field} и ${trigger.field}
+                    const templateFn = new Function('payload', 'response', 'trigger', `
+                        try {
+                            return \`${message.replace(/`/g, '\\`')}\`;
+                        } catch (e) {
+                            return '[Ошибка шаблона]: ' + e.message;
+                        }
+                    `);
+                    // payload = response для совместимости с Rules/Polls
+                    message = templateFn(responseData || triggerData, responseData, triggerData);
+                } catch (templateErr) {
+                    console.error('Template error:', templateErr);
+                    // Fallback на простую замену {{field}}
+                    const data = responseData || triggerData;
+                    if (data) {
+                        message = message.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
+                            const keys = path.split('.');
+                            let value = data;
+                            for (const key of keys) {
+                                value = value?.[key];
+                            }
+                            return value !== undefined ? String(value) : match;
+                        });
                     }
-                    return value !== undefined ? String(value) : match;
-                });
+                }
             }
 
             try {
