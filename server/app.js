@@ -1980,7 +1980,8 @@ async function executeIntegration(integration, triggerData = null, triggerType =
 
             const responseText = await response.text();
             runData.actionStatus = response.status;
-            runData.actionResponse = responseText.slice(0, 2000);
+            runData.actionResponse = responseText.slice(0, 2000); // Truncated for logging
+            runData.fullResponse = responseText; // Full response for template
 
             if (!response.ok) {
                 runData.status = 'error';
@@ -1995,7 +1996,10 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             
             // Данные для шаблона: response (ответ action API) и trigger (данные триггера)
             let responseData = null;
-            if (runData.actionResponse) {
+            // Используем полный ответ для шаблона (не обрезанный)
+            if (runData.fullResponse) {
+                responseData = parseJsonSafe(runData.fullResponse, null);
+            } else if (runData.actionResponse) {
                 responseData = parseJsonSafe(runData.actionResponse, null);
             }
             
