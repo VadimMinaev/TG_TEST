@@ -50,18 +50,23 @@ function DialogContent({
   children,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
+  const handlePreventClose = (e: Event) => {
+    e.preventDefault();
+  };
+  
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
+        {...props}
         style={{ padding: '20px', maxWidth: '480px', pointerEvents: 'auto' }}
         className={cn(
           "fixed left-1/2 top-1/2 z-[60] w-full -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-lg",
           className,
         )}
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
-        {...props}
+        onPointerDownOutside={handlePreventClose}
+        onInteractOutside={handlePreventClose}
+        onEscapeKeyDown={handlePreventClose}
       >
         {children}
         <DialogPrimitive.Close 
