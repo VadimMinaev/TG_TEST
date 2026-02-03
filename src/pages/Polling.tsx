@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { Copy, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 
@@ -37,6 +38,7 @@ const normalizeForm = (poll?: Poll) => ({
 });
 
 export function Polling() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPollId, setSelectedPollId] = useState<number | null>(null);
@@ -64,6 +66,16 @@ export function Polling() {
   useEffect(() => {
     loadPolls();
   }, []);
+
+  // Проверяем параметр create в URL
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setSelectedPollId(null);
+      setEditingPollId(-1);
+      setForm(DEFAULT_FORM);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const handleSelectPoll = (id: number) => {
     setSelectedPollId(id);

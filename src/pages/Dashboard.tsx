@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Outlet, useNavigate, Link, useLocation } from 'react-router';
+import { useEffect, useState, useMemo } from 'react';
+import { Outlet, useNavigate, Link, useLocation, useSearchParams } from 'react-router';
 import { useAuth } from '../lib/auth-context';
 import {
   Sun,
@@ -24,7 +24,19 @@ export function Dashboard() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  // Определяем, можно ли создавать на текущей странице
+  const canCreate = useMemo(() => {
+    return location.pathname === '/' || location.pathname === '/polling' || location.pathname === '/users';
+  }, [location.pathname]);
+
+  const handleCreate = () => {
+    if (canCreate) {
+      setSearchParams({ create: 'true' });
+    }
+  };
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -110,7 +122,12 @@ export function Dashboard() {
           </div>
 
           <div className="topbar-actions">
-            <button className="icon-button" title="Создать">
+            <button
+              className={`icon-button ${canCreate ? '' : 'opacity-50 cursor-not-allowed'}`}
+              title={canCreate ? 'Создать' : 'На этой странице нельзя создавать'}
+              onClick={handleCreate}
+              disabled={!canCreate}
+            >
               <Plus className="h-4 w-4" />
             </button>
             <button className="icon-button" title="Уведомления">

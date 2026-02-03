@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { api, Rule } from '../lib/api';
 import { Plus, Search, Download, Upload, X, Check, Info, Copy, CheckCheck } from 'lucide-react';
 import { RulesList } from '../components/RulesList';
@@ -20,6 +21,7 @@ import {
 } from '../components/ui/tooltip';
 
 export function Rules() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
@@ -31,6 +33,15 @@ export function Rules() {
   const [selectedForExport, setSelectedForExport] = useState<Set<number>>(new Set());
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
+
+  // Проверяем параметр create в URL
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setSelectedRuleId(null);
+      setEditingRuleId(-1);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   // Формируем полный URL вебхука
   const webhookUrl = typeof window !== 'undefined'

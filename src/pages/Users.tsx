@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { api, User } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Plus, Trash2, X } from 'lucide-react';
 
 export function Users() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -17,6 +19,14 @@ export function Users() {
       loadUsers();
     }
   }, [user]);
+
+  // Проверяем параметр create в URL
+  useEffect(() => {
+    if (searchParams.get('create') === 'true') {
+      setShowCreateForm(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const loadUsers = async () => {
     try {
