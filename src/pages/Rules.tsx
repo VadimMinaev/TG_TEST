@@ -440,74 +440,77 @@ export function Rules() {
 
       {/* Export Modal */}
       <Dialog open={exportModalOpen} onOpenChange={setExportModalOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader className="pb-2">
+        <DialogContent>
+          <DialogHeader style={{ marginBottom: '12px' }}>
             <DialogTitle>Экспорт правил</DialogTitle>
-            <DialogDescription className="pt-1">
-              Выберите правила для экспорта или экспортируйте все сразу
+            <DialogDescription style={{ marginTop: '4px' }}>
+              Выберите правила для экспорта
             </DialogDescription>
           </DialogHeader>
 
-          <div className="max-h-[300px] overflow-y-auto rounded border border-[hsl(var(--border))]">
+          <div style={{ maxHeight: '250px', overflow: 'auto', borderRadius: '8px', border: '1px solid hsl(var(--border))' }}>
             {loading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" />
+              <div style={{ padding: '32px', textAlign: 'center' }}>
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" style={{ margin: '0 auto' }} />
               </div>
             ) : rules.length === 0 ? (
-              <div className="py-8 text-center text-[hsl(var(--muted-foreground))]">
+              <div style={{ padding: '32px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>
                 Нет правил для экспорта
               </div>
             ) : (
               <>
                 <div
-                  className="sticky top-0 flex cursor-pointer items-center gap-3 border-b border-[hsl(var(--border))] bg-[hsl(var(--muted))] px-4 py-3 transition-colors hover:bg-[hsl(var(--accent))]"
+                  style={{ padding: '12px 16px', cursor: 'pointer', position: 'sticky', top: 0, background: 'hsl(var(--muted))', borderBottom: '1px solid hsl(var(--border))' }}
                   onClick={handleSelectAllForExport}
                 >
-                  <div
-                    className={`flex h-5 w-5 items-center justify-center rounded border transition-colors ${
-                      selectedForExport.size === rules.length && rules.length > 0
-                        ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]'
-                        : 'border-[hsl(var(--input))]'
-                    }`}
-                  >
-                    {selectedForExport.size === rules.length && rules.length > 0 && (
-                      <Check className="h-3 w-3" />
-                    )}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div
+                      style={{ 
+                        width: '20px', height: '20px', borderRadius: '4px', border: '2px solid',
+                        borderColor: selectedForExport.size === rules.length ? 'hsl(var(--primary))' : 'hsl(var(--input))',
+                        background: selectedForExport.size === rules.length ? 'hsl(var(--primary))' : 'transparent',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center'
+                      }}
+                    >
+                      {selectedForExport.size === rules.length && rules.length > 0 && (
+                        <Check className="h-3 w-3" style={{ color: 'hsl(var(--primary-foreground))' }} />
+                      )}
+                    </div>
+                    <span style={{ fontWeight: 500 }}>Выбрать все ({rules.length})</span>
                   </div>
-                  <span className="font-medium">Выбрать все ({rules.length})</span>
                 </div>
 
                 {rules.map((rule) => (
                   <div
                     key={rule.id}
-                    className="flex cursor-pointer items-center gap-3 border-b border-[hsl(var(--border))] px-4 py-3 transition-colors last:border-b-0 hover:bg-[hsl(var(--accent))]"
+                    style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid hsl(var(--border))' }}
                     onClick={() => handleToggleExportRule(rule.id)}
                   >
-                    <div
-                      className={`flex h-5 w-5 shrink-0 items-center justify-center rounded border transition-colors ${
-                        selectedForExport.has(rule.id)
-                          ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))]'
-                          : 'border-[hsl(var(--input))]'
-                      }`}
-                    >
-                      {selectedForExport.has(rule.id) && <Check className="h-3 w-3" />}
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`rounded px-1.5 py-0.5 text-xs ${
-                            rule.enabled
-                              ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                              : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                          }`}
-                        >
-                          {rule.enabled ? 'Вкл' : 'Выкл'}
-                        </span>
-                        <span className="font-medium">{rule.name}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div
+                        style={{ 
+                          width: '20px', height: '20px', borderRadius: '4px', border: '2px solid', flexShrink: 0,
+                          borderColor: selectedForExport.has(rule.id) ? 'hsl(var(--primary))' : 'hsl(var(--input))',
+                          background: selectedForExport.has(rule.id) ? 'hsl(var(--primary))' : 'transparent',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center'
+                        }}
+                      >
+                        {selectedForExport.has(rule.id) && <Check className="h-3 w-3" style={{ color: 'hsl(var(--primary-foreground))' }} />}
                       </div>
-                      <code className="mt-1 block truncate text-xs text-[hsl(var(--muted-foreground))]">
-                        {rule.condition}
-                      </code>
+                      <div style={{ flex: 1, overflow: 'hidden' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{ 
+                              padding: '2px 6px', borderRadius: '4px', fontSize: '11px',
+                              background: rule.enabled ? 'hsl(var(--success) / 0.15)' : 'hsl(var(--destructive) / 0.1)',
+                              color: rule.enabled ? 'hsl(var(--success))' : 'hsl(var(--destructive))'
+                            }}
+                          >
+                            {rule.enabled ? 'Вкл' : 'Выкл'}
+                          </span>
+                          <span style={{ fontWeight: 500 }}>{rule.name}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -515,29 +518,20 @@ export function Rules() {
             )}
           </div>
 
-          <DialogFooter className="flex gap-2 pt-2 sm:justify-between">
+          <DialogFooter style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
             <button
               onClick={() => setExportModalOpen(false)}
-              className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] px-4 py-2 text-sm transition-all hover:bg-[hsl(var(--accent))]"
+              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))', cursor: 'pointer', fontSize: '14px' }}
             >
               Отмена
             </button>
-            <div className="flex gap-2">
-              <button
-                onClick={() => handleExportRules(false)}
-                disabled={selectedForExport.size === 0}
-                className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Экспорт выбранных ({selectedForExport.size})
-              </button>
-              <button
-                onClick={() => handleExportRules(true)}
-                disabled={rules.length === 0}
-                className="rounded bg-[hsl(var(--secondary))] px-4 py-2 text-sm font-medium transition-all hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Экспорт всех ({rules.length})
-              </button>
-            </div>
+            <button
+              onClick={() => handleExportRules(false)}
+              disabled={selectedForExport.size === 0}
+              style={{ padding: '10px 16px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', cursor: 'pointer', fontSize: '14px', fontWeight: 500, opacity: selectedForExport.size === 0 ? 0.5 : 1 }}
+            >
+              Экспорт ({selectedForExport.size})
+            </button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

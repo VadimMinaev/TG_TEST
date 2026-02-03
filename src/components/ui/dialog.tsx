@@ -54,18 +54,18 @@ function DialogContent({
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
+        style={{ padding: '20px', maxWidth: '480px', pointerEvents: 'auto' }}
         className={cn(
-          "fixed left-1/2 top-1/2 z-[60] grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 shadow-lg",
+          "fixed left-1/2 top-1/2 z-[60] w-full -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-lg",
           className,
         )}
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onInteractOutside={(e) => e.preventDefault()}
         {...props}
       >
-        <div className="flex flex-col gap-4">
-          {children}
-        </div>
-        <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100 focus:outline-none disabled:pointer-events-none">
+        {children}
+        <DialogPrimitive.Close 
+          style={{ padding: '8px', pointerEvents: 'auto' }}
+          className="absolute right-3 top-3 rounded-lg opacity-70 transition-opacity hover:opacity-100 hover:bg-[hsl(var(--accent))] focus:outline-none"
+        >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>
         </DialogPrimitive.Close>
