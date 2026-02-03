@@ -56,14 +56,16 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
           <>
             <button
               onClick={() => onDuplicate(rule.id)}
-              className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] px-3 py-1 text-sm transition-all hover:bg-[hsl(var(--accent))]"
+              style={{ padding: '8px 16px' }}
+              className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-sm transition-all hover:bg-[hsl(var(--accent))]"
             >
               <Copy className="h-4 w-4" />
               Дублировать
             </button>
             <button
               onClick={() => onEdit(rule.id)}
-              className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-3 py-1 text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+              style={{ padding: '8px 16px' }}
+              className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
             >
               <Pencil className="h-4 w-4" />
               Редактировать
@@ -72,7 +74,8 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
         )}
         <button
           onClick={onCreateNew}
-          className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-3 py-1 text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+          style={{ padding: '8px 16px' }}
+          className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
         >
           <Plus className="h-4 w-4" />
           Создать новое правило
@@ -80,7 +83,8 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
         {canEdit && (
           <button
             onClick={() => onDelete(rule.id)}
-            className="flex items-center gap-2 rounded bg-[hsl(var(--destructive))] px-3 py-1 text-sm text-[hsl(var(--destructive-foreground))] transition-all hover:bg-[hsl(var(--destructive)_/_0.9)]"
+            style={{ padding: '8px 16px' }}
+            className="flex items-center gap-2 rounded bg-[hsl(var(--destructive))] text-sm text-[hsl(var(--destructive-foreground))] transition-all hover:bg-[hsl(var(--destructive)_/_0.9)]"
           >
             <Trash2 className="h-4 w-4" />
             Удалить
@@ -91,17 +95,18 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
       <div className="space-y-4">
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о правиле</h4>
-          <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-            <div className="mb-3">
+          <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+            <div style={{ marginBottom: '12px' }}>
               <strong>ID:</strong> <code>{rule.id}</code>
             </div>
-            <div className="mb-3">
+            <div style={{ marginBottom: '12px' }}>
               <strong>Название:</strong> {rule.name}
             </div>
-            <div className="mb-3">
+            <div style={{ marginBottom: '12px' }}>
               <strong>Статус:</strong>{' '}
               <span
-                className={`rounded px-2 py-1 text-xs ${
+                style={{ padding: '4px 8px' }}
+                className={`rounded text-xs ${
                   rule.enabled
                     ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
                     : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
@@ -120,28 +125,28 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие</h4>
-          <div className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
-            <code className="block whitespace-pre-wrap break-words p-4 text-sm">{rule.condition}</code>
+          <div style={{ padding: '16px' }} className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
+            <code className="block whitespace-pre-wrap break-words text-sm">{rule.condition}</code>
           </div>
         </div>
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки отправки</h4>
-          <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+          <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
             <div>
               <strong>ID канала/чата:</strong>{' '}
-              <code className="ml-2 rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{rule.chatId}</code>
+              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{rule.chatId}</code>
             </div>
             {rule.botToken && (
               <div>
                 <strong>Токен бота:</strong>{' '}
-                <code className="ml-2 rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{rule.botToken.substring(0, 10)}...</code>
+                <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{rule.botToken.substring(0, 10)}...</code>
               </div>
             )}
             {rule.messageTemplate ? (
               <div>
                 <strong>Шаблон сообщения:</strong>
-                <div className="mt-2 whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] p-4 text-sm">
+                <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
                   {rule.messageTemplate}
                 </div>
               </div>
