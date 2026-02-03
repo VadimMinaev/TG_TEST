@@ -59,6 +59,8 @@ function DialogContent({
           "fixed left-1/2 top-1/2 z-[60] w-full -translate-x-1/2 -translate-y-1/2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-lg",
           className,
         )}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onInteractOutside={(e) => e.preventDefault()}
         {...props}
       >
         {children}
