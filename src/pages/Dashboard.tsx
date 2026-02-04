@@ -67,7 +67,6 @@ export function Dashboard() {
 
   const tabs = [
     { path: '/', label: 'Правила', icon: <ListChecks /> },
-    { path: '/testing', label: 'Тесты', icon: <FlaskConical /> },
     { path: '/history', label: 'История', icon: <Clock /> },
     { path: '/queue', label: 'Очередь', icon: <Mail /> },
     { path: '/polling', label: 'Пуллинг', icon: <Repeat /> },
@@ -134,6 +133,13 @@ export function Dashboard() {
             <button className="icon-button" title="Уведомления">
               <Bell className="h-4 w-4" />
             </button>
+            <Link
+              to="/testing"
+              className={`icon-button ${location.pathname === '/testing' ? 'bg-[hsl(var(--accent))]' : ''}`}
+              title="Тестирование"
+            >
+              <FlaskConical className="h-4 w-4" />
+            </Link>
             <button className="icon-button" title="Настройки">
               <Settings className="h-4 w-4" />
             </button>
