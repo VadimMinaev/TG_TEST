@@ -322,21 +322,21 @@ export function Integrations() {
                 <h3 className="mb-4 text-lg font-semibold">
                   {editingId === -1 ? 'Создание интеграции' : 'Редактирование'}
                 </h3>
-                <form onSubmit={handleSave} className="space-y-4">
+                <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Название</label>
+                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
                       <input
-                        className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                         placeholder="Моя интеграция"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block text-sm font-medium">Тип триггера</label>
+                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Тип триггера</label>
                       <select
-                        className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                         value={form.triggerType}
                         onChange={(e) => {
                           setForm({ ...form, triggerType: e.target.value as 'webhook' | 'polling' });
@@ -353,9 +353,9 @@ export function Integrations() {
                     <>
                       {rules.length > 0 && (
                         <div>
-                          <label className="mb-1 block text-sm font-medium">📋 Использовать правило</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>📋 Использовать правило</label>
                           <select
-                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={selectedSourceId}
                             onChange={(e) => handleApplySource(e.target.value)}
                           >
@@ -372,9 +372,9 @@ export function Integrations() {
                         </div>
                       )}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Условие срабатывания</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
                         <input
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                           value={form.triggerCondition}
                           onChange={(e) => setForm({ ...form, triggerCondition: e.target.value })}
                           placeholder='payload.type === "order"'
@@ -390,9 +390,9 @@ export function Integrations() {
                     <>
                       {polls.length > 0 && (
                         <div>
-                          <label className="mb-1 block text-sm font-medium">🔄 Использовать поллинг</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>🔄 Использовать поллинг</label>
                           <select
-                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={selectedSourceId}
                             onChange={(e) => handleApplySource(e.target.value)}
                           >
@@ -410,18 +410,18 @@ export function Integrations() {
                       )}
                       <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-2">
-                          <label className="mb-1 block text-sm font-medium">URL для опроса</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL для опроса</label>
                           <input
-                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.pollingUrl}
                             onChange={(e) => setForm({ ...form, pollingUrl: e.target.value })}
                             placeholder="https://api.example.com/status"
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm font-medium">Метод</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
                           <select
-                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.pollingMethod}
                             onChange={(e) => setForm({ ...form, pollingMethod: e.target.value })}
                           >
@@ -433,31 +433,31 @@ export function Integrations() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label className="mb-1 block text-sm font-medium">Интервал (сек)</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
                           <input
                             type="number"
                             min={5}
-                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.pollingInterval}
                             onChange={(e) => setForm({ ...form, pollingInterval: Number(e.target.value) })}
                           />
                         </div>
                         <div>
-                          <label className="mb-1 block text-sm font-medium">Таймаут (сек)</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
                           <input
                             type="number"
                             min={1}
-                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.timeoutSec}
                             onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Headers (JSON)</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
                         <textarea
                           rows={2}
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                           value={form.pollingHeaders}
                           onChange={(e) => setForm({ ...form, pollingHeaders: e.target.value })}
                           placeholder='{"Authorization": "Bearer token"}'
@@ -465,10 +465,10 @@ export function Integrations() {
                       </div>
                       {form.pollingMethod !== 'GET' && (
                         <div>
-                          <label className="mb-1 block text-sm font-medium">Body (JSON)</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
                           <textarea
                             rows={2}
-                            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                             value={form.pollingBody}
                             onChange={(e) => setForm({ ...form, pollingBody: e.target.value })}
                             placeholder='{"query": "status"}'
@@ -476,9 +476,9 @@ export function Integrations() {
                         </div>
                       )}
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Условие срабатывания</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
                         <input
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                           value={form.pollingCondition}
                           onChange={(e) => setForm({ ...form, pollingCondition: e.target.value })}
                           placeholder='response.status === "ready"'
@@ -487,22 +487,22 @@ export function Integrations() {
                     </>
                   )}
 
-                  <div className="border-t border-[hsl(var(--border))] pt-4">
-                    <h4 className="mb-3 text-sm font-semibold">🚀 Action (вызов API)</h4>
+                  <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
+                    <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>🚀 Action (вызов API)</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="mb-1 block text-sm font-medium">URL</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
                         <input
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                           value={form.actionUrl}
                           onChange={(e) => setForm({ ...form, actionUrl: e.target.value })}
                           placeholder="https://api.example.com/action"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Метод</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
                         <select
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                           value={form.actionMethod}
                           onChange={(e) => setForm({ ...form, actionMethod: e.target.value })}
                         >
@@ -514,11 +514,11 @@ export function Integrations() {
                         </select>
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <label className="mb-1 block text-sm font-medium">Headers (JSON)</label>
+                    <div style={{ marginTop: '16px' }}>
+                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
                       <textarea
                         rows={2}
-                        className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                         value={form.actionHeaders}
                         onChange={(e) => setForm({ ...form, actionHeaders: e.target.value })}
                         placeholder='{"Authorization": "Bearer token", "X-Api-Key": "key"}'
@@ -528,11 +528,11 @@ export function Integrations() {
                       </p>
                     </div>
                     {form.actionMethod !== 'GET' && (
-                      <div className="mt-3">
-                        <label className="mb-1 block text-sm font-medium">Body (JSON)</label>
+                      <div style={{ marginTop: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
                         <textarea
                           rows={3}
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                           value={form.actionBody}
                           onChange={(e) => setForm({ ...form, actionBody: e.target.value })}
                           placeholder={'{"orderId": "{{payload.id}}"}'}
@@ -544,36 +544,36 @@ export function Integrations() {
                     )}
                   </div>
 
-                  <div className="border-t border-[hsl(var(--border))] pt-4">
-                    <h4 className="mb-3 text-sm font-semibold">📱 Telegram уведомление</h4>
+                  <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
+                    <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>📱 Telegram уведомление</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Chat ID</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
                         <input
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                           value={form.chatId}
                           onChange={(e) => setForm({ ...form, chatId: e.target.value })}
                           placeholder="-1001234567890"
                         />
                       </div>
                       <div>
-                        <label className="mb-1 block text-sm font-medium">Bot Token (опц.)</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (опц.)</label>
                         <input
-                          className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                           value={form.botToken}
                           onChange={(e) => setForm({ ...form, botToken: e.target.value })}
                           placeholder="Глобальный токен"
                         />
                       </div>
                     </div>
-                    <div className="mt-3">
-                      <label className="mb-1 flex items-center text-sm font-medium">
+                    <div style={{ marginTop: '16px' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
                         Шаблон сообщения
                         <TemplateHelp context="integration" />
                       </label>
                       <textarea
                         rows={2}
-                        className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                         value={form.messageTemplate}
                         onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
                         placeholder="${payload.name} — ${payload.status}"
@@ -581,22 +581,23 @@ export function Integrations() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={form.enabled}
-                        onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-                        className="rounded"
-                      />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
+                    <input
+                      type="checkbox"
+                      id="enabled"
+                      checked={form.enabled}
+                      onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    <label htmlFor="enabled" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
                       Включена
                     </label>
                   </div>
 
-                  <div className="flex gap-2 pt-2">
+                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                     <button
                       type="submit"
-                      className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm font-medium text-[hsl(var(--primary-foreground))]"
+                      style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                     >
                       Сохранить
                     </button>
@@ -606,7 +607,7 @@ export function Integrations() {
                         setEditingId(null);
                         if (!selectedId) setForm(DEFAULT_FORM);
                       }}
-                      className="rounded border border-[hsl(var(--border))] px-4 py-2 text-sm"
+                      style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                     >
                       Отмена
                     </button>
@@ -614,122 +615,150 @@ export function Integrations() {
                 </form>
               </>
             ) : selectedIntegration ? (
-              <>
+              <div>
                 <div className="mb-4 flex flex-wrap gap-2">
                   <button
                     onClick={() => handleRun(selectedIntegration.id)}
                     disabled={running}
-                    className="flex items-center gap-2 rounded bg-[hsl(var(--success))] px-3 py-1 text-sm text-white disabled:opacity-50"
+                    style={{ padding: '8px 16px' }}
+                    className="flex items-center gap-2 rounded bg-[hsl(var(--success))] text-sm text-white transition-all hover:bg-[hsl(var(--success)_/_0.9)] disabled:opacity-50"
                   >
                     <Play className="h-4 w-4" />
                     {running ? 'Выполняется...' : 'Запустить'}
                   </button>
                   <button
                     onClick={() => handleEdit(selectedIntegration)}
-                    className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-3 py-1 text-sm text-[hsl(var(--primary-foreground))]"
+                    style={{ padding: '8px 16px' }}
+                    className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
                   >
                     <Pencil className="h-4 w-4" />
                     Редактировать
                   </button>
                   <button
                     onClick={() => handleDuplicate(selectedIntegration)}
-                    className="flex items-center gap-2 rounded border border-[hsl(var(--border))] px-3 py-1 text-sm"
+                    style={{ padding: '8px 16px' }}
+                    className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-sm transition-all hover:bg-[hsl(var(--accent))]"
                   >
                     <Copy className="h-4 w-4" />
                     Дублировать
                   </button>
                   <button
+                    onClick={handleStartCreate}
+                    style={{ padding: '8px 16px' }}
+                    className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Создать новую
+                  </button>
+                  <button
                     onClick={() => handleDelete(selectedIntegration.id)}
-                    className="flex items-center gap-2 rounded bg-[hsl(var(--destructive))] px-3 py-1 text-sm text-white"
+                    style={{ padding: '8px 16px' }}
+                    className="flex items-center gap-2 rounded bg-[hsl(var(--destructive))] text-sm text-[hsl(var(--destructive-foreground))] transition-all hover:bg-[hsl(var(--destructive)_/_0.9)]"
                   >
                     <Trash2 className="h-4 w-4" />
                     Удалить
                   </button>
                 </div>
 
-                <div className="space-y-3 text-sm max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Название</div>
-                      <div className="font-medium">{selectedIntegration.name}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">Статус</div>
-                      <div>{selectedIntegration.enabled ? '✅ Включена' : '⏸️ Выключена'}</div>
+                <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация об интеграции</h4>
+                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                      <div style={{ marginBottom: '12px' }}>
+                        <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.id}</code>
+                      </div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <strong>Название:</strong> {selectedIntegration.name}
+                      </div>
+                      <div style={{ marginBottom: '12px' }}>
+                        <strong>Статус:</strong>{' '}
+                        <span
+                          style={{ padding: '4px 8px' }}
+                          className={`rounded text-xs ${
+                            selectedIntegration.enabled
+                              ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                              : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+                          }`}
+                        >
+                          {selectedIntegration.enabled ? '✅ Включена' : '⏸️ Отключена'}
+                        </span>
+                      </div>
+                      <div>
+                        <strong>Тип триггера:</strong>{' '}
+                        <span style={{ padding: '4px 8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)] text-xs">
+                          {selectedIntegration.triggerType === 'webhook' ? '📥 Webhook' : '🔄 Polling'}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="border-t border-[hsl(var(--border))] pt-3">
-                    <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2">
-                      {selectedIntegration.triggerType === 'webhook' ? '📥 Триггер: Webhook' : '🔄 Триггер: Polling'}
-                    </div>
-                    {selectedIntegration.triggerType === 'webhook' ? (
-                      <>
-                        {selectedIntegration.triggerCondition && (
-                          <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Условие</div>
-                            <code className="text-xs break-all">{selectedIntegration.triggerCondition}</code>
-                          </div>
-                        )}
-                      </>
-                    ) : (
-                      <div className="space-y-2">
+                  {selectedIntegration.triggerType === 'webhook' ? (
+                    selectedIntegration.triggerCondition && (
+                      <div>
+                        <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие срабатывания</h4>
+                        <div style={{ padding: '16px' }} className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
+                          <code className="block whitespace-pre-wrap break-words text-sm">{selectedIntegration.triggerCondition}</code>
+                        </div>
+                      </div>
+                    )
+                  ) : (
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки Polling</h4>
+                      <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                         {selectedIntegration.pollingUrl && (
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">URL</div>
-                            <code className="text-xs break-all">{selectedIntegration.pollingMethod || 'GET'} {selectedIntegration.pollingUrl}</code>
+                            <strong>URL:</strong>{' '}
+                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                              {selectedIntegration.pollingMethod || 'GET'} {selectedIntegration.pollingUrl}
+                            </code>
                           </div>
                         )}
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Интервал</div>
-                            <span>{selectedIntegration.pollingInterval || 60}s</span>
+                            <strong>Интервал:</strong>{' '}
+                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.pollingInterval || 60}s</code>
                           </div>
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Таймаут</div>
-                            <span>{selectedIntegration.timeoutSec || 30}s</span>
+                            <strong>Таймаут:</strong>{' '}
+                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.timeoutSec || 30}s</code>
                           </div>
                         </div>
-                        {selectedIntegration.pollingHeaders && (
-                          <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Headers</div>
-                            <code className="text-xs break-all">{selectedIntegration.pollingHeaders}</code>
-                          </div>
-                        )}
-                        {selectedIntegration.pollingBody && (
-                          <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Body</div>
-                            <code className="text-xs break-all">{selectedIntegration.pollingBody}</code>
-                          </div>
-                        )}
                         {selectedIntegration.pollingCondition && (
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Условие</div>
-                            <code className="text-xs break-all">{selectedIntegration.pollingCondition}</code>
+                            <strong>Условие:</strong>
+                            <div style={{ padding: '12px', marginTop: '8px' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
+                              <code className="text-sm break-all">{selectedIntegration.pollingCondition}</code>
+                            </div>
                           </div>
                         )}
                       </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
 
                   {selectedIntegration.actionUrl && (
-                    <div className="border-t border-[hsl(var(--border))] pt-3">
-                      <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2">🚀 Action (API)</div>
-                      <div className="space-y-2">
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">🚀 Action (API)</h4>
+                      <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                         <div>
-                          <div className="text-xs text-[hsl(var(--muted-foreground))]">URL</div>
-                          <code className="text-xs break-all">{selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}</code>
+                          <strong>URL:</strong>{' '}
+                          <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                            {selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}
+                          </code>
                         </div>
                         {selectedIntegration.actionHeaders && (
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Headers</div>
-                            <code className="text-xs break-all">{selectedIntegration.actionHeaders}</code>
+                            <strong>Headers:</strong>
+                            <div style={{ padding: '12px', marginTop: '8px' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
+                              <code className="text-sm break-all">{selectedIntegration.actionHeaders}</code>
+                            </div>
                           </div>
                         )}
                         {selectedIntegration.actionBody && (
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Body</div>
-                            <code className="text-xs break-all">{selectedIntegration.actionBody}</code>
+                            <strong>Body:</strong>
+                            <div style={{ padding: '12px', marginTop: '8px' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
+                              <code className="text-sm break-all">{selectedIntegration.actionBody}</code>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -737,32 +766,34 @@ export function Integrations() {
                   )}
 
                   {(selectedIntegration.chatId || selectedIntegration.messageTemplate) && (
-                    <div className="border-t border-[hsl(var(--border))] pt-3">
-                      <div className="text-xs font-semibold text-[hsl(var(--muted-foreground))] mb-2">📱 Telegram</div>
-                      <div className="space-y-2">
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">📱 Telegram</h4>
+                      <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                         {selectedIntegration.chatId && (
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Chat ID</div>
-                            <code className="text-xs">{selectedIntegration.chatId}</code>
+                            <strong>Chat ID:</strong>{' '}
+                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.chatId}</code>
                           </div>
                         )}
                         {selectedIntegration.botToken && (
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Bot Token</div>
-                            <code className="text-xs">***настроен***</code>
+                            <strong>Bot Token:</strong>{' '}
+                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***настроен***</code>
                           </div>
                         )}
                         {selectedIntegration.messageTemplate && (
                           <div>
-                            <div className="text-xs text-[hsl(var(--muted-foreground))]">Шаблон сообщения</div>
-                            <pre className="text-xs whitespace-pre-wrap bg-[hsl(var(--muted)_/_0.3)] p-2 rounded mt-1">{selectedIntegration.messageTemplate}</pre>
+                            <strong>Шаблон сообщения:</strong>
+                            <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
+                              {selectedIntegration.messageTemplate}
+                            </div>
                           </div>
                         )}
                       </div>
                     </div>
                   )}
                 </div>
-              </>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
                 <p className="mb-4">Выберите интеграцию или создайте новую</p>

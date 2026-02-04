@@ -275,73 +275,82 @@ export function Polling() {
               <h3 className="mb-4 text-lg font-semibold">
                 {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
-              <form onSubmit={handleSavePoll} className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Название</label>
-                  <input
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="Например: Проверка статуса заказа"
-                  />
+              <form onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
+                    <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      placeholder="Например: Проверка статуса заказа"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
+                    <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={form.url}
+                      onChange={(e) => setForm({ ...form, url: e.target.value })}
+                      placeholder="https://api.example.com/status"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium">URL</label>
-                  <input
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                    value={form.url}
-                    onChange={(e) => setForm({ ...form, url: e.target.value })}
-                    placeholder="https://api.example.com/status"
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
+                    <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={form.chatId}
+                      onChange={(e) => setForm({ ...form, chatId: e.target.value })}
+                      placeholder="-1001234567890"
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
+                    <select
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={form.method}
+                      onChange={(e) => setForm({ ...form, method: e.target.value })}
+                    >
+                      <option value="GET">GET</option>
+                      <option value="POST">POST</option>
+                      <option value="PUT">PUT</option>
+                      <option value="PATCH">PATCH</option>
+                      <option value="DELETE">DELETE</option>
+                    </select>
+                  </div>
                 </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Chat ID</label>
-                  <input
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                    value={form.chatId}
-                    onChange={(e) => setForm({ ...form, chatId: e.target.value })}
-                    placeholder="-1001234567890"
-                  />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
+                    <input
+                      type="number"
+                      min={5}
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={form.intervalSec}
+                      onChange={(e) => setForm({ ...form, intervalSec: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
+                    <input
+                      type="number"
+                      min={3}
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={form.timeoutSec}
+                      onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
+                    />
+                  </div>
                 </div>
+
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Метод</label>
-                  <select
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                    value={form.method}
-                    onChange={(e) => setForm({ ...form, method: e.target.value })}
-                  >
-                    <option value="GET">GET</option>
-                    <option value="POST">POST</option>
-                    <option value="PUT">PUT</option>
-                    <option value="PATCH">PATCH</option>
-                    <option value="DELETE">DELETE</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Интервал (сек)</label>
-                  <input
-                    type="number"
-                    min={5}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                    value={form.intervalSec}
-                    onChange={(e) => setForm({ ...form, intervalSec: Number(e.target.value) })}
-                  />
-                </div>
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Таймаут (сек)</label>
-                  <input
-                    type="number"
-                    min={3}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                    value={form.timeoutSec}
-                    onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="mb-2 block text-sm font-medium">Headers (JSON)</label>
+                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
                   <textarea
                     rows={3}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                     value={form.headersJson}
                     onChange={(e) => setForm({ ...form, headersJson: e.target.value })}
                     placeholder='{"Authorization": "Bearer token"}'
@@ -350,26 +359,28 @@ export function Polling() {
                     Пример: <code>{'{"Authorization":"Bearer <TOKEN>","Content-Type":"application/json"}'}</code>
                   </p>
                 </div>
-                <div className="col-span-2">
-                  <label className="mb-2 block text-sm font-medium">Body (JSON)</label>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
                   <textarea
                     rows={3}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                     value={form.bodyJson}
                     onChange={(e) => setForm({ ...form, bodyJson: e.target.value })}
                     placeholder='{"id": 123}'
                   />
                 </div>
-                <div className="col-span-2">
-                  <label className="mb-2 block text-sm font-medium">Условия (JSON)</label>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условия (JSON)</label>
                   <textarea
                     rows={4}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                     value={form.conditionJson}
                     onChange={(e) => setForm({ ...form, conditionJson: e.target.value })}
                     placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'
                   />
-                  <div className="mt-2 rounded border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--muted)_/_0.2)] p-3 text-xs">
+                  <div style={{ padding: '12px 16px', marginTop: '8px' }} className="rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--muted)_/_0.2)] text-xs">
                     <div className="mb-1 font-semibold">Пример:</div>
                     <pre className="whitespace-pre-wrap">{`{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"},{"path":"data.priority","op":">=","value":3}]}`}</pre>
                     <div className="mt-2 text-[hsl(var(--muted-foreground))]">
@@ -378,46 +389,58 @@ export function Polling() {
                     </div>
                   </div>
                 </div>
-                <div className="col-span-2">
-                  <label className="mb-2 flex items-center text-sm font-medium">
+
+                <div>
+                  <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
                     Шаблон сообщения (опционально)
                     <TemplateHelp context="poll" />
                   </label>
                   <textarea
                     rows={3}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm font-mono"
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                     value={form.messageTemplate}
                     onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
                     placeholder="${payload.name} — ${payload.status}"
                   />
                 </div>
-                <div className="col-span-2 flex items-center gap-4">
-                  <label className="flex items-center gap-2 text-sm">
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '4px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={form.enabled}
                       onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     Включено
                   </label>
-                  <label className="flex items-center gap-2 text-sm">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={form.onlyOnChange}
                       onChange={(e) => setForm({ ...form, onlyOnChange: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     Только при изменении
                   </label>
-                  <label className="flex items-center gap-2 text-sm">
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
                     <input
                       type="checkbox"
                       checked={form.continueAfterMatch}
                       onChange={(e) => setForm({ ...form, continueAfterMatch: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     Продолжать после совпадения
                   </label>
                 </div>
-                <div className="col-span-2 flex items-center justify-end gap-3">
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                  <button
+                    type="submit"
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                  >
+                    Сохранить
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -426,81 +449,123 @@ export function Polling() {
                         setForm(normalizeForm(selectedPoll));
                       }
                     }}
-                    className="rounded border border-[hsl(var(--border))] px-4 py-2 text-sm"
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
                     Отмена
-                  </button>
-                  <button
-                    type="submit"
-                    className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm font-semibold text-[hsl(var(--primary-foreground))]"
-                  >
-                    Сохранить
                   </button>
                 </div>
               </form>
             </div>
           ) : selectedPoll ? (
-            <div className="space-y-4 rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-5">
-              <div className="flex flex-wrap items-center gap-2">
+            <div>
+              <div className="mb-4 flex flex-wrap gap-2">
                 <button
                   onClick={() => handleRunPoll(selectedPoll)}
-                  className="flex items-center gap-2 rounded border border-[hsl(var(--border))] px-3 py-2 text-sm"
+                  style={{ padding: '8px 16px' }}
+                  className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-sm transition-all hover:bg-[hsl(var(--accent))]"
                 >
                   <Play className="h-4 w-4" /> Запустить
                 </button>
                 <button
                   onClick={() => handleEditPoll(selectedPoll)}
-                  className="flex items-center gap-2 rounded border border-[hsl(var(--border))] px-3 py-2 text-sm"
+                  style={{ padding: '8px 16px' }}
+                  className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
                 >
                   <Pencil className="h-4 w-4" /> Редактировать
                 </button>
                 <button
                   onClick={() => handleDuplicatePoll(selectedPoll)}
-                  className="flex items-center gap-2 rounded border border-[hsl(var(--border))] px-3 py-2 text-sm"
+                  style={{ padding: '8px 16px' }}
+                  className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-sm transition-all hover:bg-[hsl(var(--accent))]"
                 >
                   <Copy className="h-4 w-4" /> Дублировать
                 </button>
                 <button
+                  onClick={handleStartCreate}
+                  style={{ padding: '8px 16px' }}
+                  className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+                >
+                  <Plus className="h-4 w-4" /> Создать новый
+                </button>
+                <button
                   onClick={() => handleDeletePoll(selectedPoll)}
-                  className="flex items-center gap-2 rounded border border-[hsl(var(--destructive))] px-3 py-2 text-sm text-[hsl(var(--destructive))]"
+                  style={{ padding: '8px 16px' }}
+                  className="flex items-center gap-2 rounded bg-[hsl(var(--destructive))] text-sm text-[hsl(var(--destructive-foreground))] transition-all hover:bg-[hsl(var(--destructive)_/_0.9)]"
                 >
                   <Trash2 className="h-4 w-4" /> Удалить
                 </button>
               </div>
 
-              <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-sm">
-                <div className="mb-2">
-                  <strong>ID:</strong> <code>{selectedPoll.id}</code>
+              <div className="space-y-4">
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о задаче</h4>
+                  <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.id}</code>
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Название:</strong> {selectedPoll.name}
+                    </div>
+                    <div style={{ marginBottom: '12px' }}>
+                      <strong>Статус:</strong>{' '}
+                      <span
+                        style={{ padding: '4px 8px' }}
+                        className={`rounded text-xs ${
+                          selectedPoll.enabled
+                            ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                            : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+                        }`}
+                      >
+                        {selectedPoll.enabled ? '✅ Включено' : '⏸️ Отключено'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
-                <div className="mb-2">
-                  <strong>Название:</strong> {selectedPoll.name}
+
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки опроса</h4>
+                  <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                    <div>
+                      <strong>URL:</strong>{' '}
+                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.url}</code>
+                    </div>
+                    <div>
+                      <strong>Метод:</strong>{' '}
+                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.method}</code>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <strong>Интервал:</strong>{' '}
+                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.intervalSec}s</code>
+                      </div>
+                      <div>
+                        <strong>Таймаут:</strong>{' '}
+                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.timeoutSec}s</code>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div className="mb-2">
-                  <strong>URL:</strong> <code>{selectedPoll.url}</code>
-                </div>
-                <div className="mb-2">
-                  <strong>Метод:</strong> {selectedPoll.method}
-                </div>
-                <div className="mb-2">
-                  <strong>Интервал:</strong> {selectedPoll.intervalSec}s
-                </div>
-                <div className="mb-2">
-                  <strong>Таймаут:</strong> {selectedPoll.timeoutSec}s
-                </div>
-                <div className="mb-2">
-                  <strong>Chat ID:</strong> <code>{selectedPoll.chatId}</code>
-                </div>
-                <div className="mb-2">
-                  <strong>Статус:</strong> {selectedPoll.enabled ? '✅ Включено' : '⏸️ Выключено'}
+
+                <div>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки отправки</h4>
+                  <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                    <div>
+                      <strong>Chat ID:</strong>{' '}
+                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.chatId}</code>
+                    </div>
+                    {selectedPoll.messageTemplate ? (
+                      <div>
+                        <strong>Шаблон сообщения:</strong>
+                        <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
+                          {selectedPoll.messageTemplate}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[hsl(var(--muted-foreground))]">Используется шаблон по умолчанию</div>
+                    )}
+                  </div>
                 </div>
               </div>
-
-              {selectedPoll.messageTemplate && (
-                <div className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                  <div className="mb-2 text-sm font-medium">Шаблон сообщения</div>
-                  <pre className="whitespace-pre-wrap text-xs">{selectedPoll.messageTemplate}</pre>
-                </div>
-              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">
