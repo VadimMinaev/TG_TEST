@@ -375,21 +375,17 @@ body {
   }
   
   .topbar {
-    padding: 12px 16px;
-    gap: 10px;
+    padding: 10px 12px;
+    gap: 8px;
   }
   
   .topbar-title {
-    font-size: 0.9rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 140px;
+    display: none;
   }
   
   .topbar-search-container {
-    max-width: none;
     flex: 1;
+    min-width: 0;
   }
   
   .topbar-search {
@@ -401,13 +397,19 @@ body {
   }
   
   .topbar-actions {
-    gap: 6px;
+    gap: 4px;
+    flex-shrink: 0;
   }
   
   .icon-button {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  
+  .icon-button svg {
+    width: 16px;
+    height: 16px;
   }
   
   .content-area {
@@ -451,36 +453,42 @@ body {
 
 /* Extra small screens */
 @media (max-width: 480px) {
-  .topbar-title {
-    display: none;
-  }
-  
   .topbar {
-    justify-content: space-between;
+    padding: 8px 10px;
+    gap: 6px;
   }
   
-  .topbar-search-container {
-    flex: 1;
-    margin: 0 8px;
+  .icon-button {
+    width: 30px;
+    height: 30px;
   }
   
   .sidebar-item {
     font-size: 8px;
-    padding: 5px 6px;
-    min-width: 46px;
+    padding: 4px 4px;
+    min-width: 42px;
+  }
+  
+  .sidebar-item svg {
+    width: 18px;
+    height: 18px;
   }
   
   .sidebar-item span {
-    max-width: 50px;
+    max-width: 45px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 }
 
-/* Mobile-only buttons visibility */
+/* Mobile/Desktop only buttons visibility */
 .mobile-only-btn {
   display: none;
+}
+
+.desktop-only-btn {
+  display: inline-flex;
 }
 
 .user-info-desktop {
@@ -492,8 +500,37 @@ body {
     display: inline-flex;
   }
   
+  .desktop-only-btn {
+    display: none;
+  }
+  
   .user-info-desktop {
     display: none;
+  }
+}
+
+/* Mobile table improvements */
+@media (max-width: 900px) {
+  table {
+    font-size: 0.85rem;
+  }
+  
+  table th,
+  table td {
+    padding: 8px 10px !important;
+  }
+  
+  .table-basic th,
+  .table-basic td {
+    padding: 8px 10px;
+  }
+  
+  /* Rule list mobile cards */
+  .rule-row {
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    border-bottom: 1px solid hsl(var(--border) / 0.5);
   }
 }
 

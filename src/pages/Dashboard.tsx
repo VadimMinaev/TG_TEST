@@ -130,7 +130,7 @@ export function Dashboard() {
             >
               <Plus className="h-4 w-4" />
             </button>
-            <button className="icon-button" title="Уведомления">
+            <button className="icon-button desktop-only-btn" title="Уведомления">
               <Bell className="h-4 w-4" />
             </button>
             <Link
@@ -140,7 +140,7 @@ export function Dashboard() {
             >
               <FlaskConical className="h-4 w-4" />
             </Link>
-            <button className="icon-button" title="Настройки">
+            <button className="icon-button desktop-only-btn" title="Настройки">
               <Settings className="h-4 w-4" />
             </button>
             <button
