@@ -442,8 +442,9 @@ export function Rules() {
             bottom: 0,
             backgroundColor: 'rgba(0, 0, 0, 0.6)',
             display: 'flex',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             justifyContent: 'center',
+            paddingTop: '100px',
             zIndex: 9999,
           }}
           onClick={() => setExportModalOpen(false)}
@@ -455,7 +456,7 @@ export function Rules() {
               padding: '24px',
               width: '100%',
               maxWidth: '450px',
-              maxHeight: '80vh',
+              maxHeight: 'calc(100vh - 150px)',
               overflow: 'hidden',
               display: 'flex',
               flexDirection: 'column',
