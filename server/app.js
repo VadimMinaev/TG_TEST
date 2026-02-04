@@ -1989,8 +1989,8 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             }
         }
 
-        // Отправляем в Telegram если настроено
-        if (integration.chatId && runData.status === 'success') {
+        // Отправляем в Telegram если включено и настроено
+        if (integration.sendToTelegram && integration.chatId && runData.status === 'success') {
             const botToken = integration.botToken || TELEGRAM_BOT_TOKEN;
             let message = integration.messageTemplate || `Интеграция "${integration.name}" выполнена`;
             

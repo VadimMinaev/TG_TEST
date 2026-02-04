@@ -67,6 +67,7 @@ export interface Integration {
   actionHeaders?: string;
   actionBody?: string;
   timeoutSec?: number;
+  sendToTelegram?: boolean;
   chatId?: string;
   botToken?: string;
   messageTemplate?: string;

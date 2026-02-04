@@ -20,6 +20,7 @@ const DEFAULT_FORM: Omit<Integration, 'id'> = {
   actionHeaders: '',
   actionBody: '',
   timeoutSec: 30,
+  sendToTelegram: false,
   chatId: '',
   botToken: '',
   messageTemplate: '',
@@ -152,6 +153,7 @@ export function Integrations() {
       actionHeaders: integration.actionHeaders || '',
       actionBody: integration.actionBody || '',
       timeoutSec: integration.timeoutSec || 30,
+      sendToTelegram: integration.sendToTelegram ?? false,
       chatId: integration.chatId || '',
       botToken: integration.botToken || '',
       messageTemplate: integration.messageTemplate || '',
@@ -545,40 +547,56 @@ export function Integrations() {
                   </div>
 
                   <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
-                    <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>📱 Telegram уведомление</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
-                        <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                          value={form.chatId}
-                          onChange={(e) => setForm({ ...form, chatId: e.target.value })}
-                          placeholder="-1001234567890"
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (опц.)</label>
-                        <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                          value={form.botToken}
-                          onChange={(e) => setForm({ ...form, botToken: e.target.value })}
-                          placeholder="Глобальный токен"
-                        />
-                      </div>
-                    </div>
-                    <div style={{ marginTop: '16px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                        Шаблон сообщения
-                        <TemplateHelp context="integration" />
-                      </label>
-                      <textarea
-                        rows={2}
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
-                        value={form.messageTemplate}
-                        onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
-                        placeholder="${payload.name} — ${payload.status}"
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <input
+                        type="checkbox"
+                        id="sendToTelegram"
+                        checked={form.sendToTelegram}
+                        onChange={(e) => setForm({ ...form, sendToTelegram: e.target.checked })}
+                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                       />
+                      <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+                        📱 Telegram уведомление
+                      </label>
                     </div>
+                    
+                    {form.sendToTelegram && (
+                      <div style={{ paddingLeft: '30px', opacity: form.sendToTelegram ? 1 : 0.5 }}>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
+                            <input
+                              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                              value={form.chatId}
+                              onChange={(e) => setForm({ ...form, chatId: e.target.value })}
+                              placeholder="-1001234567890"
+                            />
+                          </div>
+                          <div>
+                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (опц.)</label>
+                            <input
+                              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                              value={form.botToken}
+                              onChange={(e) => setForm({ ...form, botToken: e.target.value })}
+                              placeholder="Глобальный токен"
+                            />
+                          </div>
+                        </div>
+                        <div style={{ marginTop: '16px' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                            Шаблон сообщения
+                            <TemplateHelp context="integration" />
+                          </label>
+                          <textarea
+                            rows={2}
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                            value={form.messageTemplate}
+                            onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
+                            placeholder="${payload.name} — ${payload.status}"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
@@ -765,33 +783,48 @@ export function Integrations() {
                     </div>
                   )}
 
-                  {(selectedIntegration.chatId || selectedIntegration.messageTemplate) && (
-                    <div>
-                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">📱 Telegram</h4>
-                      <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-                        {selectedIntegration.chatId && (
-                          <div>
-                            <strong>Chat ID:</strong>{' '}
-                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.chatId}</code>
-                          </div>
-                        )}
-                        {selectedIntegration.botToken && (
-                          <div>
-                            <strong>Bot Token:</strong>{' '}
-                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***настроен***</code>
-                          </div>
-                        )}
-                        {selectedIntegration.messageTemplate && (
-                          <div>
-                            <strong>Шаблон сообщения:</strong>
-                            <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
-                              {selectedIntegration.messageTemplate}
-                            </div>
-                          </div>
-                        )}
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">📱 Telegram уведомление</h4>
+                    <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                      <div>
+                        <strong>Статус:</strong>{' '}
+                        <span
+                          style={{ padding: '4px 8px' }}
+                          className={`rounded text-xs ${
+                            selectedIntegration.sendToTelegram
+                              ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                              : 'bg-[hsl(var(--muted)_/_0.3)] text-[hsl(var(--muted-foreground))]'
+                          }`}
+                        >
+                          {selectedIntegration.sendToTelegram ? '✅ Включено' : '⏸️ Отключено'}
+                        </span>
                       </div>
+                      {selectedIntegration.sendToTelegram && (
+                        <>
+                          {selectedIntegration.chatId && (
+                            <div>
+                              <strong>Chat ID:</strong>{' '}
+                              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.chatId}</code>
+                            </div>
+                          )}
+                          {selectedIntegration.botToken && (
+                            <div>
+                              <strong>Bot Token:</strong>{' '}
+                              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***настроен***</code>
+                            </div>
+                          )}
+                          {selectedIntegration.messageTemplate && (
+                            <div>
+                              <strong>Шаблон сообщения:</strong>
+                              <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
+                                {selectedIntegration.messageTemplate}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             ) : (
