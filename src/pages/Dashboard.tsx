@@ -151,7 +151,22 @@ export function Dashboard() {
               <Sun className="h-4 w-4 dark-theme:hidden" />
               <Moon className="hidden h-4 w-4 dark-theme:block" />
             </button>
-            <div className="ml-2 text-sm text-[hsl(var(--muted-foreground))]">
+            {/* Mobile-only: Password and Logout buttons */}
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="icon-button mobile-only-btn"
+              title="Изменить пароль"
+            >
+              <Lock className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="icon-button mobile-only-btn"
+              title="Выход"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+            <div className="ml-2 text-sm text-[hsl(var(--muted-foreground))] user-info-desktop">
               👤 {user?.username}
             </div>
           </div>
