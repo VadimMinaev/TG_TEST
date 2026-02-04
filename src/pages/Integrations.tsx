@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Integration, Rule, Poll } from '../lib/api';
-import { Copy, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
+import { ExportModal } from '../components/ExportModal';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -38,6 +39,7 @@ export function Integrations() {
   const [selectedSourceId, setSelectedSourceId] = useState<string>('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [running, setRunning] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const selectedIntegration = useMemo(
     () => integrations.find((i) => i.id === selectedId) || null,
@@ -246,6 +248,13 @@ export function Integrations() {
             title="Обновить"
           >
             <RefreshCw className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setExportModalOpen(true)}
+            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
+            title="Экспорт интеграций"
+          >
+            <Download className="h-4 w-4" />
           </button>
           <button
             onClick={handleStartCreate}
@@ -844,6 +853,19 @@ export function Integrations() {
           </div>
         </div>
       </div>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="Экспорт интеграций"
+        description="Выберите интеграции для экспорта"
+        items={integrations.map((i) => ({ id: i.id, name: i.name, enabled: i.enabled }))}
+        loading={loading}
+        exportFileName="integrations-export.json"
+        exportType="integrations"
+        onExportSuccess={(count) => setMessage({ text: `Экспортировано интеграций: ${count}`, type: 'success' })}
+      />
     </div>
   );
 }

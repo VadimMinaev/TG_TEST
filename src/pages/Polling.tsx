@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
-import { Copy, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
+import { ExportModal } from '../components/ExportModal';
 
 const DEFAULT_FORM = {
   name: '',
@@ -46,6 +47,7 @@ export function Polling() {
   const [editingPollId, setEditingPollId] = useState<number | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
 
   const selectedPoll = useMemo(
     () => polls.find((poll) => poll.id === selectedPollId) || null,
@@ -195,6 +197,13 @@ export function Polling() {
             title="Обновить список"
           >
             <RefreshCw className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => setExportModalOpen(true)}
+            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
+            title="Экспорт пуллингов"
+          >
+            <Download className="h-4 w-4" />
           </button>
           <button
             onClick={handleStartCreate}
@@ -580,6 +589,19 @@ export function Polling() {
           )}
         </div>
       </div>
+
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="Экспорт пуллингов"
+        description="Выберите пуллинги для экспорта"
+        items={polls.map((p) => ({ id: p.id, name: p.name, enabled: p.enabled }))}
+        loading={loading}
+        exportFileName="polls-export.json"
+        exportType="polls"
+        onExportSuccess={(count) => setMessage({ text: `Экспортировано пуллингов: ${count}`, type: 'success' })}
+      />
     </div>
   );
 }

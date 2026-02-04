@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Rule } from '../lib/api';
-import { Plus, Search, Download, Upload, X, Check, Info, Copy, CheckCheck } from 'lucide-react';
+import { Plus, Search, Download, Upload, Info, Copy, CheckCheck } from 'lucide-react';
 import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
-// Dialog imports removed - using simple modal instead
+import { ExportModal } from '../components/ExportModal';
 import {
   Tooltip,
   TooltipContent,
@@ -23,7 +23,6 @@ export function Rules() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [importing, setImporting] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
-  const [selectedForExport, setSelectedForExport] = useState<Set<number>>(new Set());
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
@@ -170,57 +169,6 @@ export function Rules() {
     }
   };
 
-  const handleOpenExportModal = () => {
-    setSelectedForExport(new Set());
-    setExportModalOpen(true);
-  };
-
-  const handleToggleExportRule = (id: number) => {
-    setSelectedForExport((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
-
-  const handleSelectAllForExport = () => {
-    if (selectedForExport.size === rules.length) {
-      setSelectedForExport(new Set());
-    } else {
-      setSelectedForExport(new Set(rules.map((r) => r.id)));
-    }
-  };
-
-  const handleExportRules = (exportAll: boolean) => {
-    const rulesToExport = exportAll
-      ? rules
-      : rules.filter((r) => selectedForExport.has(r.id));
-
-    if (rulesToExport.length === 0) {
-      setMessage({ text: 'Выберите хотя бы одно правило для экспорта', type: 'error' });
-      return;
-    }
-
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      count: rulesToExport.length,
-      rules: rulesToExport,
-    };
-    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `rules-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setExportModalOpen(false);
-    setMessage({ text: `Экспортировано правил: ${rulesToExport.length}`, type: 'success' });
-  };
-
   const normalizeImportedRule = (raw: any): Partial<Rule> => {
     const chatIds = Array.isArray(raw.chatIds) ? raw.chatIds : raw.chatId;
     const chatId = Array.isArray(chatIds) ? chatIds.join(',') : chatIds;
@@ -349,7 +297,7 @@ export function Rules() {
             <Upload className="h-4 w-4" />
           </button>
           <button
-            onClick={handleOpenExportModal}
+            onClick={() => setExportModalOpen(true)}
             className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
             title="Экспорт правил"
           >
@@ -431,133 +379,18 @@ export function Rules() {
       </div>
       </div>
 
-      {/* Export Modal - Simple implementation without Radix */}
-      {exportModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            paddingTop: '100px',
-            zIndex: 9999,
-          }}
-          onClick={() => setExportModalOpen(false)}
-        >
-          <div
-            style={{
-              backgroundColor: 'hsl(var(--card))',
-              borderRadius: '12px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '450px',
-              maxHeight: 'calc(100vh - 150px)',
-              overflow: 'hidden',
-              display: 'flex',
-              flexDirection: 'column',
-              border: '1px solid hsl(var(--border))',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ marginBottom: '16px' }}>
-              <h2 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '4px' }}>Экспорт правил</h2>
-              <p style={{ fontSize: '14px', color: 'hsl(var(--muted-foreground))' }}>Выберите правила для экспорта</p>
-            </div>
-
-            <div style={{ maxHeight: '300px', overflow: 'auto', borderRadius: '8px', border: '1px solid hsl(var(--border))', flex: 1 }}>
-              {loading ? (
-                <div style={{ padding: '32px', textAlign: 'center' }}>
-                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" style={{ margin: '0 auto' }} />
-                </div>
-              ) : rules.length === 0 ? (
-                <div style={{ padding: '32px', textAlign: 'center', color: 'hsl(var(--muted-foreground))' }}>
-                  Нет правил для экспорта
-                </div>
-              ) : (
-                <>
-                  <div
-                    style={{ padding: '12px 16px', cursor: 'pointer', position: 'sticky', top: 0, background: 'hsl(var(--muted))', borderBottom: '1px solid hsl(var(--border))' }}
-                    onClick={handleSelectAllForExport}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div
-                        style={{ 
-                          width: '20px', height: '20px', borderRadius: '4px', border: '2px solid',
-                          borderColor: selectedForExport.size === rules.length ? 'hsl(var(--primary))' : 'hsl(var(--input))',
-                          background: selectedForExport.size === rules.length ? 'hsl(var(--primary))' : 'transparent',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center'
-                        }}
-                      >
-                        {selectedForExport.size === rules.length && rules.length > 0 && (
-                          <Check className="h-3 w-3" style={{ color: 'hsl(var(--primary-foreground))' }} />
-                        )}
-                      </div>
-                      <span style={{ fontWeight: 500 }}>Выбрать все ({rules.length})</span>
-                    </div>
-                  </div>
-
-                  {rules.map((rule) => (
-                    <div
-                      key={rule.id}
-                      style={{ padding: '12px 16px', cursor: 'pointer', borderBottom: '1px solid hsl(var(--border))' }}
-                      onClick={() => handleToggleExportRule(rule.id)}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div
-                          style={{ 
-                            width: '20px', height: '20px', borderRadius: '4px', border: '2px solid', flexShrink: 0,
-                            borderColor: selectedForExport.has(rule.id) ? 'hsl(var(--primary))' : 'hsl(var(--input))',
-                            background: selectedForExport.has(rule.id) ? 'hsl(var(--primary))' : 'transparent',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center'
-                          }}
-                        >
-                          {selectedForExport.has(rule.id) && <Check className="h-3 w-3" style={{ color: 'hsl(var(--primary-foreground))' }} />}
-                        </div>
-                        <div style={{ flex: 1, overflow: 'hidden' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <span
-                              style={{ 
-                                padding: '2px 6px', borderRadius: '4px', fontSize: '11px',
-                                background: rule.enabled ? 'hsl(var(--success) / 0.15)' : 'hsl(var(--destructive) / 0.1)',
-                                color: rule.enabled ? 'hsl(var(--success))' : 'hsl(var(--destructive))'
-                              }}
-                            >
-                              {rule.enabled ? 'Вкл' : 'Выкл'}
-                            </span>
-                            <span style={{ fontWeight: 500 }}>{rule.name}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </>
-              )}
-            </div>
-
-            <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <button
-                onClick={() => setExportModalOpen(false)}
-                style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))', cursor: 'pointer', fontSize: '14px' }}
-              >
-                Отмена
-              </button>
-              <button
-                onClick={() => handleExportRules(false)}
-                disabled={selectedForExport.size === 0}
-                style={{ padding: '10px 16px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', cursor: 'pointer', fontSize: '14px', fontWeight: 500, opacity: selectedForExport.size === 0 ? 0.5 : 1 }}
-              >
-                Экспорт ({selectedForExport.size})
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Export Modal */}
+      <ExportModal
+        isOpen={exportModalOpen}
+        onClose={() => setExportModalOpen(false)}
+        title="Экспорт правил"
+        description="Выберите правила для экспорта"
+        items={rules.map((r) => ({ id: r.id, name: r.name, enabled: r.enabled }))}
+        loading={loading}
+        exportFileName={`rules-${new Date().toISOString().slice(0, 10)}.json`}
+        exportType="rules"
+        onExportSuccess={(count) => setMessage({ text: `Экспортировано правил: ${count}`, type: 'success' })}
+      />
     </div>
   );
 }
