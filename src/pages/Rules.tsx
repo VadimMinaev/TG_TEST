@@ -271,7 +271,7 @@ export function Rules() {
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm transition-all focus-within:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring)_/_0.2)]">
+          <div className="rules-search flex items-center gap-2 rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm transition-all focus-within:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring)_/_0.2)]">
             <Search className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <input
               type="text"

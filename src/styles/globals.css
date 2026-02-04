@@ -421,16 +421,23 @@ body {
   }
   
   .split-layout {
-    flex-direction: column;
+    flex-direction: column-reverse;
     gap: 20px;
   }
   
   .split-left {
     width: 100%;
     border-right: none;
-    border-bottom: 1px solid hsl(var(--border));
+    border-top: 1px solid hsl(var(--border));
+    border-bottom: none;
     padding-right: 0;
-    padding-bottom: 20px;
+    padding-top: 20px;
+    padding-bottom: 0;
+  }
+  
+  /* Hide search in rules on mobile */
+  .rules-search {
+    display: none;
   }
   
   .card {
