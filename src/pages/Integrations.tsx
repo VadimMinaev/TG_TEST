@@ -758,24 +758,26 @@ export function Integrations() {
                       <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">🚀 Action (API)</h4>
                       <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                         <div>
-                          <strong>URL:</strong>{' '}
-                          <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
-                            {selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}
-                          </code>
+                          <strong>URL:</strong>
+                          <div style={{ padding: '12px', marginTop: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
+                            <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} className="text-sm">
+                              {selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}
+                            </code>
+                          </div>
                         </div>
                         {selectedIntegration.actionHeaders && (
                           <div>
                             <strong>Headers:</strong>
-                            <div style={{ padding: '12px', marginTop: '8px' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
-                              <code className="text-sm break-all">{selectedIntegration.actionHeaders}</code>
+                            <div style={{ padding: '12px', marginTop: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
+                              <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} className="text-sm">{selectedIntegration.actionHeaders}</code>
                             </div>
                           </div>
                         )}
                         {selectedIntegration.actionBody && (
                           <div>
                             <strong>Body:</strong>
-                            <div style={{ padding: '12px', marginTop: '8px' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
-                              <code className="text-sm break-all">{selectedIntegration.actionBody}</code>
+                            <div style={{ padding: '12px', marginTop: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
+                              <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} className="text-sm">{selectedIntegration.actionBody}</code>
                             </div>
                           </div>
                         )}
