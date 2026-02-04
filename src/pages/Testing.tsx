@@ -23,7 +23,7 @@ export function Testing() {
       const result = fn(payload);
       setTestResult({
         success: true,
-        message: `Результат: ${result ? 'TRUE' : 'FALSE'}`,
+        message: `Результат: ${result ? 'TRUE ✅' : 'FALSE ❌'}`,
       });
     } catch (error: any) {
       setTestResult({
@@ -72,115 +72,138 @@ export function Testing() {
 
   return (
     <div className="space-y-6">
+      {/* Тестирование условий */}
       <div className="card">
         <div className="card-header">
           <h2 className="text-xl font-semibold">🧪 Тестирование условий</h2>
         </div>
-        <div className="card-body">
+        <div className="p-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                Условие (JavaScript выражение)
+              </label>
+              <input
+                type="text"
+                value={testCondition}
+                onChange={(e) => setTestCondition(e.target.value)}
+                placeholder='payload.category === "incident"'
+                style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px' }}
+              />
+            </div>
 
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium">Условие</label>
-          <input
-            type="text"
-            value={testCondition}
-            onChange={(e) => setTestCondition(e.target.value)}
-            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono text-sm"
-          />
-        </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                Тестовый payload (JSON)
+              </label>
+              <textarea
+                value={testPayload}
+                onChange={(e) => setTestPayload(e.target.value)}
+                rows={8}
+                style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+              />
+            </div>
 
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium">Тестовый payload (JSON)</label>
-          <textarea
-            value={testPayload}
-            onChange={(e) => setTestPayload(e.target.value)}
-            rows={8}
-            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono text-sm"
-          />
-        </div>
+            <div>
+              <button
+                onClick={handleTestCondition}
+                style={{ padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+              >
+                🚀 Протестировать условие
+              </button>
+            </div>
 
-        <button
-          onClick={handleTestCondition}
-          className="rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
-        >
-          Протестировать условие
-        </button>
-
-        {testResult && (
-          <div
-            className={`mt-4 rounded border p-3 ${
-              testResult.success
-                ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-            }`}
-          >
-            {testResult.message}
+            {testResult && (
+              <div
+                style={{ padding: '16px', borderRadius: '8px' }}
+                className={`${
+                  testResult.success
+                    ? 'border border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                    : 'border border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+                }`}
+              >
+                <strong>{testResult.message}</strong>
+              </div>
+            )}
           </div>
-        )}
         </div>
       </div>
 
+      {/* Тест отправки в Telegram */}
       <div className="card">
         <div className="card-header">
           <h2 className="text-xl font-semibold">📤 Тест отправки в Telegram</h2>
         </div>
-        <div className="card-body">
+        <div className="p-6">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                Токен бота
+              </label>
+              <input
+                type="password"
+                value={testBotToken}
+                onChange={(e) => setTestBotToken(e.target.value)}
+                placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+              />
+              <div style={{ marginTop: '12px' }}>
+                <button
+                  onClick={handleSaveToken}
+                  style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))', cursor: 'pointer', fontSize: '14px' }}
+                >
+                  💾 Сохранить как глобальный токен
+                </button>
+              </div>
+            </div>
 
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium">Токен бота для тестирования</label>
-          <input
-            type="password"
-            value={testBotToken}
-            onChange={(e) => setTestBotToken(e.target.value)}
-            placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
-            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-          />
-          <button
-            onClick={handleSaveToken}
-            className="mt-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] px-3 py-1 text-sm transition-all hover:bg-[hsl(var(--accent))]"
-          >
-            💾 Сохранить как глобальный токен
-          </button>
-        </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                ID чата
+              </label>
+              <input
+                type="text"
+                value={testChatId}
+                onChange={(e) => setTestChatId(e.target.value)}
+                placeholder="-1001234567890"
+                style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+              />
+            </div>
 
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium">ID чата</label>
-          <input
-            type="text"
-            value={testChatId}
-            onChange={(e) => setTestChatId(e.target.value)}
-            placeholder="-1001234567890"
-            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-          />
-        </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                Тестовое сообщение
+              </label>
+              <textarea
+                value={testMessage}
+                onChange={(e) => setTestMessage(e.target.value)}
+                rows={4}
+                style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontSize: '14px', resize: 'vertical' }}
+              />
+            </div>
 
-        <div className="mb-4">
-          <label className="mb-2 block text-sm font-medium">Тестовое сообщение</label>
-          <textarea
-            value={testMessage}
-            onChange={(e) => setTestMessage(e.target.value)}
-            rows={4}
-            className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-          />
-        </div>
+            <div>
+              <button
+                onClick={handleTestTelegram}
+                style={{ padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+              >
+                📨 Отправить тестовое сообщение
+              </button>
+            </div>
 
-        <button
-          onClick={handleTestTelegram}
-          className="rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
-        >
-          Отправить тестовое сообщение
-        </button>
-
-        {telegramResult && (
-          <div
-            className={`mt-4 rounded border p-3 ${
-              telegramResult.success
-                ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-            }`}
-          >
-            {telegramResult.message}
+            {telegramResult && (
+              <div
+                style={{ padding: '16px', borderRadius: '8px' }}
+                className={`${
+                  telegramResult.success
+                    ? 'border border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                    : 'border border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+                }`}
+              >
+                <strong>{telegramResult.message}</strong>
+              </div>
+            )}
           </div>
-        )}
         </div>
       </div>
     </div>
