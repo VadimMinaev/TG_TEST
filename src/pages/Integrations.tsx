@@ -678,7 +678,7 @@ export function Integrations() {
                   </button>
                 </div>
 
-                <div className="space-y-4 max-h-[calc(100vh-300px)] overflow-y-auto scrollbar-thin">
+                <div className="space-y-4">
                   <div>
                     <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация об интеграции</h4>
                     <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
