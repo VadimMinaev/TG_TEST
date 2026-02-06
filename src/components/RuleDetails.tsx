@@ -51,48 +51,41 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
 
   return (
     <div>
-      {/* Компактный тулбар с иконками */}
-      <div className="mb-4 flex items-center gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)] p-1">
+      {/* Тулбар с icon-button */}
+      <div className="mb-4 flex items-center gap-2">
         {canEdit && (
           <>
             <button
               onClick={() => onEdit(rule.id)}
-              className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+              className="icon-button"
               title="Редактировать"
             >
-              <Pencil className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Редактировать</span>
+              <Pencil className="h-4 w-4" />
             </button>
             <button
               onClick={() => onDuplicate(rule.id)}
-              className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+              className="icon-button"
               title="Дублировать"
             >
-              <Copy className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Дублировать</span>
+              <Copy className="h-4 w-4" />
             </button>
           </>
         )}
         <button
           onClick={onCreateNew}
-          className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
-          title="Создать новое"
+          className="icon-button"
+          title="Создать новое правило"
         >
-          <Plus className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Создать</span>
+          <Plus className="h-4 w-4" />
         </button>
         {canEdit && (
-          <>
-            <div className="mx-1 h-4 w-px bg-[hsl(var(--border))]" />
-            <button
-              onClick={() => onDelete(rule.id)}
-              className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium text-[hsl(var(--destructive))] transition-all hover:bg-[hsl(var(--destructive)_/_0.1)]"
-              title="Удалить"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Удалить</span>
-            </button>
-          </>
+          <button
+            onClick={() => onDelete(rule.id)}
+            className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+            title="Удалить"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
         )}
       </div>
 

@@ -651,49 +651,43 @@ export function Integrations() {
               </>
             ) : selectedIntegration ? (
               <div>
-                {/* Компактный тулбар с иконками */}
-                <div className="mb-4 flex items-center gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)] p-1">
+                {/* Тулбар с icon-button */}
+                <div className="mb-4 flex items-center gap-2">
                   <button
                     onClick={() => handleRun(selectedIntegration.id)}
                     disabled={running}
-                    className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium text-[hsl(var(--success))] transition-all hover:bg-[hsl(var(--success)_/_0.1)] disabled:opacity-50"
+                    className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)] disabled:opacity-50"
                     title={running ? 'Выполняется...' : 'Запустить'}
                   >
-                    <Play className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">{running ? 'Выполняется...' : 'Запустить'}</span>
+                    <Play className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleEdit(selectedIntegration)}
-                    className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+                    className="icon-button"
                     title="Редактировать"
                   >
-                    <Pencil className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Редактировать</span>
+                    <Pencil className="h-4 w-4" />
                   </button>
                   <button
                     onClick={() => handleDuplicate(selectedIntegration)}
-                    className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+                    className="icon-button"
                     title="Дублировать"
                   >
-                    <Copy className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Дублировать</span>
+                    <Copy className="h-4 w-4" />
                   </button>
                   <button
                     onClick={handleStartCreate}
-                    className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+                    className="icon-button"
                     title="Создать новую"
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Создать</span>
+                    <Plus className="h-4 w-4" />
                   </button>
-                  <div className="mx-1 h-4 w-px bg-[hsl(var(--border))]" />
                   <button
                     onClick={() => handleDelete(selectedIntegration.id)}
-                    className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium text-[hsl(var(--destructive))] transition-all hover:bg-[hsl(var(--destructive)_/_0.1)]"
+                    className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
                     title="Удалить"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Удалить</span>
+                    <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
 
