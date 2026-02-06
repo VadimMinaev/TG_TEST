@@ -49,6 +49,14 @@ export function Polling() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
+  // Автоматически скрывать уведомление через 4 секунды
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   const selectedPoll = useMemo(
     () => polls.find((poll) => poll.id === selectedPollId) || null,
     [polls, selectedPollId]

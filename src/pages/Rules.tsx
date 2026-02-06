@@ -22,6 +22,14 @@ export function Rules() {
   const [searchQuery, setSearchQuery] = useState('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [importing, setImporting] = useState(false);
+
+  // Автоматически скрывать уведомление через 4 секунды
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);

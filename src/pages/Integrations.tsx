@@ -41,6 +41,14 @@ export function Integrations() {
   const [running, setRunning] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
 
+  // Автоматически скрывать уведомление через 4 секунды
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   const selectedIntegration = useMemo(
     () => integrations.find((i) => i.id === selectedId) || null,
     [integrations, selectedId]

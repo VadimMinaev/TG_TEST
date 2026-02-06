@@ -14,6 +14,14 @@ export function Users() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const { user } = useAuth();
 
+  // Автоматически скрывать уведомление через 4 секунды
+  useEffect(() => {
+    if (message) {
+      const timer = setTimeout(() => setMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [message]);
+
   useEffect(() => {
     if (user?.username === 'vadmin') {
       loadUsers();
