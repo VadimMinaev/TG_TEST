@@ -138,16 +138,18 @@ export function Polling() {
 
       if (editingPollId && editingPollId !== -1) {
         const updated = await api.updatePoll(editingPollId, payload);
-        setPolls((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-        setSelectedPollId(updated.id);
         setEditingPollId(null);
+        setSelectedPollId(updated.id);
         setMessage({ text: 'Пуллинг обновлён', type: 'success' });
+        // Перезагружаем список для синхронизации
+        await loadPolls();
       } else {
         const created = await api.createPoll(payload);
-        setPolls((prev) => [created, ...prev]);
-        setSelectedPollId(created.id);
         setEditingPollId(null);
+        setSelectedPollId(created.id);
         setMessage({ text: 'Пуллинг создан', type: 'success' });
+        // Перезагружаем список для синхронизации
+        await loadPolls();
       }
     } catch (error: any) {
       setMessage({ text: error.message || 'Не удалось сохранить пуллинг', type: 'error' });

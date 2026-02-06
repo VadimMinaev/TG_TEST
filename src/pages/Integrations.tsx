@@ -182,16 +182,18 @@ export function Integrations() {
     try {
       if (editingId && editingId !== -1) {
         const updated = await api.updateIntegration(editingId, form);
-        setIntegrations((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
-        setSelectedId(updated.id);
         setEditingId(null);
+        setSelectedId(updated.id);
         setMessage({ text: 'Интеграция обновлена', type: 'success' });
+        // Перезагружаем список для синхронизации
+        await loadIntegrations();
       } else {
         const created = await api.createIntegration(form);
-        setIntegrations((prev) => [created, ...prev]);
-        setSelectedId(created.id);
         setEditingId(null);
+        setSelectedId(created.id);
         setMessage({ text: 'Интеграция создана', type: 'success' });
+        // Перезагружаем список для синхронизации
+        await loadIntegrations();
       }
     } catch (error: any) {
       setMessage({ text: error.message || 'Ошибка сохранения', type: 'error' });
