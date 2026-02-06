@@ -34,14 +34,14 @@ export function RuleDetails({ ruleId }: RuleDetailsProps) {
   }
 
   if (!rule) {
-    return <div className="text-center text-[hsl(var(--destructive))]">Правило не найдено</div>;
+    return <div className="text-center text-[hsl(var(--destructive))]">Webhook не найден</div>;
   }
 
   return (
     <div>
       <div className="space-y-4">
         <div>
-          <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о правиле</h4>
+          <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о Webhook</h4>
           <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
             <div style={{ marginBottom: '12px' }}>
               <strong>ID:</strong> <code>{rule.id}</code>

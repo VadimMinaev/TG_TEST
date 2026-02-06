@@ -66,7 +66,7 @@ export function Dashboard() {
   }
 
   const tabs = [
-    { path: '/', label: 'Правила', icon: <ListChecks /> },
+    { path: '/', label: 'Webhook', icon: <ListChecks /> },
     { path: '/history', label: 'История', icon: <Clock /> },
     { path: '/queue', label: 'Очередь', icon: <Mail /> },
     { path: '/polling', label: 'Пуллинг', icon: <Repeat /> },

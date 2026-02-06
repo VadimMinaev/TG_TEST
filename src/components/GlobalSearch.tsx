@@ -197,7 +197,7 @@ export function GlobalSearch() {
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
               >
                 <ListChecks className="h-4 w-4 text-[hsl(var(--primary))]" />
-                <span>Создать правило</span>
+                <span>Создать Webhook</span>
               </button>
               <button
                 onClick={() => handleQuickAction('/polling?create=true')}
@@ -219,7 +219,7 @@ export function GlobalSearch() {
               {results.filter(r => r.type === 'rule').length > 0 && (
                 <>
                   <div className="px-2 py-1 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                    Правила
+                    Webhook
                   </div>
                   {results.filter(r => r.type === 'rule').map((result) => {
                     const globalIdx = results.indexOf(result);

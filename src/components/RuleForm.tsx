@@ -102,9 +102,9 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
 
       <div>
         <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          Название правила
+          Название Webhook
           <InfoTooltip>
-            Уникальное имя для идентификации правила в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
+            Уникальное имя для идентификации Webhook в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
           </InfoTooltip>
         </label>
         <input
@@ -123,7 +123,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           Условие (JavaScript выражение)
           <InfoTooltip>
             <div className="space-y-2">
-              <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания правила.</p>
+              <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания Webhook.</p>
               <p><strong>Доступные переменные:</strong></p>
               <ul className="list-inside list-disc">
                 <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload</code> — данные вебхука</li>
@@ -233,7 +233,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           disabled={loading}
           style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: loading ? 0.5 : 1 }}
         >
-          {loading ? 'Сохранение...' : 'Сохранить правило'}
+          {loading ? 'Сохранение...' : 'Сохранить Webhook'}
         </button>
         <button
           type="button"

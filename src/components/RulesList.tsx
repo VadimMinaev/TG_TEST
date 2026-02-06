@@ -19,7 +19,7 @@ export function RulesList({ rules, selectedId, onSelect, loading }: RulesListPro
   if (rules.length === 0) {
     return (
       <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">
-        Правила не найдены
+        Webhook не найден
       </p>
     );
   }

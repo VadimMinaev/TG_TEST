@@ -84,7 +84,7 @@ export function History() {
                 <table className="table-basic w-full border-collapse text-sm">
                 <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Правила</th>
+                      <th className="px-2 py-2">Webhook</th>
                       <th className="px-2 py-2">Дата/Время</th>
                       <th className="px-2 py-2">Статус</th>
                   </tr>
@@ -95,7 +95,7 @@ export function History() {
                     const displayText = matchedRules.length > 0 
                       ? matchedRules[0] 
                       : log.matched > 0 
-                        ? `${log.matched} правил(о)` 
+                        ? `${log.matched} Webhook` 
                         : 'Нет совпадений';
                     return (
                     <tr
@@ -148,7 +148,7 @@ export function History() {
                     <strong>Дата/Время:</strong> {new Date(selectedLog.timestamp).toLocaleString('ru-RU')}
                   </div>
                   <div className="mb-2">
-                    <strong>Совпавшие правила:</strong> {selectedLog.matched} из {selectedLog.total_rules}
+                    <strong>Совпавшие Webhook:</strong> {selectedLog.matched} из {selectedLog.total_rules}
                   </div>
                 </div>
               </div>
@@ -170,7 +170,7 @@ export function History() {
                       <div key={idx} className="border-b border-[hsl(var(--border))] pb-2 last:border-0">
                         {result.ruleName && (
                           <div className="mb-1">
-                            <strong>Правило:</strong>{' '}
+                            <strong>Webhook:</strong>{' '}
                             <span className="font-medium">{result.ruleName}</span>
                             {result.ruleId && <code className="ml-2 text-xs text-[hsl(var(--muted-foreground))]">#{result.ruleId}</code>}
                           </div>

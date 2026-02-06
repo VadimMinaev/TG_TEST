@@ -76,7 +76,7 @@ export function Integrations() {
     loadIntegrations();
   }, []);
 
-  // Применить настройки из выбранного правила или поллинга
+  // Применить настройки из выбранного Webhook или поллинга
   const handleApplySource = (sourceId: string) => {
     setSelectedSourceId(sourceId);
     if (!sourceId) return;
@@ -409,7 +409,7 @@ export function Integrations() {
                     <>
                       {rules.length > 0 && (
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>📋 Использовать правило</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>📥 Использовать Webhook</label>
                           <select
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={selectedSourceId}
@@ -423,7 +423,7 @@ export function Integrations() {
                             ))}
                           </select>
                           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                            Выберите существующее правило для копирования настроек
+                            Выберите существующий Webhook для копирования настроек
                           </p>
                         </div>
                       )}

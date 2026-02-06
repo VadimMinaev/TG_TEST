@@ -122,11 +122,11 @@ export function Rules() {
   };
 
   const handleDeleteRule = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить это правило?')) return;
+    if (!confirm('Вы уверены, что хотите удалить этот Webhook?')) return;
 
     try {
       await api.deleteRule(id);
-      setMessage({ text: 'Правило успешно удалено', type: 'success' });
+      setMessage({ text: 'Webhook удалён', type: 'success' });
       setRules(rules.filter((r) => r.id !== id));
       if (selectedRuleId === id) {
         setSelectedRuleId(null);
@@ -148,7 +148,7 @@ export function Rules() {
       delete (duplicate as any).id;
       
       const created = await api.createRule(duplicate);
-      setMessage({ text: 'Правило успешно дублировано', type: 'success' });
+      setMessage({ text: 'Webhook дублирован', type: 'success' });
       setRules([...rules, created]);
       setSelectedRuleId(created.id);
     } catch (error: any) {
@@ -160,13 +160,13 @@ export function Rules() {
     try {
       if (editingRuleId && editingRuleId !== -1) {
         const updated = await api.updateRule(editingRuleId, rule);
-        setMessage({ text: 'Правило успешно обновлено', type: 'success' });
+        setMessage({ text: 'Webhook обновлён', type: 'success' });
         setRules(rules.map((r) => (r.id === editingRuleId ? updated : r)));
         setSelectedRuleId(updated.id);
         setEditingRuleId(null);
       } else {
         const created = await api.createRule(rule);
-        setMessage({ text: 'Правило успешно создано', type: 'success' });
+        setMessage({ text: 'Webhook создан', type: 'success' });
         setRules([...rules, created]);
         setSelectedRuleId(created.id);
         setEditingRuleId(null);
@@ -198,7 +198,7 @@ export function Rules() {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.rules) ? parsed.rules : [];
-      if (!items.length) throw new Error('Файл не содержит правил');
+      if (!items.length) throw new Error('Файл не содержит Webhook');
 
       let created = 0;
       let failed = 0;
@@ -219,11 +219,11 @@ export function Rules() {
 
       const messageText =
         failed === 0
-          ? `Импортировано правил: ${created}`
+          ? `Импортировано Webhook: ${created}`
           : `Импортировано: ${created}, пропущено: ${failed}`;
       setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ошибка импорта правил', type: 'error' });
+      setMessage({ text: error.message || 'Ошибка импорта Webhook', type: 'error' });
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -236,7 +236,7 @@ export function Rules() {
     <div className="card">
       <div className="card-header">
         <div className="flex items-center gap-3">
-        <h2 className="text-xl font-semibold">📋 Правила</h2>
+        <h2 className="text-xl font-semibold">📥 Webhook</h2>
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -279,7 +279,7 @@ export function Rules() {
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-2">
-          {/* Кнопки действий над выбранным правилом */}
+          {/* Кнопки действий над выбранным Webhook */}
           {selectedRuleId && !editingRuleId && (
             <>
               <button
@@ -310,7 +310,7 @@ export function Rules() {
             <Search className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <input
               type="text"
-              placeholder="Поиск правил..."
+              placeholder="Поиск Webhook..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-56 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
@@ -327,21 +327,21 @@ export function Rules() {
             onClick={() => importInputRef.current?.click()}
             disabled={importing}
             className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
-            title="Импорт правил"
+            title="Импорт Webhook"
           >
             <Upload className="h-4 w-4" />
           </button>
           <button
             onClick={() => setExportModalOpen(true)}
             className="icon-button"
-            title="Экспорт правил"
+            title="Экспорт Webhook"
           >
             <Download className="h-4 w-4" />
           </button>
           <button
             onClick={handleStartCreate}
             className="icon-button"
-            title="Создать правило"
+            title="Создать Webhook"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -366,7 +366,7 @@ export function Rules() {
         <div className="split-left">
           <div className="panel">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список правил</h3>
+              <h3 className="text-sm font-semibold">📋 Список Webhook</h3>
               <button
                 onClick={loadRules}
                 className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))]"
@@ -401,13 +401,13 @@ export function Rules() {
             <RuleDetails ruleId={selectedRuleId} />
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Выберите правило из списка слева для редактирования или просмотра</p>
+              <p className="mb-4">Выберите Webhook из списка слева для редактирования или просмотра</p>
               <button
                 onClick={handleStartCreate}
                 className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
               >
                 <Plus className="h-4 w-4" />
-                Создать новое правило
+                Создать Webhook
               </button>
             </div>
           )}
@@ -419,13 +419,13 @@ export function Rules() {
       <ExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        title="Экспорт правил"
-        description="Выберите правила для экспорта"
+        title="Экспорт Webhook"
+        description="Выберите Webhook для экспорта"
         items={rules.map((r) => ({ id: r.id, name: r.name, enabled: r.enabled }))}
         loading={loading}
         exportFileName={`rules-${new Date().toISOString().slice(0, 10)}.json`}
         exportType="rules"
-        onExportSuccess={(count) => setMessage({ text: `Экспортировано правил: ${count}`, type: 'success' })}
+        onExportSuccess={(count) => setMessage({ text: `Экспортировано Webhook: ${count}`, type: 'success' })}
       />
     </div>
   );
