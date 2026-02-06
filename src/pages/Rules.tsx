@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Rule } from '../lib/api';
-import { Plus, Search, Download, Upload, Info, Copy, CheckCheck } from 'lucide-react';
+import { Plus, Search, Download, Upload, Info, Copy, CheckCheck, Pencil, Trash2 } from 'lucide-react';
 import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
@@ -279,6 +279,33 @@ export function Rules() {
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-2">
+          {/* Кнопки действий над выбранным правилом */}
+          {selectedRuleId && !editingRuleId && (
+            <>
+              <button
+                onClick={() => handleEditRule(selectedRuleId)}
+                className="icon-button"
+                title="Редактировать"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDuplicateRule(selectedRuleId)}
+                className="icon-button"
+                title="Дублировать"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteRule(selectedRuleId)}
+                className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+                title="Удалить"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
+            </>
+          )}
           <div className="rules-search flex items-center gap-2 rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm transition-all focus-within:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring)_/_0.2)]">
             <Search className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <input
@@ -299,17 +326,24 @@ export function Rules() {
           <button
             onClick={() => importInputRef.current?.click()}
             disabled={importing}
-            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
+            className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
             title="Импорт правил"
           >
             <Upload className="h-4 w-4" />
           </button>
           <button
             onClick={() => setExportModalOpen(true)}
-            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
+            className="icon-button"
             title="Экспорт правил"
           >
             <Download className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleStartCreate}
+            className="icon-button"
+            title="Создать правило"
+          >
+            <Plus className="h-4 w-4" />
           </button>
         </div>
       </div>
@@ -364,13 +398,7 @@ export function Rules() {
               }}
             />
           ) : selectedRuleId ? (
-            <RuleDetails
-              ruleId={selectedRuleId}
-              onEdit={handleEditRule}
-              onDelete={handleDeleteRule}
-              onDuplicate={handleDuplicateRule}
-              onCreateNew={handleStartCreate}
-            />
+            <RuleDetails ruleId={selectedRuleId} />
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
               <p className="mb-4">Выберите правило из списка слева для редактирования или просмотра</p>

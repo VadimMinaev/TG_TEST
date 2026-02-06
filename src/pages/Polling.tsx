@@ -199,26 +199,60 @@ export function Polling() {
       <div className="card-header">
         <h2 className="text-xl font-semibold">🔁 Пуллинг</h2>
         <div className="flex items-center gap-2">
+          {/* Кнопки действий над выбранным элементом */}
+          {selectedPoll && !editingPollId && (
+            <>
+              <button
+                onClick={() => handleRunPoll(selectedPoll)}
+                className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)]"
+                title="Запустить"
+              >
+                <Play className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleEditPoll(selectedPoll)}
+                className="icon-button"
+                title="Редактировать"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDuplicatePoll(selectedPoll)}
+                className="icon-button"
+                title="Дублировать"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDeletePoll(selectedPoll)}
+                className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+                title="Удалить"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
+            </>
+          )}
           <button
             onClick={() => loadPolls()}
-            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
+            className="icon-button"
             title="Обновить список"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
           <button
             onClick={() => setExportModalOpen(true)}
-            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
+            className="icon-button"
             title="Экспорт пуллингов"
           >
             <Download className="h-4 w-4" />
           </button>
           <button
             onClick={handleStartCreate}
-            className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+            className="icon-button"
+            title="Создать пуллинг"
           >
             <Plus className="h-4 w-4" />
-            Создать пуллинг
           </button>
         </div>
       </div>
@@ -475,45 +509,6 @@ export function Polling() {
             </div>
           ) : selectedPoll ? (
             <div>
-              {/* Тулбар с icon-button */}
-              <div className="mb-4 flex items-center gap-2">
-                <button
-                  onClick={() => handleRunPoll(selectedPoll)}
-                  className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)]"
-                  title="Запустить"
-                >
-                  <Play className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleEditPoll(selectedPoll)}
-                  className="icon-button"
-                  title="Редактировать"
-                >
-                  <Pencil className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDuplicatePoll(selectedPoll)}
-                  className="icon-button"
-                  title="Дублировать"
-                >
-                  <Copy className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={handleStartCreate}
-                  className="icon-button"
-                  title="Создать новый"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-                <button
-                  onClick={() => handleDeletePoll(selectedPoll)}
-                  className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                  title="Удалить"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-
               <div className="space-y-4">
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о задаче</h4>

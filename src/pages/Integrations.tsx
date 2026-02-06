@@ -250,26 +250,61 @@ export function Integrations() {
       <div className="card-header">
         <h2 className="text-xl font-semibold">🔗 Интегратор</h2>
         <div className="flex items-center gap-2">
+          {/* Кнопки действий над выбранным элементом */}
+          {selectedIntegration && !editingId && (
+            <>
+              <button
+                onClick={() => handleRun(selectedIntegration.id)}
+                disabled={running}
+                className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)] disabled:opacity-50"
+                title={running ? 'Выполняется...' : 'Запустить'}
+              >
+                <Play className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleEdit(selectedIntegration)}
+                className="icon-button"
+                title="Редактировать"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDuplicate(selectedIntegration)}
+                className="icon-button"
+                title="Дублировать"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDelete(selectedIntegration.id)}
+                className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+                title="Удалить"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
+            </>
+          )}
           <button
             onClick={loadIntegrations}
-            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
+            className="icon-button"
             title="Обновить"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
           <button
             onClick={() => setExportModalOpen(true)}
-            className="rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] p-2 transition-all hover:bg-[hsl(var(--accent))]"
+            className="icon-button"
             title="Экспорт интеграций"
           >
             <Download className="h-4 w-4" />
           </button>
           <button
             onClick={handleStartCreate}
-            className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+            className="icon-button"
+            title="Создать"
           >
             <Plus className="h-4 w-4" />
-            Создать
           </button>
         </div>
       </div>
@@ -651,46 +686,6 @@ export function Integrations() {
               </>
             ) : selectedIntegration ? (
               <div>
-                {/* Тулбар с icon-button */}
-                <div className="mb-4 flex items-center gap-2">
-                  <button
-                    onClick={() => handleRun(selectedIntegration.id)}
-                    disabled={running}
-                    className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)] disabled:opacity-50"
-                    title={running ? 'Выполняется...' : 'Запустить'}
-                  >
-                    <Play className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleEdit(selectedIntegration)}
-                    className="icon-button"
-                    title="Редактировать"
-                  >
-                    <Pencil className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDuplicate(selectedIntegration)}
-                    className="icon-button"
-                    title="Дублировать"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={handleStartCreate}
-                    className="icon-button"
-                    title="Создать новую"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(selectedIntegration.id)}
-                    className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                    title="Удалить"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-
                 <div className="space-y-4">
                   <div>
                     <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация об интеграции</h4>

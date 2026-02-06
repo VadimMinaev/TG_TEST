@@ -1,20 +1,13 @@
 import { useEffect, useState } from 'react';
 import { api, Rule } from '../lib/api';
-import { useAuth } from '../lib/auth-context';
-import { Pencil, Trash2, Copy, Plus } from 'lucide-react';
 
 interface RuleDetailsProps {
   ruleId: number;
-  onEdit: (id: number) => void;
-  onDelete: (id: number) => void;
-  onDuplicate: (id: number) => void;
-  onCreateNew: () => void;
 }
 
-export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew }: RuleDetailsProps) {
+export function RuleDetails({ ruleId }: RuleDetailsProps) {
   const [rule, setRule] = useState<Rule | null>(null);
   const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
 
   useEffect(() => {
     loadRule();
@@ -44,51 +37,8 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
     return <div className="text-center text-[hsl(var(--destructive))]">Правило не найдено</div>;
   }
 
-  const canEdit =
-    user?.username === 'vadmin' ||
-    (rule.authorId && typeof rule.authorId === 'number' && rule.authorId === user?.userId) ||
-    (rule.authorId === 'vadmin' && user?.username === 'vadmin');
-
   return (
     <div>
-      {/* Тулбар с icon-button */}
-      <div className="mb-4 flex items-center gap-2">
-        {canEdit && (
-          <>
-            <button
-              onClick={() => onEdit(rule.id)}
-              className="icon-button"
-              title="Редактировать"
-            >
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => onDuplicate(rule.id)}
-              className="icon-button"
-              title="Дублировать"
-            >
-              <Copy className="h-4 w-4" />
-            </button>
-          </>
-        )}
-        <button
-          onClick={onCreateNew}
-          className="icon-button"
-          title="Создать новое правило"
-        >
-          <Plus className="h-4 w-4" />
-        </button>
-        {canEdit && (
-          <button
-            onClick={() => onDelete(rule.id)}
-            className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-            title="Удалить"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-
       <div className="space-y-4">
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о правиле</h4>
