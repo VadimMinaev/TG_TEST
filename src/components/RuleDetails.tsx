@@ -51,44 +51,48 @@ export function RuleDetails({ ruleId, onEdit, onDelete, onDuplicate, onCreateNew
 
   return (
     <div>
-      <div className="mb-4 flex flex-wrap gap-2">
+      {/* Компактный тулбар с иконками */}
+      <div className="mb-4 flex items-center gap-1 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)] p-1">
         {canEdit && (
           <>
             <button
-              onClick={() => onDuplicate(rule.id)}
-              style={{ padding: '8px 16px' }}
-              className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-sm transition-all hover:bg-[hsl(var(--accent))]"
+              onClick={() => onEdit(rule.id)}
+              className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+              title="Редактировать"
             >
-              <Copy className="h-4 w-4" />
-              Дублировать
+              <Pencil className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Редактировать</span>
             </button>
             <button
-              onClick={() => onEdit(rule.id)}
-              style={{ padding: '8px 16px' }}
-              className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+              onClick={() => onDuplicate(rule.id)}
+              className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+              title="Дублировать"
             >
-              <Pencil className="h-4 w-4" />
-              Редактировать
+              <Copy className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Дублировать</span>
             </button>
           </>
         )}
         <button
           onClick={onCreateNew}
-          style={{ padding: '8px 16px' }}
-          className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+          className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium transition-all hover:bg-[hsl(var(--accent))]"
+          title="Создать новое"
         >
-          <Plus className="h-4 w-4" />
-          Создать новое правило
+          <Plus className="h-3.5 w-3.5" />
+          <span className="hidden sm:inline">Создать</span>
         </button>
         {canEdit && (
-          <button
-            onClick={() => onDelete(rule.id)}
-            style={{ padding: '8px 16px' }}
-            className="flex items-center gap-2 rounded bg-[hsl(var(--destructive))] text-sm text-[hsl(var(--destructive-foreground))] transition-all hover:bg-[hsl(var(--destructive)_/_0.9)]"
-          >
-            <Trash2 className="h-4 w-4" />
-            Удалить
-          </button>
+          <>
+            <div className="mx-1 h-4 w-px bg-[hsl(var(--border))]" />
+            <button
+              onClick={() => onDelete(rule.id)}
+              className="flex items-center gap-1.5 rounded px-3 py-1.5 text-xs font-medium text-[hsl(var(--destructive))] transition-all hover:bg-[hsl(var(--destructive)_/_0.1)]"
+              title="Удалить"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Удалить</span>
+            </button>
+          </>
         )}
       </div>
 
