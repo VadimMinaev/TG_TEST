@@ -47,7 +47,7 @@ export function Login() {
             <span className="login-title-highlight">Link</span>
           </h1>
           <p className="login-subtitle">
-            Telegram Integration Platform
+            Integration Platform
           </p>
         </div>
 
