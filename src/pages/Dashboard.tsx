@@ -18,6 +18,7 @@ import {
   Users,
   Link2,
   ScrollText,
+  Bot,
 } from 'lucide-react';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { GlobalSearch } from '../components/GlobalSearch';
@@ -31,7 +32,7 @@ export function Dashboard() {
 
   // Определяем, можно ли создавать на текущей странице
   const canCreate = useMemo(() => {
-    return location.pathname === '/' || location.pathname === '/polling' || location.pathname === '/users' || location.pathname === '/integrations';
+    return location.pathname === '/' || location.pathname === '/polling' || location.pathname === '/users' || location.pathname === '/integrations' || location.pathname === '/bots';
   }, [location.pathname]);
 
   const handleCreate = () => {
@@ -73,6 +74,7 @@ export function Dashboard() {
     { path: '/polling-history', label: 'Ист. пуллинга', icon: <History /> },
     { path: '/integrations', label: 'Интегратор', icon: <Link2 /> },
     { path: '/integration-history', label: 'Ист. интегр.', icon: <ScrollText /> },
+    { path: '/bots', label: 'Боты', icon: <Bot /> },
   ];
 
   if (user?.username === 'vadmin') {

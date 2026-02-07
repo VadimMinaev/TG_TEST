@@ -11,6 +11,7 @@ import { PollingHistory } from './pages/PollingHistory';
 import { Integrations } from './pages/Integrations';
 import { IntegrationHistory } from './pages/IntegrationHistory';
 import { Users } from './pages/Users';
+import { Bots } from './pages/Bots';
 
 export const router = createBrowserRouter([
   {
@@ -30,6 +31,7 @@ export const router = createBrowserRouter([
           { path: 'polling-history', Component: PollingHistory },
           { path: 'integrations', Component: Integrations },
           { path: 'integration-history', Component: IntegrationHistory },
+          { path: 'bots', Component: Bots },
           { path: 'users', Component: Users },
         ],
       },

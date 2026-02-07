@@ -74,6 +74,41 @@ export interface Integration {
   authorId?: string | number;
 }
 
+export interface Bot {
+  id: number;
+  name: string;
+  enabled: boolean;
+  chatId: string;
+  botToken?: string;
+  messageType: 'text' | 'poll';
+  // For text messages
+  messageText?: string;
+  // For Telegram polls
+  pollQuestion?: string;
+  pollOptions?: string;  // JSON array string
+  pollIsAnonymous?: boolean;
+  pollAllowsMultipleAnswers?: boolean;
+  // Schedule
+  scheduleDays: number[];  // 0=Sun, 1=Mon, ... 6=Sat
+  scheduleTime: string;    // HH:MM
+  scheduleTimezone: string; // e.g. Europe/Moscow
+  // Meta
+  lastRunAt?: string;
+  lastError?: string;
+  authorId?: string | number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface BotRun {
+  id: number;
+  bot_id: number;
+  status: string;
+  message_type: string;
+  error_message?: string;
+  created_at: string;
+}
+
 export interface IntegrationRun {
   id: number;
   integration_id: number;
@@ -359,6 +394,70 @@ export const api = {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error('Failed to clear history');
+  },
+
+  // Bots
+  getBots: async (): Promise<Bot[]> => {
+    const res = await fetch(`${API_BASE}/bots`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch bots');
+    return res.json();
+  },
+
+  getBot: async (id: number): Promise<Bot> => {
+    const res = await fetch(`${API_BASE}/bots/${id}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch bot');
+    return res.json();
+  },
+
+  createBot: async (bot: Partial<Bot>): Promise<Bot> => {
+    const res = await fetch(`${API_BASE}/bots`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(bot),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to create bot');
+    }
+    return res.json();
+  },
+
+  updateBot: async (id: number, bot: Partial<Bot>): Promise<Bot> => {
+    const res = await fetch(`${API_BASE}/bots/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(bot),
+    });
+    if (!res.ok) throw new Error('Failed to update bot');
+    return res.json();
+  },
+
+  deleteBot: async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE}/bots/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) throw new Error('Failed to delete bot');
+  },
+
+  runBot: async (id: number): Promise<any> => {
+    const res = await fetch(`${API_BASE}/bots/${id}/run`, {
+      method: 'POST',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to run bot');
+    }
+    return res.json();
+  },
+
+  getBotHistory: async (botId?: number): Promise<BotRun[]> => {
+    let url = `${API_BASE}/bots/history?limit=100`;
+    if (botId) url += `&botId=${botId}`;
+    const res = await fetch(url, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch bot history');
+    return res.json();
   },
 
   // Users

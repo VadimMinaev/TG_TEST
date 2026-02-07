@@ -99,6 +99,8 @@ let pollsCache = [];
 const pollTimers = new Map();
 let integrationsCache = [];
 const integrationTimers = new Map();
+let botsCache = [];
+let botSchedulerInterval = null;
 let dbConnected = false;
 
 if (process.env.DATABASE_URL) {
@@ -185,6 +187,25 @@ if (process.env.DATABASE_URL) {
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_chat_id ON message_queue(chat_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_poll_runs_poll_id ON poll_runs(poll_id, created_at)`);
 
+            // Боты (scheduled bots)
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS bots (
+                    id BIGINT PRIMARY KEY,
+                    data JSONB NOT NULL
+                )
+            `);
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS bot_runs (
+                    id BIGSERIAL PRIMARY KEY,
+                    bot_id BIGINT NOT NULL,
+                    status VARCHAR(20) NOT NULL,
+                    message_type VARCHAR(20),
+                    error_message TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_bot_runs_bot_id ON bot_runs(bot_id, created_at)`);
+
             // Интеграции
             await client.query(`
                 CREATE TABLE IF NOT EXISTS integrations (
@@ -224,8 +245,10 @@ if (process.env.DATABASE_URL) {
             dbConnected = true;
             console.log('DB connected and tables created');
             await loadPollsCache();
+            await loadBotsCache();
             startMessageQueueWorker();
             startPollWorkers();
+            startBotScheduler();
         } catch (err) {
             console.error('DB init error:', err);
             dbConnected = false;
@@ -1878,6 +1901,365 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
         db.logs = [];
         saveLogs();
         res.json({ status: 'ok' });
+    }
+});
+
+// ============ BOTS (SCHEDULED) API ============
+
+async function loadBotsCache() {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT id, data FROM bots');
+            botsCache = result.rows.map(r => ({ ...r.data, id: r.id }));
+        } catch (e) {
+            console.error('Error loading bots cache:', e);
+            botsCache = [];
+        }
+    }
+}
+
+async function logBotRun(botId, data) {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            await db.query(
+                `INSERT INTO bot_runs (bot_id, status, message_type, error_message)
+                 VALUES ($1, $2, $3, $4)`,
+                [botId, data.status || 'success', data.messageType || 'text', data.errorMessage || null]
+            );
+            // Cleanup old runs
+            await db.query(
+                `DELETE FROM bot_runs WHERE id NOT IN (
+                    SELECT id FROM bot_runs ORDER BY created_at DESC LIMIT 200
+                )`
+            );
+        } catch (e) {
+            console.error('Error logging bot run:', e);
+        }
+    }
+}
+
+async function executeBot(bot) {
+    const botToken = bot.botToken || TELEGRAM_BOT_TOKEN;
+    if (!botToken || botToken === 'YOUR_TOKEN') {
+        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: 'No bot token configured' });
+        return;
+    }
+    if (!bot.chatId) {
+        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: 'No chat ID configured' });
+        return;
+    }
+
+    try {
+        if (bot.messageType === 'poll') {
+            // Send Telegram poll using sendPoll API
+            let options;
+            try {
+                options = JSON.parse(bot.pollOptions || '[]');
+            } catch {
+                options = [];
+            }
+
+            if (!bot.pollQuestion || !Array.isArray(options) || options.length < 2) {
+                await logBotRun(bot.id, { status: 'error', messageType: 'poll', errorMessage: 'Invalid poll question or options' });
+                return;
+            }
+
+            const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendPoll`, {
+                chat_id: bot.chatId,
+                question: bot.pollQuestion,
+                options: options,
+                is_anonymous: bot.pollIsAnonymous !== false,
+                allows_multiple_answers: bot.pollAllowsMultipleAnswers === true
+            });
+
+            if (response.data && response.data.ok) {
+                // Update last run time
+                bot.lastRunAt = new Date().toISOString();
+                bot.lastError = null;
+                if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+                    await db.query('UPDATE bots SET data = $1 WHERE id = $2', [bot, bot.id]);
+                }
+                await logBotRun(bot.id, { status: 'success', messageType: 'poll' });
+                console.log(`Bot ${bot.id} (${bot.name}): poll sent to ${bot.chatId}`);
+            } else {
+                throw new Error(response.data?.description || 'Unknown Telegram error');
+            }
+        } else {
+            // Send text message
+            if (!bot.messageText) {
+                await logBotRun(bot.id, { status: 'error', messageType: 'text', errorMessage: 'No message text' });
+                return;
+            }
+
+            const result = await addMessageToQueue(botToken, bot.chatId, bot.messageText, 0, null);
+            bot.lastRunAt = new Date().toISOString();
+            bot.lastError = null;
+            if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+                await db.query('UPDATE bots SET data = $1 WHERE id = $2', [bot, bot.id]);
+            }
+            await logBotRun(bot.id, { status: 'success', messageType: 'text' });
+            console.log(`Bot ${bot.id} (${bot.name}): text message sent to ${bot.chatId}`);
+        }
+    } catch (error) {
+        const errMsg = error.response?.data?.description || error.message || 'Unknown error';
+        bot.lastRunAt = new Date().toISOString();
+        bot.lastError = errMsg;
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('UPDATE bots SET data = $1 WHERE id = $2', [bot, bot.id]);
+        }
+        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: errMsg });
+        console.error(`Bot ${bot.id} (${bot.name}) error:`, errMsg);
+    }
+}
+
+// Track which bots already ran today to prevent duplicate sends
+const botRanToday = new Map(); // botId -> "YYYY-MM-DD"
+
+function startBotScheduler() {
+    if (botSchedulerInterval) clearInterval(botSchedulerInterval);
+
+    // Check every 30 seconds
+    botSchedulerInterval = setInterval(async () => {
+        if (!botsCache || botsCache.length === 0) return;
+
+        for (const bot of botsCache) {
+            if (!bot.enabled) continue;
+            if (!bot.scheduleDays || bot.scheduleDays.length === 0) continue;
+            if (!bot.scheduleTime) continue;
+
+            try {
+                const tz = bot.scheduleTimezone || 'Europe/Moscow';
+                const now = new Date();
+                // Get current time in bot's timezone
+                const formatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: tz,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hour12: false,
+                    weekday: 'short',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const parts = formatter.formatToParts(now);
+                const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+                const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+                const currentTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+
+                // Get day of week (0=Sun, 1=Mon, ... 6=Sat)
+                const dayFormatter = new Intl.DateTimeFormat('en-US', {
+                    timeZone: tz,
+                    weekday: 'narrow'
+                });
+                const dateFormatter = new Intl.DateTimeFormat('en-CA', {
+                    timeZone: tz,
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit'
+                });
+                const dateStr = dateFormatter.format(now); // YYYY-MM-DD
+
+                // JS getDay: 0=Sun, map narrow weekday to number
+                const dayMap = { S: null, M: 1, T: null, W: 3, F: 5 };
+                // Better approach: use full date to get day
+                const tzDate = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+                const dayOfWeek = tzDate.getDay(); // 0=Sun, 1=Mon, ...
+
+                // Check if today is a scheduled day and time matches
+                if (bot.scheduleDays.includes(dayOfWeek) && currentTime === bot.scheduleTime) {
+                    const runKey = `${bot.id}-${dateStr}`;
+                    if (!botRanToday.has(runKey)) {
+                        botRanToday.set(runKey, true);
+                        console.log(`Bot scheduler: executing bot ${bot.id} (${bot.name}) at ${currentTime} ${tz}`);
+                        await executeBot({ ...bot });
+                        // Reload cache to get updated lastRunAt
+                        await loadBotsCache();
+                    }
+                }
+            } catch (err) {
+                console.error(`Bot scheduler error for bot ${bot.id}:`, err);
+            }
+        }
+
+        // Cleanup old entries from botRanToday (keep only today's entries)
+        const today = new Date().toISOString().split('T')[0];
+        for (const [key] of botRanToday) {
+            if (!key.endsWith(today)) {
+                botRanToday.delete(key);
+            }
+        }
+    }, 30000); // Check every 30 seconds
+
+    console.log('Bot scheduler started (checking every 30s)');
+}
+
+// CRUD для ботов
+app.get('/api/bots', auth, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT id, data FROM bots ORDER BY id DESC');
+            return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
+        }
+        res.json(botsCache);
+    } catch (error) {
+        console.error('Error loading bots:', error);
+        res.status(500).json({ error: 'Failed to load bots' });
+    }
+});
+
+app.get('/api/bots/:id', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT id, data FROM bots WHERE id = $1', [id]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'Bot not found' });
+            return res.json({ ...result.rows[0].data, id: result.rows[0].id });
+        }
+        const bot = botsCache.find(b => b.id === id);
+        if (!bot) return res.status(404).json({ error: 'Bot not found' });
+        res.json(bot);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to get bot' });
+    }
+});
+
+app.post('/api/bots', auth, async (req, res) => {
+    try {
+        const newBot = {
+            id: Date.now(),
+            name: req.body.name || 'Новый бот',
+            enabled: req.body.enabled ?? true,
+            chatId: req.body.chatId || '',
+            botToken: req.body.botToken || '',
+            messageType: req.body.messageType || 'text',
+            messageText: req.body.messageText || '',
+            pollQuestion: req.body.pollQuestion || '',
+            pollOptions: req.body.pollOptions || '[]',
+            pollIsAnonymous: req.body.pollIsAnonymous !== false,
+            pollAllowsMultipleAnswers: req.body.pollAllowsMultipleAnswers === true,
+            scheduleDays: req.body.scheduleDays || [1, 2, 3, 4, 5],
+            scheduleTime: req.body.scheduleTime || '09:00',
+            scheduleTimezone: req.body.scheduleTimezone || 'Europe/Moscow',
+            lastRunAt: null,
+            lastError: null,
+            authorId: req.user.userId || req.user.username,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        if (!newBot.name || !newBot.chatId) {
+            return res.status(400).json({ error: 'name and chatId are required' });
+        }
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('INSERT INTO bots (id, data) VALUES ($1, $2)', [newBot.id, newBot]);
+        } else {
+            botsCache.push(newBot);
+        }
+
+        await loadBotsCache();
+        res.json(newBot);
+    } catch (error) {
+        console.error('Error creating bot:', error);
+        res.status(500).json({ error: 'Failed to create bot' });
+    }
+});
+
+app.put('/api/bots/:id', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        let existing;
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT data FROM bots WHERE id = $1', [id]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'Bot not found' });
+            existing = result.rows[0].data;
+        } else {
+            existing = botsCache.find(b => b.id === id);
+            if (!existing) return res.status(404).json({ error: 'Bot not found' });
+        }
+
+        const updated = {
+            ...existing,
+            ...req.body,
+            id,
+            updated_at: new Date().toISOString()
+        };
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('UPDATE bots SET data = $1 WHERE id = $2', [updated, id]);
+        } else {
+            const idx = botsCache.findIndex(b => b.id === id);
+            if (idx >= 0) botsCache[idx] = updated;
+        }
+
+        await loadBotsCache();
+        res.json(updated);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to update bot' });
+    }
+});
+
+app.delete('/api/bots/:id', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('DELETE FROM bots WHERE id = $1', [id]);
+            await db.query('DELETE FROM bot_runs WHERE bot_id = $1', [id]);
+        } else {
+            botsCache = botsCache.filter(b => b.id !== id);
+        }
+
+        await loadBotsCache();
+        res.json({ status: 'deleted' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to delete bot' });
+    }
+});
+
+// Ручной запуск бота
+app.post('/api/bots/:id/run', auth, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        let bot;
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT id, data FROM bots WHERE id = $1', [id]);
+            if (result.rows.length === 0) return res.status(404).json({ error: 'Bot not found' });
+            bot = { ...result.rows[0].data, id: result.rows[0].id };
+        } else {
+            bot = botsCache.find(b => b.id === id);
+            if (!bot) return res.status(404).json({ error: 'Bot not found' });
+        }
+
+        await executeBot(bot);
+        await loadBotsCache();
+        res.json({ status: 'ok' });
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to run bot' });
+    }
+});
+
+// История ботов
+app.get('/api/bots/history', auth, async (req, res) => {
+    try {
+        const botIdRaw = req.query.botId;
+        const botId = botIdRaw ? parseInt(botIdRaw, 10) : null;
+        const limit = Math.min(200, parseInt(req.query.limit) || 100);
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query(
+                `SELECT id, bot_id, status, message_type, error_message, created_at
+                 FROM bot_runs
+                 WHERE ($1::bigint IS NULL OR bot_id = $1)
+                 ORDER BY created_at DESC
+                 LIMIT $2`,
+                [botId, limit]
+            );
+            return res.json(result.rows);
+        }
+        res.json([]);
+    } catch (error) {
+        console.error('Error loading bot history:', error);
+        res.status(500).json({ error: 'Failed to load bot history' });
     }
 });
 

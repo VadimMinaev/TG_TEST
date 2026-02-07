@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
-import { Search, X, ListChecks, Repeat, FileText, ArrowRight } from 'lucide-react';
-import { api, Rule, Poll } from '../lib/api';
+import { Search, X, ListChecks, Repeat, FileText, ArrowRight, Bot as BotIcon } from 'lucide-react';
+import { api, Rule, Poll, Bot } from '../lib/api';
 
 type SearchResult = {
   id: number;
-  type: 'rule' | 'poll';
+  type: 'rule' | 'poll' | 'bot';
   name: string;
   description: string;
   enabled: boolean;
@@ -19,28 +19,31 @@ export function GlobalSearch() {
   const [loading, setLoading] = useState(false);
   const [rules, setRules] = useState<Rule[]>([]);
   const [polls, setPolls] = useState<Poll[]>([]);
+  const [bots, setBots] = useState<Bot[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
 
   // Загружаем данные при фокусе
   const loadData = useCallback(async () => {
-    if (rules.length === 0 || polls.length === 0) {
+    if (rules.length === 0 || polls.length === 0 || bots.length === 0) {
       setLoading(true);
       try {
-        const [rulesData, pollsData] = await Promise.all([
+        const [rulesData, pollsData, botsData] = await Promise.all([
           api.getRules(),
           api.getPolls(),
+          api.getBots(),
         ]);
         setRules(rulesData);
         setPolls(pollsData);
+        setBots(botsData);
       } catch (error) {
         console.error('Failed to load search data:', error);
       } finally {
         setLoading(false);
       }
     }
-  }, [rules.length, polls.length]);
+  }, [rules.length, polls.length, bots.length]);
 
   // Фильтруем результаты
   useEffect(() => {
@@ -78,9 +81,23 @@ export function GlobalSearch() {
         enabled: p.enabled,
       }));
 
-    setResults([...filteredRules, ...filteredPolls]);
+    const filteredBots: SearchResult[] = bots
+      .filter(b => 
+        b.name?.toLowerCase().includes(q) || 
+        b.pollQuestion?.toLowerCase().includes(q)
+      )
+      .slice(0, 5)
+      .map(b => ({
+        id: b.id,
+        type: 'bot',
+        name: b.name,
+        description: b.messageType === 'poll' ? `📊 ${b.pollQuestion || ''}` : `💬 ${(b.messageText || '').slice(0, 50)}`,
+        enabled: b.enabled,
+      }));
+
+    setResults([...filteredRules, ...filteredPolls, ...filteredBots]);
     setSelectedIndex(0);
-  }, [query, rules, polls]);
+  }, [query, rules, polls, bots]);
 
   // Горячая клавиша "/" для фокуса
   useEffect(() => {
@@ -137,6 +154,8 @@ export function GlobalSearch() {
     setQuery('');
     if (result.type === 'rule') {
       navigate(`/?select=${result.id}`);
+    } else if (result.type === 'bot') {
+      navigate(`/bots?select=${result.id}`);
     } else {
       navigate(`/polling?select=${result.id}`);
     }
@@ -205,6 +224,13 @@ export function GlobalSearch() {
               >
                 <Repeat className="h-4 w-4 text-[hsl(var(--primary))]" />
                 <span>Создать пуллинг</span>
+              </button>
+              <button
+                onClick={() => handleQuickAction('/bots?create=true')}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
+              >
+                <BotIcon className="h-4 w-4 text-[hsl(var(--primary))]" />
+                <span>Создать бота</span>
               </button>
               <button
                 onClick={() => handleQuickAction('/history')}
