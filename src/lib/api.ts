@@ -89,7 +89,9 @@ export interface Bot {
   pollIsAnonymous?: boolean;
   pollAllowsMultipleAnswers?: boolean;
   // Schedule
-  scheduleDays: number[];  // 0=Sun, 1=Mon, ... 6=Sat
+  scheduleType: 'recurring' | 'once'; // recurring = по дням, once = на дату
+  scheduleDays: number[];  // 0=Sun, 1=Mon, ... 6=Sat (for recurring)
+  scheduleDate?: string;   // YYYY-MM-DD (for once)
   scheduleTime: string;    // HH:MM
   scheduleTimezone: string; // e.g. Europe/Moscow
   // Meta

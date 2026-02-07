@@ -17,7 +17,9 @@ const DEFAULT_FORM = {
   pollOptions: '["Вариант 1", "Вариант 2", "Вариант 3"]',
   pollIsAnonymous: true,
   pollAllowsMultipleAnswers: false,
+  scheduleType: 'recurring' as 'recurring' | 'once',
   scheduleDays: [1, 2, 3, 4, 5], // Пн-Пт
+  scheduleDate: '',
   scheduleTime: '09:00',
   scheduleTimezone: 'Europe/Moscow',
   enabled: true,
@@ -33,7 +35,9 @@ const normalizeForm = (bot?: Bot) => ({
   pollOptions: bot?.pollOptions || '["Вариант 1", "Вариант 2", "Вариант 3"]',
   pollIsAnonymous: bot?.pollIsAnonymous ?? true,
   pollAllowsMultipleAnswers: bot?.pollAllowsMultipleAnswers ?? false,
+  scheduleType: bot?.scheduleType || 'recurring',
   scheduleDays: bot?.scheduleDays || [1, 2, 3, 4, 5],
+  scheduleDate: bot?.scheduleDate || '',
   scheduleTime: bot?.scheduleTime || '09:00',
   scheduleTimezone: bot?.scheduleTimezone || 'Europe/Moscow',
   enabled: bot?.enabled ?? true,
@@ -148,8 +152,13 @@ export function Bots() {
       return;
     }
 
-    if (form.scheduleDays.length === 0) {
+    if (form.scheduleType === 'recurring' && form.scheduleDays.length === 0) {
       setMessage({ text: 'Выберите хотя бы один день недели', type: 'error' });
+      return;
+    }
+
+    if (form.scheduleType === 'once' && !form.scheduleDate) {
+      setMessage({ text: 'Укажите дату запуска', type: 'error' });
       return;
     }
 
@@ -249,6 +258,9 @@ export function Bots() {
   };
 
   const formatSchedule = (bot: Bot) => {
+    if (bot.scheduleType === 'once') {
+      return `📆 ${bot.scheduleDate || '???'} в ${bot.scheduleTime || '??:??'}`;
+    }
     const days = (bot.scheduleDays || []).map((d) => DAY_NAMES[d]).join(', ');
     return `${days} в ${bot.scheduleTime || '??:??'}`;
   };
@@ -574,49 +586,114 @@ export function Bots() {
                     📅 Расписание
                   </label>
                   <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}>
-                    {/* Days of week */}
-                    <div style={{ marginBottom: '16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                        <span style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>Дни недели:</span>
-                        <button
-                          type="button"
-                          onClick={setWeekdays}
-                          style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
-                        >
-                          Будни
-                        </button>
-                        <button
-                          type="button"
-                          onClick={setAllDays}
-                          style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
-                        >
-                          Все дни
-                        </button>
-                      </div>
-                      <div style={{ display: 'flex', gap: '6px' }}>
-                        {[1, 2, 3, 4, 5, 6, 0].map((day) => (
-                          <button
-                            key={day}
-                            type="button"
-                            onClick={() => toggleDay(day)}
-                            style={{
-                              flex: 1,
-                              padding: '10px 4px',
-                              borderRadius: '8px',
-                              border: `2px solid ${form.scheduleDays.includes(day) ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
-                              cursor: 'pointer',
-                              background: form.scheduleDays.includes(day) ? 'hsl(var(--primary))' : 'transparent',
-                              color: form.scheduleDays.includes(day) ? 'hsl(var(--primary-foreground))' : 'inherit',
-                              fontWeight: form.scheduleDays.includes(day) ? 600 : 400,
-                              fontSize: '13px',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            {DAY_NAMES[day]}
-                          </button>
-                        ))}
-                      </div>
+                    {/* Schedule type selector */}
+                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                      <label
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: `2px solid ${form.scheduleType === 'recurring' ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
+                          cursor: 'pointer',
+                          background: form.scheduleType === 'recurring' ? 'hsl(var(--primary) / 0.05)' : 'transparent',
+                          fontSize: '13px',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          checked={form.scheduleType === 'recurring'}
+                          onChange={() => setForm({ ...form, scheduleType: 'recurring' })}
+                          style={{ width: '16px', height: '16px' }}
+                        />
+                        🔄 По дням недели
+                      </label>
+                      <label
+                        style={{
+                          flex: 1,
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          border: `2px solid ${form.scheduleType === 'once' ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
+                          cursor: 'pointer',
+                          background: form.scheduleType === 'once' ? 'hsl(var(--primary) / 0.05)' : 'transparent',
+                          fontSize: '13px',
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          checked={form.scheduleType === 'once'}
+                          onChange={() => setForm({ ...form, scheduleType: 'once' })}
+                          style={{ width: '16px', height: '16px' }}
+                        />
+                        📆 На конкретную дату
+                      </label>
                     </div>
+
+                    {/* Days of week (recurring) */}
+                    {form.scheduleType === 'recurring' && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>Дни недели:</span>
+                          <button
+                            type="button"
+                            onClick={setWeekdays}
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
+                          >
+                            Будни
+                          </button>
+                          <button
+                            type="button"
+                            onClick={setAllDays}
+                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
+                          >
+                            Все дни
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          {[1, 2, 3, 4, 5, 6, 0].map((day) => (
+                            <button
+                              key={day}
+                              type="button"
+                              onClick={() => toggleDay(day)}
+                              style={{
+                                flex: 1,
+                                padding: '10px 4px',
+                                borderRadius: '8px',
+                                border: `2px solid ${form.scheduleDays.includes(day) ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
+                                cursor: 'pointer',
+                                background: form.scheduleDays.includes(day) ? 'hsl(var(--primary))' : 'transparent',
+                                color: form.scheduleDays.includes(day) ? 'hsl(var(--primary-foreground))' : 'inherit',
+                                fontWeight: form.scheduleDays.includes(day) ? 600 : 400,
+                                fontSize: '13px',
+                                transition: 'all 0.15s ease',
+                              }}
+                            >
+                              {DAY_NAMES[day]}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Date picker (once) */}
+                    {form.scheduleType === 'once' && (
+                      <div style={{ marginBottom: '16px' }}>
+                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                          Дата запуска
+                        </label>
+                        <input
+                          type="date"
+                          style={{ padding: '10px 14px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          value={form.scheduleDate}
+                          onChange={(e) => setForm({ ...form, scheduleDate: e.target.value })}
+                        />
+                      </div>
+                    )}
 
                     {/* Time and timezone */}
                     <div className="grid grid-cols-2 gap-4">
@@ -773,9 +850,24 @@ export function Bots() {
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Расписание</h4>
                   <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div>
-                      <strong>Дни:</strong>{' '}
-                      {(selectedBot.scheduleDays || []).map((d) => DAY_NAMES_FULL[d]).join(', ')}
+                      <strong>Режим:</strong>{' '}
+                      <span style={{ padding: '4px 8px' }} className="rounded bg-[hsl(var(--muted)_/_0.3)] text-xs">
+                        {selectedBot.scheduleType === 'once' ? '📆 Одноразовый' : '🔄 Повторяющийся'}
+                      </span>
                     </div>
+                    {selectedBot.scheduleType === 'once' ? (
+                      <div>
+                        <strong>Дата:</strong>{' '}
+                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                          {selectedBot.scheduleDate || '—'}
+                        </code>
+                      </div>
+                    ) : (
+                      <div>
+                        <strong>Дни:</strong>{' '}
+                        {(selectedBot.scheduleDays || []).map((d) => DAY_NAMES_FULL[d]).join(', ')}
+                      </div>
+                    )}
                     <div>
                       <strong>Время:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">

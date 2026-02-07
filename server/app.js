@@ -2024,33 +2024,32 @@ function startBotScheduler() {
 
         for (const bot of botsCache) {
             if (!bot.enabled) continue;
-            if (!bot.scheduleDays || bot.scheduleDays.length === 0) continue;
             if (!bot.scheduleTime) continue;
+
+            const scheduleType = bot.scheduleType || 'recurring';
+
+            // Recurring bots need scheduleDays
+            if (scheduleType === 'recurring' && (!bot.scheduleDays || bot.scheduleDays.length === 0)) continue;
+            // Once bots need scheduleDate
+            if (scheduleType === 'once' && !bot.scheduleDate) continue;
 
             try {
                 const tz = bot.scheduleTimezone || 'Europe/Moscow';
                 const now = new Date();
+
                 // Get current time in bot's timezone
                 const formatter = new Intl.DateTimeFormat('en-US', {
                     timeZone: tz,
                     hour: '2-digit',
                     minute: '2-digit',
-                    hour12: false,
-                    weekday: 'short',
-                    year: 'numeric',
-                    month: '2-digit',
-                    day: '2-digit'
+                    hour12: false
                 });
                 const parts = formatter.formatToParts(now);
                 const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
                 const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
                 const currentTime = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 
-                // Get day of week (0=Sun, 1=Mon, ... 6=Sat)
-                const dayFormatter = new Intl.DateTimeFormat('en-US', {
-                    timeZone: tz,
-                    weekday: 'narrow'
-                });
+                // Get date and day of week in bot's timezone
                 const dateFormatter = new Intl.DateTimeFormat('en-CA', {
                     timeZone: tz,
                     year: 'numeric',
@@ -2059,19 +2058,36 @@ function startBotScheduler() {
                 });
                 const dateStr = dateFormatter.format(now); // YYYY-MM-DD
 
-                // JS getDay: 0=Sun, map narrow weekday to number
-                const dayMap = { S: null, M: 1, T: null, W: 3, F: 5 };
-                // Better approach: use full date to get day
                 const tzDate = new Date(now.toLocaleString('en-US', { timeZone: tz }));
                 const dayOfWeek = tzDate.getDay(); // 0=Sun, 1=Mon, ...
 
-                // Check if today is a scheduled day and time matches
-                if (bot.scheduleDays.includes(dayOfWeek) && currentTime === bot.scheduleTime) {
+                let shouldRun = false;
+
+                if (scheduleType === 'once') {
+                    // Run on specific date at specific time
+                    shouldRun = dateStr === bot.scheduleDate && currentTime === bot.scheduleTime;
+                } else {
+                    // Recurring: run on matching day and time
+                    shouldRun = bot.scheduleDays.includes(dayOfWeek) && currentTime === bot.scheduleTime;
+                }
+
+                if (shouldRun) {
                     const runKey = `${bot.id}-${dateStr}`;
                     if (!botRanToday.has(runKey)) {
                         botRanToday.set(runKey, true);
-                        console.log(`Bot scheduler: executing bot ${bot.id} (${bot.name}) at ${currentTime} ${tz}`);
-                        await executeBot({ ...bot });
+                        console.log(`Bot scheduler: executing bot ${bot.id} (${bot.name}) at ${currentTime} ${tz} [${scheduleType}]`);
+                        const botCopy = { ...bot };
+                        await executeBot(botCopy);
+
+                        // For 'once' bots: disable after successful run
+                        if (scheduleType === 'once') {
+                            botCopy.enabled = false;
+                            if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+                                await db.query('UPDATE bots SET data = $1 WHERE id = $2', [botCopy, botCopy.id]);
+                            }
+                            console.log(`Bot ${bot.id} (${bot.name}): one-time bot disabled after execution`);
+                        }
+
                         // Reload cache to get updated lastRunAt
                         await loadBotsCache();
                     }
@@ -2137,7 +2153,9 @@ app.post('/api/bots', auth, async (req, res) => {
             pollOptions: req.body.pollOptions || '[]',
             pollIsAnonymous: req.body.pollIsAnonymous !== false,
             pollAllowsMultipleAnswers: req.body.pollAllowsMultipleAnswers === true,
+            scheduleType: req.body.scheduleType || 'recurring',
             scheduleDays: req.body.scheduleDays || [1, 2, 3, 4, 5],
+            scheduleDate: req.body.scheduleDate || '',
             scheduleTime: req.body.scheduleTime || '09:00',
             scheduleTimezone: req.body.scheduleTimezone || 'Europe/Moscow',
             lastRunAt: null,
