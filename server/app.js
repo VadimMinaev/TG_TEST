@@ -128,9 +128,12 @@ if (process.env.DATABASE_URL) {
                 CREATE TABLE IF NOT EXISTS accounts (
                     id SERIAL PRIMARY KEY,
                     name VARCHAR(255) NOT NULL,
+                    slug VARCHAR(255),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await client.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS slug VARCHAR(255)`);
+            await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_slug ON accounts(slug) WHERE slug IS NOT NULL`);
             await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
             await client.query(`ALTER TABLE rules ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
             await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
@@ -275,6 +278,8 @@ if (process.env.DATABASE_URL) {
                     defaultAccountId = existing.rows[0].id;
                 }
                 if (defaultAccountId != null) {
+                    await client.query(`UPDATE accounts SET slug = REGEXP_REPLACE(LOWER(REGEXP_REPLACE(TRIM(COALESCE(name, '')), '\\s+', '_', 'g')), '[^a-z0-9_]', '', 'g') WHERE slug IS NULL`);
+                    await client.query(`UPDATE accounts SET slug = 'account_' || id WHERE slug IS NULL OR slug = ''`);
                     await client.query('UPDATE users SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE users SET role = \'administrator\' WHERE role IS NULL', []);
                     await client.query('UPDATE rules SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
@@ -1137,12 +1142,22 @@ app.post('/api/logout', auth, (req, res) => {
     res.json({ status: 'ok' });
 });
 
-app.get('/api/me', auth, (req, res) => {
+app.get('/api/me', auth, async (req, res) => {
     const isVadmin = req.user.username === 'vadmin';
+    let accountSlug = null;
+    if (req.user.accountId && process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const acc = await db.query('SELECT slug FROM accounts WHERE id = $1', [req.user.accountId]);
+            accountSlug = acc.rows[0]?.slug || ('account_' + req.user.accountId);
+        } catch (e) {
+            accountSlug = 'account_' + req.user.accountId;
+        }
+    }
     res.json({
         username: req.user.username,
         userId: req.user.userId || null,
         accountId: req.user.accountId ?? null,
+        accountSlug: accountSlug || null,
         role: isVadmin ? 'administrator' : (req.user.role || 'administrator'),
         isVadmin
     });
@@ -1172,7 +1187,7 @@ app.get('/api/auth-status', (req, res) => {
 app.get('/api/accounts', auth, vadminOnly, async (req, res) => {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('SELECT id, name, created_at FROM accounts ORDER BY id');
+            const result = await db.query('SELECT id, name, slug, created_at FROM accounts ORDER BY id');
             res.json(result.rows);
         } catch (err) {
             console.error('DB error:', err);
@@ -1183,12 +1198,28 @@ app.get('/api/accounts', auth, vadminOnly, async (req, res) => {
     }
 });
 
+function slugifyAccountName(name) {
+    return String(name)
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '_')
+        .replace(/[^a-z0-9_]/g, '')
+        || 'account';
+}
+
 app.post('/api/accounts', auth, vadminOnly, async (req, res) => {
     const name = req.body.name && String(req.body.name).trim();
     if (!name) return res.status(400).json({ error: 'Account name is required' });
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('INSERT INTO accounts (name) VALUES ($1) RETURNING id, name, created_at', [name]);
+            let slug = slugifyAccountName(name);
+            const existing = await db.query('SELECT id FROM accounts WHERE slug = $1', [slug]);
+            if (existing.rows.length > 0) {
+                let n = 1;
+                while ((await db.query('SELECT id FROM accounts WHERE slug = $1', [slug + '_' + n])).rows.length > 0) n++;
+                slug = slug + '_' + n;
+            }
+            const result = await db.query('INSERT INTO accounts (name, slug) VALUES ($1, $2) RETURNING id, name, slug, created_at', [name, slug]);
             res.status(201).json(result.rows[0]);
         } catch (err) {
             console.error('DB error:', err);
@@ -1853,7 +1884,104 @@ app.delete('/api/polls/history', auth, blockAuditorWrite, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// WEBHOOK — ОСНОВНОЙ ХЕНДЛЕР
+// WEBHOOK — ПО АККАУНТУ: /webhook/:accountSlug
+// ────────────────────────────────────────────────────────────────
+
+app.post('/webhook/:accountSlug', async (req, res) => {
+    const accountSlug = (req.params.accountSlug || '').trim().toLowerCase();
+    if (!accountSlug) return res.status(400).json({ error: 'Account slug required' });
+
+    if (req.body.event === 'webhook.verify') {
+        const callbackUrl = req.body.payload?.callback;
+        if (callbackUrl) {
+            try {
+                await axios.get(callbackUrl);
+                console.log('Webhook verified successfully');
+            } catch (error) {
+                console.error('Webhook verification failed:', error.message);
+            }
+        }
+        res.json({ verified: true });
+        return;
+    }
+
+    let accountId = null;
+    let rules = [];
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const acc = await db.query('SELECT id FROM accounts WHERE slug = $1', [accountSlug]);
+            if (acc.rows.length === 0) return res.status(404).json({ error: 'Account not found', slug: accountSlug });
+            accountId = acc.rows[0].id;
+            const result = await db.query('SELECT id, data, account_id FROM rules WHERE account_id = $1', [accountId]);
+            rules = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
+        } catch (err) {
+            console.error('DB error in webhook by slug:', err);
+            return res.status(500).json({ error: 'Server error' });
+        }
+    } else {
+        return res.status(503).json({ error: 'Webhook by account requires database' });
+    }
+
+    let incomingPayload = req.body && typeof req.body === 'object' ? (req.body.payload ?? req.body) : req.body;
+    let matched = 0;
+    let telegram_results = [];
+
+    for (const rule of rules) {
+        if (!rule || rule.enabled === false) continue;
+        let ruleMatches = false;
+        try {
+            const safeFn = new Function('payload', `
+                try {
+                    return ${rule.condition || 'false'};
+                } catch (e) {
+                    console.error('Condition evaluation error in rule ${rule.id || "(no id)"}:', e.message);
+                    return false;
+                }
+            `);
+            ruleMatches = !!safeFn(incomingPayload);
+        } catch (evalErr) {
+            console.error('Rule evaluation setup error for rule', rule.id || '(no id):', evalErr);
+        }
+        if (ruleMatches) {
+            matched++;
+            const messageText = formatMessage(req.body, incomingPayload, rule);
+            let token = rule.botToken;
+            if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
+                token = TELEGRAM_BOT_TOKEN;
+                if (!token || token === 'YOUR_TOKEN') {
+                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
+                    continue;
+                }
+            }
+            const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
+            if (chatIds.length === 0) {
+                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: null, success: false, error: 'No chatId configured' });
+                continue;
+            }
+            for (const chat of chatIds) {
+                try {
+                    const queueResult = await addMessageToQueue(token, chat, messageText, 0, null);
+                    if (queueResult.queued) {
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
+                    } else if (queueResult.success) {
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, response: queueResult.response });
+                    } else {
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: queueResult.error });
+                    }
+                } catch (error) {
+                    const errDetail = error.response?.data || error.message;
+                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: errDetail });
+                }
+            }
+        }
+    }
+
+    logWebhook(req.body, matched, rules.length, telegram_results, accountId);
+    res.json({ matched, telegram_results });
+});
+
+// ────────────────────────────────────────────────────────────────
+// WEBHOOK — ОБЩИЙ (все правила, для обратной совместимости)
 // ────────────────────────────────────────────────────────────────
 
 app.post('/webhook', async (req, res) => {

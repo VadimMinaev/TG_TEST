@@ -5,6 +5,7 @@ interface AuthUser {
   username: string;
   userId: number | string | null;
   accountId: number | null;
+  accountSlug: string | null;
   role: 'administrator' | 'auditor';
   isVadmin: boolean;
 }
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           username: userData.username,
           userId: userData.userId ?? null,
           accountId: userData.accountId ?? null,
+          accountSlug: userData.accountSlug ?? null,
           role: userData.role === 'auditor' ? 'auditor' : 'administrator',
           isVadmin: !!userData.isVadmin,
         });
@@ -70,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: userData.username,
       userId: userData.userId ?? null,
       accountId: userData.accountId ?? null,
+      accountSlug: userData.accountSlug ?? null,
       role: userData.role === 'auditor' ? 'auditor' : 'administrator',
       isVadmin: !!userData.isVadmin,
     });

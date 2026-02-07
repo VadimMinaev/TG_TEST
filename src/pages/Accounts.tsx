@@ -117,15 +117,24 @@ export function Accounts() {
           <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">Нет аккаунтов. Создайте первый.</p>
         ) : (
           <ul className="space-y-2">
-            {accounts.map((a) => (
-              <li
-                key={a.id}
-                className="flex items-center justify-between rounded-lg border border-[hsl(var(--border))] px-4 py-3"
-              >
-                <span className="font-medium">{a.name}</span>
-                <span className="text-xs text-[hsl(var(--muted-foreground))]">ID: {a.id}</span>
-              </li>
-            ))}
+            {accounts.map((a) => {
+              const slug = a.slug || `account_${a.id}`;
+              const webhookUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/webhook/${slug}`;
+              return (
+                <li
+                  key={a.id}
+                  className="rounded-lg border border-[hsl(var(--border))] px-4 py-3"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{a.name}</span>
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">ID: {a.id}</span>
+                  </div>
+                  <div className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
+                    Webhook: <code className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 break-all">{webhookUrl}</code>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

@@ -58,7 +58,9 @@ export function Rules() {
 
   // Формируем полный URL вебхука
   const webhookUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/webhook`
+    ? (user?.accountSlug
+        ? `${window.location.origin}/webhook/${user.accountSlug}`
+        : `${window.location.origin}/webhook`)
     : '/webhook';
 
   const handleCopyWebhookUrl = async () => {
