@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useNavigate } from 'react-router';
 import { Eye, EyeOff, Zap, Shield, Send } from 'lucide-react';
+import { StarWarsCrawl } from '../components/StarWarsCrawl';
 
 export function Login() {
   const [username, setUsername] = useState('');
@@ -35,6 +36,9 @@ export function Login() {
       <div className="login-bg-orb login-bg-orb-2" />
       <div className="login-bg-orb login-bg-orb-3" />
       <div className="login-grid-overlay" />
+
+      {/* Star Wars crawl — decorative layer behind the form */}
+      <StarWarsCrawl />
 
       <div className="login-container">
         {/* Logo and Title */}
