@@ -124,9 +124,19 @@ if (process.env.DATABASE_URL) {
             };
 
             await connectWithRetry();
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS accounts (
+                    id SERIAL PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
             await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
+            await client.query(`ALTER TABLE rules ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
             await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
+            await client.query(`ALTER TABLE logs ADD COLUMN IF NOT EXISTS account_id INTEGER`);
             await client.query(`CREATE TABLE IF NOT EXISTS polls (id BIGINT PRIMARY KEY, data JSONB)`);
+            await client.query(`ALTER TABLE polls ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS poll_runs (
                     id BIGSERIAL PRIMARY KEY,
@@ -145,6 +155,7 @@ if (process.env.DATABASE_URL) {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS account_id INTEGER`);
             await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS request_method TEXT`);
             await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS request_url TEXT`);
             await client.query(`ALTER TABLE poll_runs ADD COLUMN IF NOT EXISTS request_headers TEXT`);
@@ -156,10 +167,14 @@ if (process.env.DATABASE_URL) {
                     id SERIAL PRIMARY KEY,
                     username VARCHAR(255) UNIQUE NOT NULL,
                     password_hash VARCHAR(255) NOT NULL,
+                    account_id INTEGER REFERENCES accounts(id),
+                    role VARCHAR(20) DEFAULT 'administrator',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
+            await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'administrator'`);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS settings (
                     key VARCHAR(255) PRIMARY KEY,
@@ -194,6 +209,7 @@ if (process.env.DATABASE_URL) {
                     data JSONB NOT NULL
                 )
             `);
+            await client.query(`ALTER TABLE bots ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS bot_runs (
                     id BIGSERIAL PRIMARY KEY,
@@ -204,6 +220,7 @@ if (process.env.DATABASE_URL) {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await client.query(`ALTER TABLE bot_runs ADD COLUMN IF NOT EXISTS account_id INTEGER`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_bot_runs_bot_id ON bot_runs(bot_id, created_at)`);
 
             // Интеграции
@@ -213,6 +230,7 @@ if (process.env.DATABASE_URL) {
                     data JSONB NOT NULL
                 )
             `);
+            await client.query(`ALTER TABLE integrations ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS integration_runs (
                     id BIGSERIAL PRIMARY KEY,
@@ -228,6 +246,7 @@ if (process.env.DATABASE_URL) {
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await client.query(`ALTER TABLE integration_runs ADD COLUMN IF NOT EXISTS account_id INTEGER`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_integration_runs_integration_id ON integration_runs(integration_id, created_at)`);
 
             // Загружаем глобальный токен из БД
@@ -244,6 +263,33 @@ if (process.env.DATABASE_URL) {
             db = client;
             dbConnected = true;
             console.log('DB connected and tables created');
+
+            // Migration: ensure default account and backfill account_id
+            try {
+                let defaultAccountId = null;
+                const existing = await client.query(`SELECT id FROM accounts LIMIT 1`);
+                if (existing.rows.length === 0) {
+                    const ins = await client.query(`INSERT INTO accounts (name) VALUES ('Default') RETURNING id`);
+                    defaultAccountId = ins.rows[0]?.id;
+                } else {
+                    defaultAccountId = existing.rows[0].id;
+                }
+                if (defaultAccountId != null) {
+                    await client.query('UPDATE users SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE users SET role = \'administrator\' WHERE role IS NULL', []);
+                    await client.query('UPDATE rules SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE polls SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE integrations SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE bots SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE logs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE poll_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE integration_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE bot_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                }
+            } catch (migErr) {
+                console.error('Migration (accounts) error:', migErr);
+            }
+
             await loadPollsCache();
             await loadBotsCache();
             startMessageQueueWorker();
@@ -336,8 +382,8 @@ function savePollRuns() {
 async function loadPollsCache() {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('SELECT id, data FROM polls');
-            pollsCache = result.rows.map(r => ({ ...r.data, id: r.id }));
+            const result = await db.query('SELECT id, data, account_id FROM polls');
+            pollsCache = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
         } catch (e) {
             console.error('Error loading polls from database:', e);
             pollsCache = [];
@@ -363,7 +409,7 @@ if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
 }
 
-function logWebhook(payload, matched, rules_count, telegram_results = []) {
+function logWebhook(payload, matched, rules_count, telegram_results = [], accountId = null) {
     try {
         const logEntry = {
             id: Date.now(),
@@ -375,7 +421,7 @@ function logWebhook(payload, matched, rules_count, telegram_results = []) {
             status: matched > 0 ? 'matched' : 'no_match'
         };
         if (process.env.DATABASE_URL) {
-            db.query('INSERT INTO logs (data) VALUES ($1)', [logEntry]).catch(err => console.error('Log DB error:', err));
+            db.query('INSERT INTO logs (data, account_id) VALUES ($1, $2)', [logEntry, accountId]).catch(err => console.error('Log DB error:', err));
             db.query('DELETE FROM logs WHERE id NOT IN (SELECT id FROM logs ORDER BY id DESC LIMIT 100)').catch(err => console.error('Log cleanup error:', err));
         } else {
             db.logs.unshift(logEntry);
@@ -411,18 +457,37 @@ const vadminOnly = (req, res, next) => {
     res.status(403).json({ error: 'Forbidden: Only vadmin can perform this action' });
 };
 
-function canModifyRule(rule, user) {
-    const authorId = rule.authorId ?? 'vadmin';
-    if (user.username === 'vadmin') return true;
-    if (typeof authorId === 'number' && authorId === user.userId) return true;
-    return false;
+/** For data endpoints: vadmin may pass account_id in query/body; normal user uses session accountId */
+function getAccountId(req) {
+    if (req.user.username === 'vadmin') {
+        const q = req.query.account_id || req.body?.account_id;
+        if (q != null) return parseInt(q, 10) || null;
+        return null;
+    }
+    return req.user.accountId ?? null;
 }
 
-function canModifyPoll(poll, user) {
-    const authorId = poll.authorId ?? 'vadmin';
-    if (user.username === 'vadmin') return true;
-    if (typeof authorId === 'number' && authorId === user.userId) return true;
-    return false;
+/** For create (POST): vadmin without account_id defaults to account 1 so creates don't fail */
+function getAccountIdForCreate(req) {
+    const id = getAccountId(req);
+    if (id != null) return id;
+    if (req.user.username === 'vadmin') return 1;
+    return null;
+}
+
+/** Require account scope for non-vadmin; for vadmin optional (null = no filter for list-all) */
+function requireAccountOrVadmin(req, res, next) {
+    if (req.user.username === 'vadmin') return next();
+    if (req.user.accountId != null) return next();
+    res.status(403).json({ error: 'Account required' });
+}
+
+/** Auditor can only read (GET); block write methods */
+function blockAuditorWrite(req, res, next) {
+    if (req.user.role === 'auditor' && !['GET', 'HEAD'].includes(req.method)) {
+        return res.status(403).json({ error: 'Аудитор может только просматривать данные' });
+    }
+    next();
 }
 
 // ────────────────────────────────────────────────────────────────
@@ -861,13 +926,14 @@ async function logPollRun(poll, data) {
 
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
+            const accountId = poll.account_id ?? null;
             await db.query(
                 `INSERT INTO poll_runs (
                     poll_id, status, matched, sent, error_message, response_snippet,
                     request_method, request_url, request_headers, request_body,
-                    response_status, response_headers
+                    response_status, response_headers, account_id
                  )
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
                 [
                     run.pollId,
                     run.status,
@@ -880,7 +946,8 @@ async function logPollRun(poll, data) {
                     run.requestHeaders,
                     run.requestBody,
                     run.responseStatus,
-                    run.responseHeaders
+                    run.responseHeaders,
+                    accountId
                 ]
             );
             await db.query(
@@ -1039,13 +1106,19 @@ app.post('/api/login', async (req, res) => {
 
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('SELECT id, username, password_hash FROM users WHERE username = $1', [username]);
+            const result = await db.query('SELECT id, username, password_hash, account_id, role FROM users WHERE username = $1', [username]);
             if (result.rows.length > 0) {
                 const user = result.rows[0];
                 const match = await bcrypt.compare(password, user.password_hash);
                 if (match) {
                     const token = Date.now().toString();
-                    sessions.set(token, { username: user.username, userId: user.id, timestamp: Date.now() });
+                    sessions.set(token, {
+                        username: user.username,
+                        userId: user.id,
+                        accountId: user.account_id,
+                        role: user.role || 'administrator',
+                        timestamp: Date.now()
+                    });
                     saveSessions();
                     return res.json({ token, status: 'success', username: user.username });
                 }
@@ -1065,9 +1138,13 @@ app.post('/api/logout', auth, (req, res) => {
 });
 
 app.get('/api/me', auth, (req, res) => {
+    const isVadmin = req.user.username === 'vadmin';
     res.json({
         username: req.user.username,
-        userId: req.user.userId || null
+        userId: req.user.userId || null,
+        accountId: req.user.accountId ?? null,
+        role: isVadmin ? 'administrator' : (req.user.role || 'administrator'),
+        isVadmin
     });
 });
 
@@ -1089,13 +1166,59 @@ app.get('/api/auth-status', (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────
+// АККАУНТЫ (только vadmin)
+// ────────────────────────────────────────────────────────────────
+
+app.get('/api/accounts', auth, vadminOnly, async (req, res) => {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT id, name, created_at FROM accounts ORDER BY id');
+            res.json(result.rows);
+        } catch (err) {
+            console.error('DB error:', err);
+            res.status(500).json({ error: 'DB error' });
+        }
+    } else {
+        res.json([]);
+    }
+});
+
+app.post('/api/accounts', auth, vadminOnly, async (req, res) => {
+    const name = req.body.name && String(req.body.name).trim();
+    if (!name) return res.status(400).json({ error: 'Account name is required' });
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('INSERT INTO accounts (name) VALUES ($1) RETURNING id, name, created_at', [name]);
+            res.status(201).json(result.rows[0]);
+        } catch (err) {
+            console.error('DB error:', err);
+            res.status(500).json({ error: 'DB error' });
+        }
+    } else {
+        res.status(400).json({ error: 'Accounts require database' });
+    }
+});
+
+// ────────────────────────────────────────────────────────────────
 // УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ
 // ────────────────────────────────────────────────────────────────
 
 app.get('/api/users', auth, async (req, res) => {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('SELECT id, username, created_at, updated_at FROM users ORDER BY created_at DESC');
+            if (req.user.username === 'vadmin') {
+                const result = await db.query(
+                    `SELECT u.id, u.username, u.created_at, u.updated_at, u.account_id, u.role, a.name as account_name
+                     FROM users u LEFT JOIN accounts a ON u.account_id = a.id ORDER BY u.created_at DESC`
+                );
+                return res.json(result.rows);
+            }
+            const accountId = req.user.accountId;
+            if (accountId == null) return res.json([]);
+            const result = await db.query(
+                'SELECT id, username, created_at, updated_at, account_id, role FROM users WHERE account_id = $1 ORDER BY created_at DESC',
+                [accountId]
+            );
             res.json(result.rows);
         } catch (err) {
             console.error('DB error:', err);
@@ -1107,19 +1230,24 @@ app.get('/api/users', auth, async (req, res) => {
 });
 
 app.post('/api/users', auth, vadminOnly, async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, account_id, role } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
     if (username === 'vadmin') return res.status(400).json({ error: 'Cannot create vadmin user' });
+    const accountId = account_id != null ? parseInt(account_id, 10) : null;
+    if (accountId == null) return res.status(400).json({ error: 'Account is required' });
+    const roleVal = role === 'auditor' ? 'auditor' : 'administrator';
 
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             const existing = await db.query('SELECT id FROM users WHERE username = $1', [username]);
             if (existing.rows.length > 0) return res.status(400).json({ error: 'Username already exists' });
+            const accountExists = await db.query('SELECT id FROM accounts WHERE id = $1', [accountId]);
+            if (accountExists.rows.length === 0) return res.status(400).json({ error: 'Account not found' });
 
             const passwordHash = await bcrypt.hash(password, 10);
             const result = await db.query(
-                'INSERT INTO users (username, password_hash) VALUES ($1, $2) RETURNING id, username, created_at, updated_at',
-                [username, passwordHash]
+                'INSERT INTO users (username, password_hash, account_id, role) VALUES ($1, $2, $3, $4) RETURNING id, username, created_at, updated_at, account_id, role',
+                [username, passwordHash, accountId, roleVal]
             );
             res.status(201).json(result.rows[0]);
         } catch (err) {
@@ -1129,6 +1257,50 @@ app.post('/api/users', auth, vadminOnly, async (req, res) => {
         }
     } else {
         res.status(400).json({ error: 'User management requires database' });
+    }
+});
+
+/** Update own profile (login/username and password). Non-vadmin only for self. */
+app.put('/api/users/me', auth, async (req, res) => {
+    if (req.user.username === 'vadmin') return res.status(400).json({ error: 'vadmin profile cannot be changed here' });
+    const userId = req.user.userId;
+    if (!userId) return res.status(401).json({ error: 'User not found' });
+    const { username, password, oldPassword } = req.body;
+
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const updates = [];
+            const values = [];
+            let idx = 1;
+            if (username !== undefined && String(username).trim()) {
+                const newUsername = String(username).trim();
+                const existing = await db.query('SELECT id FROM users WHERE username = $1 AND id != $2', [newUsername, userId]);
+                if (existing.rows.length > 0) return res.status(400).json({ error: 'Username already taken' });
+                updates.push(`username = $${idx++}`);
+                values.push(newUsername);
+            }
+            if (password !== undefined && password !== '') {
+                const userRow = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+                if (userRow.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+                if (!oldPassword || !await bcrypt.compare(oldPassword, userRow.rows[0].password_hash)) {
+                    return res.status(401).json({ error: 'Invalid old password' });
+                }
+                updates.push(`password_hash = $${idx++}`);
+                values.push(await bcrypt.hash(password, 10));
+            }
+            values.push(userId);
+            if (updates.length === 0) return res.status(400).json({ error: 'Nothing to update' });
+            await db.query(
+                `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx}`,
+                values
+            );
+            res.json({ status: 'ok' });
+        } catch (err) {
+            console.error('DB error:', err);
+            res.status(500).json({ error: 'DB error' });
+        }
+    } else {
+        res.status(400).json({ error: 'Requires database' });
     }
 });
 
@@ -1257,10 +1429,16 @@ app.post('/api/test-send', auth, async (req, res) => {
 
 app.get('/api/rules', auth, async (req, res) => {
     let rules = [];
+    const accountId = getAccountId(req);
     if (process.env.DATABASE_URL) {
         try {
-            const result = await db.query('SELECT id, data FROM rules');
-            rules = result.rows.map(r => ({ ...r.data, id: r.id }));
+            if (accountId != null) {
+                const result = await db.query('SELECT id, data FROM rules WHERE account_id = $1', [accountId]);
+                rules = result.rows.map(r => ({ ...r.data, id: r.id }));
+            } else {
+                const result = await db.query('SELECT id, data, account_id FROM rules');
+                rules = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
+            }
         } catch (err) {
             console.error('DB error:', err);
             return res.status(500).json({ error: 'DB error' });
@@ -1281,20 +1459,23 @@ app.get('/api/rules', auth, async (req, res) => {
 
 app.get('/api/rules/:id', auth, async (req, res) => {
     const ruleId = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         let rule;
         if (process.env.DATABASE_URL) {
-            const result = await db.query('SELECT id, data FROM rules WHERE id = $1', [ruleId]);
+            const q = accountId != null
+                ? db.query('SELECT id, data FROM rules WHERE id = $1 AND account_id = $2', [ruleId, accountId])
+                : db.query('SELECT id, data FROM rules WHERE id = $1', [ruleId]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Rule not found' });
-            rule = { ...result.rows[0].data, id: result.rows[0].id };
+            const row = result.rows[0];
+            rule = { ...row.data, id: row.id };
         } else {
             rule = db.rules.find(r => r.id == ruleId);
             if (!rule) return res.status(404).json({ error: 'Rule not found' });
         }
-
         if (rule.authorId === undefined) rule.authorId = 'vadmin';
         rule.messageTemplate = rule.messageTemplate || '';
-
         res.json(rule);
     } catch (err) {
         console.error('DB error:', err);
@@ -1302,8 +1483,11 @@ app.get('/api/rules/:id', auth, async (req, res) => {
     }
 });
 
-app.post('/api/rules', auth, async (req, res) => {
+app.post('/api/rules', auth, blockAuditorWrite, async (req, res) => {
     try {
+        const accountId = getAccountIdForCreate(req);
+        if (accountId == null) return res.status(400).json({ error: 'Account required to create rule' });
+
         const { botToken, messageTemplate = '', ...ruleData } = req.body;
         const trimmedToken = typeof botToken === 'string' ? botToken.trim() : '';
         const resolvedToken = trimmedToken || TELEGRAM_BOT_TOKEN;
@@ -1320,10 +1504,6 @@ app.post('/api/rules', auth, async (req, res) => {
         }
 
         const authorId = req.user.userId || (req.user.username === 'vadmin' ? 'vadmin' : null);
-        if (authorId === null) {
-            return res.status(400).json({ error: 'Unable to determine rule author' });
-        }
-
         const safeMessageTemplate = typeof messageTemplate === 'string' ? messageTemplate : '';
         const newRule = {
             id: Date.now(),
@@ -1332,13 +1512,13 @@ app.post('/api/rules', auth, async (req, res) => {
             messageTemplate: safeMessageTemplate.trim(),
             enabled: req.body.enabled !== false,
             encoding: 'utf8',
-            authorId,
+            authorId: authorId ?? 'vadmin',
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
 
         if (process.env.DATABASE_URL) {
-            await db.query('INSERT INTO rules (id, data) VALUES ($1, $2)', [newRule.id, newRule]);
+            await db.query('INSERT INTO rules (id, data, account_id) VALUES ($1, $2, $3)', [newRule.id, newRule, accountId]);
         } else {
             db.rules.push(newRule);
             saveRules();
@@ -1351,13 +1531,17 @@ app.post('/api/rules', auth, async (req, res) => {
     }
 });
 
-app.put('/api/rules/:id', auth, async (req, res) => {
+app.put('/api/rules/:id', auth, blockAuditorWrite, async (req, res) => {
     try {
         const ruleId = parseInt(req.params.id);
+        const accountId = getAccountId(req);
         let rule;
 
         if (process.env.DATABASE_URL) {
-            const result = await db.query('SELECT data FROM rules WHERE id = $1', [ruleId]);
+            const q = accountId != null
+                ? db.query('SELECT data FROM rules WHERE id = $1 AND account_id = $2', [ruleId, accountId])
+                : db.query('SELECT data FROM rules WHERE id = $1', [ruleId]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
             rule = result.rows[0].data;
         } else {
@@ -1367,10 +1551,6 @@ app.put('/api/rules/:id', auth, async (req, res) => {
         }
 
         if (rule.authorId === undefined) rule.authorId = 'vadmin';
-
-        if (!canModifyRule(rule, req.user)) {
-            return res.status(403).json({ error: 'Only the rule author or vadmin can modify this rule' });
-        }
 
         const { botToken, messageTemplate, ...ruleData } = req.body;
 
@@ -1414,29 +1594,16 @@ app.put('/api/rules/:id', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/rules/:id', auth, async (req, res) => {
+app.delete('/api/rules/:id', auth, blockAuditorWrite, async (req, res) => {
     try {
         const ruleId = parseInt(req.params.id);
-        let rule;
+        const accountId = getAccountId(req);
 
         if (process.env.DATABASE_URL) {
-            const result = await db.query('SELECT data FROM rules WHERE id = $1', [ruleId]);
-            if (result.rows.length === 0) return res.status(404).json({ error: 'Rule not found' });
-            rule = result.rows[0].data;
-        } else {
-            const idx = db.rules.findIndex(r => r.id == ruleId);
-            if (idx < 0) return res.status(404).json({ error: 'Rule not found' });
-            rule = db.rules[idx];
-        }
-
-        if (rule.authorId === undefined) rule.authorId = 'vadmin';
-
-        if (!canModifyRule(rule, req.user)) {
-            return res.status(403).json({ error: 'Only the rule author or vadmin can delete this rule' });
-        }
-
-        if (process.env.DATABASE_URL) {
-            const deleteResult = await db.query('DELETE FROM rules WHERE id = $1', [ruleId]);
+            const deleteQ = accountId != null
+                ? db.query('DELETE FROM rules WHERE id = $1 AND account_id = $2', [ruleId, accountId])
+                : db.query('DELETE FROM rules WHERE id = $1', [ruleId]);
+            const deleteResult = await deleteQ;
             if (deleteResult.rowCount > 0) {
                 res.json({ status: 'deleted' });
             } else {
@@ -1459,11 +1626,15 @@ app.delete('/api/rules/:id', auth, async (req, res) => {
 // ────────────────────────────────────────────────────────────────
 
 app.get('/api/polls', auth, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            if (accountId != null) {
+                const result = await db.query('SELECT id, data FROM polls WHERE account_id = $1', [accountId]);
+                return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
+            }
             const result = await db.query('SELECT id, data FROM polls');
-            const polls = result.rows.map(r => ({ ...r.data, id: r.id }));
-            return res.json(polls);
+            return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
         }
         return res.json(pollsCache || []);
     } catch (error) {
@@ -1472,17 +1643,16 @@ app.get('/api/polls', auth, async (req, res) => {
     }
 });
 
-app.post('/api/polls', auth, async (req, res) => {
+app.post('/api/polls', auth, blockAuditorWrite, async (req, res) => {
     try {
-        const authorId = req.user.userId || (req.user.username === 'vadmin' ? 'vadmin' : null);
-        if (authorId === null) {
-            return res.status(400).json({ error: 'Unable to determine poll author' });
-        }
+        const accountId = getAccountIdForCreate(req);
+        if (accountId == null) return res.status(400).json({ error: 'Account required to create poll' });
 
+        const authorId = req.user.userId || (req.user.username === 'vadmin' ? 'vadmin' : null);
         const newPoll = normalizePoll({
             id: Date.now(),
             ...req.body,
-            authorId
+            authorId: authorId ?? 'vadmin'
         });
 
         if (!newPoll.name || !newPoll.url || !newPoll.chatId) {
@@ -1490,7 +1660,7 @@ app.post('/api/polls', auth, async (req, res) => {
         }
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('INSERT INTO polls (id, data) VALUES ($1, $2)', [newPoll.id, newPoll]);
+            await db.query('INSERT INTO polls (id, data, account_id) VALUES ($1, $2, $3)', [newPoll.id, newPoll, accountId]);
         } else {
             pollsCache.push(newPoll);
             db.polls = pollsCache;
@@ -1505,22 +1675,22 @@ app.post('/api/polls', auth, async (req, res) => {
     }
 });
 
-app.put('/api/polls/:id', auth, async (req, res) => {
+app.put('/api/polls/:id', auth, blockAuditorWrite, async (req, res) => {
     try {
         const pollId = parseInt(req.params.id, 10);
+        const accountId = getAccountId(req);
         let poll;
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
+            const q = accountId != null
+                ? db.query('SELECT data FROM polls WHERE id = $1 AND account_id = $2', [pollId, accountId])
+                : db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
             poll = result.rows[0].data;
         } else {
             poll = pollsCache.find(p => p.id === pollId);
             if (!poll) return res.status(404).json({ error: 'not found' });
-        }
-
-        if (!canModifyPoll(poll, req.user)) {
-            return res.status(403).json({ error: 'Only the author or vadmin can modify this poll' });
         }
 
         const updated = normalizePoll({
@@ -1547,25 +1717,20 @@ app.put('/api/polls/:id', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/polls/:id', auth, async (req, res) => {
+app.delete('/api/polls/:id', auth, blockAuditorWrite, async (req, res) => {
     try {
         const pollId = parseInt(req.params.id, 10);
-        let poll;
+        const accountId = getAccountId(req);
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
-            if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
-            poll = result.rows[0].data;
-            if (!canModifyPoll(poll, req.user)) {
-                return res.status(403).json({ error: 'Only the author or vadmin can delete this poll' });
-            }
-            await db.query('DELETE FROM polls WHERE id = $1', [pollId]);
+            const deleteQ = accountId != null
+                ? db.query('DELETE FROM polls WHERE id = $1 AND account_id = $2', [pollId, accountId])
+                : db.query('DELETE FROM polls WHERE id = $1', [pollId]);
+            const deleteResult = await deleteQ;
+            if (deleteResult.rowCount === 0) return res.status(404).json({ error: 'not found' });
         } else {
-            poll = pollsCache.find(p => p.id === pollId);
+            const poll = pollsCache.find(p => p.id === pollId);
             if (!poll) return res.status(404).json({ error: 'not found' });
-            if (!canModifyPoll(poll, req.user)) {
-                return res.status(403).json({ error: 'Only the author or vadmin can delete this poll' });
-            }
             pollsCache = pollsCache.filter(p => p.id !== pollId);
             db.polls = pollsCache;
             savePolls();
@@ -1579,22 +1744,22 @@ app.delete('/api/polls/:id', auth, async (req, res) => {
     }
 });
 
-app.post('/api/polls/:id/run', auth, async (req, res) => {
+app.post('/api/polls/:id/run', auth, blockAuditorWrite, async (req, res) => {
     try {
         const pollId = parseInt(req.params.id, 10);
+        const accountId = getAccountId(req);
         let poll;
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
+            const q = accountId != null
+                ? db.query('SELECT data FROM polls WHERE id = $1 AND account_id = $2', [pollId, accountId])
+                : db.query('SELECT data FROM polls WHERE id = $1', [pollId]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'not found' });
             poll = result.rows[0].data;
         } else {
             poll = pollsCache.find(p => p.id === pollId);
             if (!poll) return res.status(404).json({ error: 'not found' });
-        }
-
-        if (!canModifyPoll(poll, req.user)) {
-            return res.status(403).json({ error: 'Only the author or vadmin can run this poll' });
         }
 
         const normalized = normalizePoll(poll);
@@ -1607,12 +1772,26 @@ app.post('/api/polls/:id/run', auth, async (req, res) => {
 });
 
 app.get('/api/polls/history', auth, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         const pollIdRaw = req.query.pollId;
         const pollId = pollIdRaw ? parseInt(pollIdRaw, 10) : null;
         const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            if (accountId != null) {
+                const result = await db.query(
+                    `SELECT id, poll_id, status, matched, sent, error_message, response_snippet,
+                            request_method, request_url, request_headers, request_body,
+                            response_status, response_headers, created_at
+                     FROM poll_runs
+                     WHERE account_id = $1 AND ($2::bigint IS NULL OR poll_id = $2)
+                     ORDER BY created_at DESC
+                     LIMIT $3`,
+                    [accountId, pollId, limit]
+                );
+                return res.json(result.rows);
+            }
             const result = await db.query(
                 `SELECT id, poll_id, status, matched, sent, error_message, response_snippet,
                         request_method, request_url, request_headers, request_body,
@@ -1653,10 +1832,15 @@ app.get('/api/polls/history', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/polls/history', auth, async (req, res) => {
+app.delete('/api/polls/history', auth, blockAuditorWrite, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('DELETE FROM poll_runs');
+            if (accountId != null) {
+                await db.query('DELETE FROM poll_runs WHERE account_id = $1', [accountId]);
+            } else {
+                await db.query('DELETE FROM poll_runs');
+            }
         } else {
             db.pollRuns = [];
             savePollRuns();
@@ -1692,8 +1876,8 @@ app.post('/webhook', async (req, res) => {
     let rules = [];
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('SELECT data FROM rules');
-            rules = result.rows.map(r => r.data);
+            const result = await db.query('SELECT id, data, account_id FROM rules');
+            rules = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
         } catch (err) {
             console.error('DB error in webhook:', err);
             rules = [];
@@ -1704,6 +1888,7 @@ app.post('/webhook', async (req, res) => {
 
     let matched = 0;
     let telegram_results = [];
+    let firstMatchedAccountId = null;
 
     for (const rule of rules) {
         if (!rule || rule.enabled === false) continue;
@@ -1725,6 +1910,7 @@ app.post('/webhook', async (req, res) => {
 
         if (ruleMatches) {
             matched++;
+            if (firstMatchedAccountId == null && rule.account_id != null) firstMatchedAccountId = rule.account_id;
 
             const messageText = formatMessage(req.body, incomingPayload, rule);
 
@@ -1762,7 +1948,7 @@ app.post('/webhook', async (req, res) => {
         }
     }
 
-    logWebhook(req.body, matched, rules.length, telegram_results);
+    logWebhook(req.body, matched, rules.length, telegram_results, firstMatchedAccountId);
     res.json({ matched, telegram_results });
 });
 
@@ -1857,8 +2043,13 @@ app.get('/api/message-queue/history', auth, async (req, res) => {
 });
 
 app.get('/api/webhook-logs', auth, async (req, res) => {
+    const accountId = getAccountId(req);
     if (process.env.DATABASE_URL) {
         try {
+            if (accountId != null) {
+                const result = await db.query('SELECT data FROM logs WHERE account_id = $1 ORDER BY id DESC', [accountId]);
+                return res.json(result.rows.map(r => r.data));
+            }
             const result = await db.query('SELECT data FROM logs ORDER BY id DESC');
             res.json(result.rows.map(r => r.data));
         } catch (err) {
@@ -1872,9 +2063,13 @@ app.get('/api/webhook-logs', auth, async (req, res) => {
 
 app.get('/api/webhook-logs/:id', auth, async (req, res) => {
     const logId = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     if (process.env.DATABASE_URL) {
         try {
-            const result = await db.query('SELECT data FROM logs WHERE (data->>\'id\')::bigint = $1', [logId]);
+            const q = accountId != null
+                ? db.query('SELECT data FROM logs WHERE (data->>\'id\')::bigint = $1 AND account_id = $2', [logId, accountId])
+                : db.query('SELECT data FROM logs WHERE (data->>\'id\')::bigint = $1', [logId]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Log not found' });
             res.json(result.rows[0].data);
         } catch (err) {
@@ -1888,10 +2083,15 @@ app.get('/api/webhook-logs/:id', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/webhook-logs', auth, async (req, res) => {
+app.delete('/api/webhook-logs', auth, blockAuditorWrite, async (req, res) => {
+    const accountId = getAccountId(req);
     if (process.env.DATABASE_URL) {
         try {
-            await db.query('DELETE FROM logs');
+            if (accountId != null) {
+                await db.query('DELETE FROM logs WHERE account_id = $1', [accountId]);
+            } else {
+                await db.query('DELETE FROM logs');
+            }
             res.json({ status: 'ok' });
         } catch (err) {
             console.error('Logs delete error:', err);
@@ -1909,8 +2109,8 @@ app.delete('/api/webhook-logs', auth, async (req, res) => {
 async function loadBotsCache() {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('SELECT id, data FROM bots');
-            botsCache = result.rows.map(r => ({ ...r.data, id: r.id }));
+            const result = await db.query('SELECT id, data, account_id FROM bots');
+            botsCache = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
         } catch (e) {
             console.error('Error loading bots cache:', e);
             botsCache = [];
@@ -1922,9 +2122,9 @@ async function logBotRun(botId, data) {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             await db.query(
-                `INSERT INTO bot_runs (bot_id, status, message_type, error_message)
-                 VALUES ($1, $2, $3, $4)`,
-                [botId, data.status || 'success', data.messageType || 'text', data.errorMessage || null]
+                `INSERT INTO bot_runs (bot_id, status, message_type, error_message, account_id)
+                 VALUES ($1, $2, $3, $4, $5)`,
+                [botId, data.status || 'success', data.messageType || 'text', data.errorMessage || null, data.accountId ?? null]
             );
             // Cleanup old runs
             await db.query(
@@ -1941,11 +2141,11 @@ async function logBotRun(botId, data) {
 async function executeBot(bot) {
     const botToken = bot.botToken || TELEGRAM_BOT_TOKEN;
     if (!botToken || botToken === 'YOUR_TOKEN') {
-        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: 'No bot token configured' });
+        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: 'No bot token configured', accountId: bot.account_id });
         return;
     }
     if (!bot.chatId) {
-        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: 'No chat ID configured' });
+        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: 'No chat ID configured', accountId: bot.account_id });
         return;
     }
 
@@ -1960,7 +2160,7 @@ async function executeBot(bot) {
             }
 
             if (!bot.pollQuestion || !Array.isArray(options) || options.length < 2) {
-                await logBotRun(bot.id, { status: 'error', messageType: 'poll', errorMessage: 'Invalid poll question or options' });
+                await logBotRun(bot.id, { status: 'error', messageType: 'poll', errorMessage: 'Invalid poll question or options', accountId: bot.account_id });
                 return;
             }
 
@@ -1979,7 +2179,7 @@ async function executeBot(bot) {
                 if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
                     await db.query('UPDATE bots SET data = $1 WHERE id = $2', [bot, bot.id]);
                 }
-                await logBotRun(bot.id, { status: 'success', messageType: 'poll' });
+                await logBotRun(bot.id, { status: 'success', messageType: 'poll', accountId: bot.account_id });
                 console.log(`Bot ${bot.id} (${bot.name}): poll sent to ${bot.chatId}`);
             } else {
                 throw new Error(response.data?.description || 'Unknown Telegram error');
@@ -1987,7 +2187,7 @@ async function executeBot(bot) {
         } else {
             // Send text message
             if (!bot.messageText) {
-                await logBotRun(bot.id, { status: 'error', messageType: 'text', errorMessage: 'No message text' });
+                await logBotRun(bot.id, { status: 'error', messageType: 'text', errorMessage: 'No message text', accountId: bot.account_id });
                 return;
             }
 
@@ -1997,7 +2197,7 @@ async function executeBot(bot) {
             if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
                 await db.query('UPDATE bots SET data = $1 WHERE id = $2', [bot, bot.id]);
             }
-            await logBotRun(bot.id, { status: 'success', messageType: 'text' });
+            await logBotRun(bot.id, { status: 'success', messageType: 'text', accountId: bot.account_id });
             console.log(`Bot ${bot.id} (${bot.name}): text message sent to ${bot.chatId}`);
         }
     } catch (error) {
@@ -2007,7 +2207,7 @@ async function executeBot(bot) {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
             await db.query('UPDATE bots SET data = $1 WHERE id = $2', [bot, bot.id]);
         }
-        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: errMsg });
+        await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: errMsg, accountId: bot.account_id });
         console.error(`Bot ${bot.id} (${bot.name}) error:`, errMsg);
     }
 }
@@ -2111,8 +2311,13 @@ function startBotScheduler() {
 
 // CRUD для ботов
 app.get('/api/bots', auth, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            if (accountId != null) {
+                const result = await db.query('SELECT id, data FROM bots WHERE account_id = $1 ORDER BY id DESC', [accountId]);
+                return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
+            }
             const result = await db.query('SELECT id, data FROM bots ORDER BY id DESC');
             return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
         }
@@ -2125,18 +2330,25 @@ app.get('/api/bots', auth, async (req, res) => {
 
 // История ботов (MUST be before /api/bots/:id to avoid param capture)
 app.get('/api/bots/history', auth, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         const botIdRaw = req.query.botId;
         const botId = botIdRaw ? parseInt(botIdRaw, 10) : null;
         const limit = Math.min(200, parseInt(req.query.limit) || 100);
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            if (accountId != null) {
+                const result = await db.query(
+                    `SELECT id, bot_id, status, message_type, error_message, created_at
+                     FROM bot_runs WHERE account_id = $1 AND ($2::bigint IS NULL OR bot_id = $2)
+                     ORDER BY created_at DESC LIMIT $3`,
+                    [accountId, botId, limit]
+                );
+                return res.json(result.rows);
+            }
             const result = await db.query(
                 `SELECT id, bot_id, status, message_type, error_message, created_at
-                 FROM bot_runs
-                 WHERE ($1::bigint IS NULL OR bot_id = $1)
-                 ORDER BY created_at DESC
-                 LIMIT $2`,
+                 FROM bot_runs WHERE ($1::bigint IS NULL OR bot_id = $1) ORDER BY created_at DESC LIMIT $2`,
                 [botId, limit]
             );
             return res.json(result.rows);
@@ -2148,10 +2360,15 @@ app.get('/api/bots/history', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/bots/history', auth, async (req, res) => {
+app.delete('/api/bots/history', auth, blockAuditorWrite, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('DELETE FROM bot_runs');
+            if (accountId != null) {
+                await db.query('DELETE FROM bot_runs WHERE account_id = $1', [accountId]);
+            } else {
+                await db.query('DELETE FROM bot_runs');
+            }
         }
         res.json({ status: 'cleared' });
     } catch (error) {
@@ -2162,9 +2379,13 @@ app.delete('/api/bots/history', auth, async (req, res) => {
 
 app.get('/api/bots/:id', auth, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT id, data FROM bots WHERE id = $1', [id]);
+            const q = accountId != null
+                ? db.query('SELECT id, data FROM bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data FROM bots WHERE id = $1', [id]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Bot not found' });
             return res.json({ ...result.rows[0].data, id: result.rows[0].id });
         }
@@ -2176,8 +2397,11 @@ app.get('/api/bots/:id', auth, async (req, res) => {
     }
 });
 
-app.post('/api/bots', auth, async (req, res) => {
+app.post('/api/bots', auth, blockAuditorWrite, async (req, res) => {
     try {
+        const accountId = getAccountIdForCreate(req);
+        if (accountId == null) return res.status(400).json({ error: 'Account required to create bot' });
+
         const newBot = {
             id: Date.now(),
             name: req.body.name || 'Новый бот',
@@ -2207,7 +2431,7 @@ app.post('/api/bots', auth, async (req, res) => {
         }
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('INSERT INTO bots (id, data) VALUES ($1, $2)', [newBot.id, newBot]);
+            await db.query('INSERT INTO bots (id, data, account_id) VALUES ($1, $2, $3)', [newBot.id, newBot, accountId]);
         } else {
             botsCache.push(newBot);
         }
@@ -2220,12 +2444,16 @@ app.post('/api/bots', auth, async (req, res) => {
     }
 });
 
-app.put('/api/bots/:id', auth, async (req, res) => {
+app.put('/api/bots/:id', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         let existing;
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT data FROM bots WHERE id = $1', [id]);
+            const q = accountId != null
+                ? db.query('SELECT data FROM bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT data FROM bots WHERE id = $1', [id]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Bot not found' });
             existing = result.rows[0].data;
         } else {
@@ -2254,12 +2482,16 @@ app.put('/api/bots/:id', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/bots/:id', auth, async (req, res) => {
+app.delete('/api/bots/:id', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('DELETE FROM bots WHERE id = $1', [id]);
-            await db.query('DELETE FROM bot_runs WHERE bot_id = $1', [id]);
+            const deleteQ = accountId != null
+                ? db.query('DELETE FROM bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('DELETE FROM bots WHERE id = $1', [id]);
+            const dr = await deleteQ;
+            if (dr.rowCount > 0) await db.query('DELETE FROM bot_runs WHERE bot_id = $1', [id]);
         } else {
             botsCache = botsCache.filter(b => b.id !== id);
         }
@@ -2272,14 +2504,19 @@ app.delete('/api/bots/:id', auth, async (req, res) => {
 });
 
 // Ручной запуск бота
-app.post('/api/bots/:id/run', auth, async (req, res) => {
+app.post('/api/bots/:id/run', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         let bot;
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT id, data FROM bots WHERE id = $1', [id]);
+            const q = accountId != null
+                ? db.query('SELECT id, data, account_id FROM bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data, account_id FROM bots WHERE id = $1', [id]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Bot not found' });
-            bot = { ...result.rows[0].data, id: result.rows[0].id };
+            const row = result.rows[0];
+            bot = { ...row.data, id: row.id, account_id: row.account_id };
         } else {
             bot = botsCache.find(b => b.id === id);
             if (!bot) return res.status(404).json({ error: 'Bot not found' });
@@ -2298,8 +2535,8 @@ app.post('/api/bots/:id/run', auth, async (req, res) => {
 async function loadIntegrationsCache() {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const result = await db.query('SELECT id, data FROM integrations');
-            integrationsCache = result.rows.map(r => ({ ...r.data, id: r.id }));
+            const result = await db.query('SELECT id, data, account_id FROM integrations');
+            integrationsCache = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
         } catch (e) {
             console.error('Error loading integrations cache:', e);
         }
@@ -2313,8 +2550,8 @@ async function logIntegrationRun(integrationId, data) {
                 `INSERT INTO integration_runs (
                     integration_id, trigger_type, status, trigger_data,
                     action_request, action_response, action_status,
-                    telegram_sent, error_message
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                    telegram_sent, error_message, account_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
                 [
                     integrationId,
                     data.triggerType || 'manual',
@@ -2324,7 +2561,8 @@ async function logIntegrationRun(integrationId, data) {
                     data.actionResponse || null,
                     data.actionStatus || null,
                     data.telegramSent || false,
-                    data.errorMessage || null
+                    data.errorMessage || null,
+                    data.accountId ?? null
                 ]
             );
             // Cleanup old runs
@@ -2461,14 +2699,20 @@ async function executeIntegration(integration, triggerData = null, triggerType =
         runData.errorMessage = error.message;
     }
 
+    runData.accountId = integration.account_id ?? null;
     await logIntegrationRun(integration.id, runData);
     return runData;
 }
 
 // CRUD для интеграций
 app.get('/api/integrations', auth, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            if (accountId != null) {
+                const result = await db.query('SELECT id, data FROM integrations WHERE account_id = $1 ORDER BY id DESC', [accountId]);
+                return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
+            }
             const result = await db.query('SELECT id, data FROM integrations ORDER BY id DESC');
             return res.json(result.rows.map(r => ({ ...r.data, id: r.id })));
         }
@@ -2481,9 +2725,13 @@ app.get('/api/integrations', auth, async (req, res) => {
 
 app.get('/api/integrations/:id', auth, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT id, data FROM integrations WHERE id = $1', [id]);
+            const q = accountId != null
+                ? db.query('SELECT id, data FROM integrations WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data FROM integrations WHERE id = $1', [id]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Integration not found' });
             return res.json({ ...result.rows[0].data, id: result.rows[0].id });
         }
@@ -2495,8 +2743,11 @@ app.get('/api/integrations/:id', auth, async (req, res) => {
     }
 });
 
-app.post('/api/integrations', auth, async (req, res) => {
+app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
     try {
+        const accountId = getAccountIdForCreate(req);
+        if (accountId == null) return res.status(400).json({ error: 'Account required to create integration' });
+
         const newIntegration = {
             id: Date.now(),
             name: req.body.name || 'Новая интеграция',
@@ -2521,7 +2772,7 @@ app.post('/api/integrations', auth, async (req, res) => {
         };
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('INSERT INTO integrations (id, data) VALUES ($1, $2)', [newIntegration.id, newIntegration]);
+            await db.query('INSERT INTO integrations (id, data, account_id) VALUES ($1, $2, $3)', [newIntegration.id, newIntegration, accountId]);
         } else {
             integrationsCache.push(newIntegration);
         }
@@ -2534,13 +2785,17 @@ app.post('/api/integrations', auth, async (req, res) => {
     }
 });
 
-app.put('/api/integrations/:id', auth, async (req, res) => {
+app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         const updated = { ...req.body, id };
         
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('UPDATE integrations SET data = $1 WHERE id = $2 RETURNING id', [updated, id]);
+            const updateQ = accountId != null
+                ? db.query('UPDATE integrations SET data = $1 WHERE id = $2 AND account_id = $3 RETURNING id', [updated, id, accountId])
+                : db.query('UPDATE integrations SET data = $1 WHERE id = $2 RETURNING id', [updated, id]);
+            const result = await updateQ;
             if (result.rowCount === 0) return res.status(404).json({ error: 'Integration not found' });
         } else {
             const idx = integrationsCache.findIndex(i => i.id === id);
@@ -2555,12 +2810,16 @@ app.put('/api/integrations/:id', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/integrations/:id', auth, async (req, res) => {
+app.delete('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('DELETE FROM integrations WHERE id = $1', [id]);
-            await db.query('DELETE FROM integration_runs WHERE integration_id = $1', [id]);
+            const deleteQ = accountId != null
+                ? db.query('DELETE FROM integrations WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('DELETE FROM integrations WHERE id = $1', [id]);
+            const dr = await deleteQ;
+            if (dr.rowCount > 0) await db.query('DELETE FROM integration_runs WHERE integration_id = $1', [id]);
         } else {
             integrationsCache = integrationsCache.filter(i => i.id !== id);
         }
@@ -2573,14 +2832,19 @@ app.delete('/api/integrations/:id', auth, async (req, res) => {
 });
 
 // Ручной запуск интеграции
-app.post('/api/integrations/:id/run', auth, async (req, res) => {
+app.post('/api/integrations/:id/run', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
+    const accountId = getAccountId(req);
     try {
         let integration;
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query('SELECT id, data FROM integrations WHERE id = $1', [id]);
+            const q = accountId != null
+                ? db.query('SELECT id, data, account_id FROM integrations WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data, account_id FROM integrations WHERE id = $1', [id]);
+            const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Integration not found' });
-            integration = { ...result.rows[0].data, id: result.rows[0].id };
+            const row = result.rows[0];
+            integration = { ...row.data, id: row.id, account_id: row.account_id };
         } else {
             integration = integrationsCache.find(i => i.id === id);
             if (!integration) return res.status(404).json({ error: 'Integration not found' });
@@ -2595,17 +2859,27 @@ app.post('/api/integrations/:id/run', auth, async (req, res) => {
 
 // История интеграций
 app.get('/api/integrations/history/all', auth, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         const limit = Math.min(200, parseInt(req.query.limit) || 100);
         
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            if (accountId != null) {
+                const result = await db.query(
+                    `SELECT id, integration_id, trigger_type, status, trigger_data,
+                            action_request, action_response, action_status,
+                            telegram_sent, error_message, created_at
+                     FROM integration_runs WHERE account_id = $1
+                     ORDER BY created_at DESC LIMIT $2`,
+                    [accountId, limit]
+                );
+                return res.json(result.rows);
+            }
             const result = await db.query(
                 `SELECT id, integration_id, trigger_type, status, trigger_data,
                         action_request, action_response, action_status,
                         telegram_sent, error_message, created_at
-                 FROM integration_runs
-                 ORDER BY created_at DESC
-                 LIMIT $1`,
+                 FROM integration_runs ORDER BY created_at DESC LIMIT $1`,
                 [limit]
             );
             return res.json(result.rows);
@@ -2617,10 +2891,15 @@ app.get('/api/integrations/history/all', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/integrations/history/all', auth, async (req, res) => {
+app.delete('/api/integrations/history/all', auth, blockAuditorWrite, async (req, res) => {
+    const accountId = getAccountId(req);
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('DELETE FROM integration_runs');
+            if (accountId != null) {
+                await db.query('DELETE FROM integration_runs WHERE account_id = $1', [accountId]);
+            } else {
+                await db.query('DELETE FROM integration_runs');
+            }
         }
         res.json({ status: 'cleared' });
     } catch (error) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Rule } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import { Plus, Search, Download, Upload, Info, Copy, CheckCheck, Pencil, Trash2 } from 'lucide-react';
 import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
@@ -14,6 +15,8 @@ import {
 } from '../components/ui/tooltip';
 
 export function Rules() {
+  const { user } = useAuth();
+  const canEdit = user?.role !== 'auditor';
   const [searchParams, setSearchParams] = useSearchParams();
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,8 +282,7 @@ export function Rules() {
           </TooltipProvider>
         </div>
         <div className="flex items-center gap-2">
-          {/* Кнопки действий над выбранным Webhook */}
-          {selectedRuleId && !editingRuleId && (
+          {canEdit && selectedRuleId && !editingRuleId && (
             <>
               <button
                 onClick={() => handleEditRule(selectedRuleId)}
@@ -316,35 +318,39 @@ export function Rules() {
               className="w-56 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
             />
           </div>
-          <input
-            ref={importInputRef}
-            type="file"
-            accept="application/json"
-            className="hidden"
-            onChange={handleImportRules}
-          />
-          <button
-            onClick={() => importInputRef.current?.click()}
-            disabled={importing}
-            className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
-            title="Импорт Webhook"
-          >
-            <Upload className="h-4 w-4" />
-          </button>
-          <button
-            onClick={() => setExportModalOpen(true)}
-            className="icon-button"
-            title="Экспорт Webhook"
-          >
-            <Download className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleStartCreate}
-            className="icon-button"
-            title="Создать Webhook"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          {canEdit && (
+            <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={handleImportRules}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                disabled={importing}
+                className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
+                title="Импорт Webhook"
+              >
+                <Upload className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setExportModalOpen(true)}
+                className="icon-button"
+                title="Экспорт Webhook"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleStartCreate}
+                className="icon-button"
+                title="Создать Webhook"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

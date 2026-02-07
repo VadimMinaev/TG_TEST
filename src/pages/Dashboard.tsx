@@ -20,6 +20,7 @@ import {
   ScrollText,
   Bot,
   Info,
+  Building2,
 } from 'lucide-react';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { GlobalSearch } from '../components/GlobalSearch';
@@ -36,10 +37,11 @@ export function Dashboard() {
   const [showVersionPanel, setShowVersionPanel] = useState(false);
   const versionRef = useRef<HTMLDivElement>(null);
 
-  // Определяем, можно ли создавать на текущей странице
+  // Аудитор может только просматривать; для остальных — кнопка создания на страницах сущностей
   const canCreate = useMemo(() => {
+    if (user?.role === 'auditor') return false;
     return location.pathname === '/' || location.pathname === '/polling' || location.pathname === '/users' || location.pathname === '/integrations' || location.pathname === '/bots';
-  }, [location.pathname]);
+  }, [location.pathname, user?.role]);
 
   const handleCreate = () => {
     if (canCreate) {
@@ -96,7 +98,10 @@ export function Dashboard() {
     { path: '/bot-history', label: 'Ист. ботов', icon: <ScrollText /> },
   ];
 
-  if (user?.username === 'vadmin') {
+  if (user?.isVadmin) {
+    tabs.push({ path: '/accounts', label: 'Аккаунты', icon: <Building2 /> });
+    tabs.push({ path: '/users', label: 'Пользователи', icon: <Users /> });
+  } else {
     tabs.push({ path: '/users', label: 'Пользователи', icon: <Users /> });
   }
 

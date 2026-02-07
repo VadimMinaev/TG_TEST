@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Integration, Rule, Poll } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
@@ -28,6 +29,8 @@ const DEFAULT_FORM: Omit<Integration, 'id'> = {
 };
 
 export function Integrations() {
+  const { user } = useAuth();
+  const canEdit = user?.role !== 'auditor';
   const [searchParams, setSearchParams] = useSearchParams();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [rules, setRules] = useState<Rule[]>([]);
@@ -252,8 +255,7 @@ export function Integrations() {
       <div className="card-header">
         <h2 className="text-xl font-semibold">🔗 Интегратор</h2>
         <div className="flex items-center gap-2">
-          {/* Кнопки действий над выбранным элементом */}
-          {selectedIntegration && !editingId && (
+          {canEdit && selectedIntegration && !editingId && (
             <>
               <button
                 onClick={() => handleRun(selectedIntegration.id)}
@@ -294,20 +296,24 @@ export function Integrations() {
           >
             <RefreshCw className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => setExportModalOpen(true)}
-            className="icon-button"
-            title="Экспорт интеграций"
-          >
-            <Download className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleStartCreate}
-            className="icon-button"
-            title="Создать"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          {canEdit && (
+            <>
+              <button
+                onClick={() => setExportModalOpen(true)}
+                className="icon-button"
+                title="Экспорт интеграций"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleStartCreate}
+                className="icon-button"
+                title="Создать"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

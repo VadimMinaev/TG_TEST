@@ -13,6 +13,7 @@ import { IntegrationHistory } from './pages/IntegrationHistory';
 import { Users } from './pages/Users';
 import { Bots } from './pages/Bots';
 import { BotHistory } from './pages/BotHistory';
+import { Accounts } from './pages/Accounts';
 
 export const router = createBrowserRouter([
   {
@@ -34,6 +35,7 @@ export const router = createBrowserRouter([
           { path: 'integration-history', Component: IntegrationHistory },
           { path: 'bots', Component: Bots },
           { path: 'bot-history', Component: BotHistory },
+          { path: 'accounts', Component: Accounts },
           { path: 'users', Component: Users },
         ],
       },

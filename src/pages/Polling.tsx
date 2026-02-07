@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
@@ -40,6 +41,8 @@ const normalizeForm = (poll?: Poll) => ({
 });
 
 export function Polling() {
+  const { user } = useAuth();
+  const canEdit = user?.role !== 'auditor';
   const [searchParams, setSearchParams] = useSearchParams();
   const [polls, setPolls] = useState<Poll[]>([]);
   const [loading, setLoading] = useState(true);
@@ -201,8 +204,7 @@ export function Polling() {
       <div className="card-header">
         <h2 className="text-xl font-semibold">🔁 Пуллинг</h2>
         <div className="flex items-center gap-2">
-          {/* Кнопки действий над выбранным элементом */}
-          {selectedPoll && !editingPollId && (
+          {canEdit && selectedPoll && !editingPollId && (
             <>
               <button
                 onClick={() => handleRunPoll(selectedPoll)}
@@ -242,20 +244,24 @@ export function Polling() {
           >
             <RefreshCw className="h-4 w-4" />
           </button>
-          <button
-            onClick={() => setExportModalOpen(true)}
-            className="icon-button"
-            title="Экспорт пуллингов"
-          >
-            <Download className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleStartCreate}
-            className="icon-button"
-            title="Создать пуллинг"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          {canEdit && (
+            <>
+              <button
+                onClick={() => setExportModalOpen(true)}
+                className="icon-button"
+                title="Экспорт пуллингов"
+              >
+                <Download className="h-4 w-4" />
+              </button>
+              <button
+                onClick={handleStartCreate}
+                className="icon-button"
+                title="Создать пуллинг"
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

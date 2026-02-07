@@ -44,10 +44,20 @@ export interface Poll {
   lastError?: string;
 }
 
+export interface Account {
+  id: number;
+  name: string;
+  created_at?: string;
+}
+
 export interface User {
   id: number;
   username: string;
   created_at?: string;
+  updated_at?: string;
+  account_id?: number;
+  role?: 'administrator' | 'auditor';
+  account_name?: string;
 }
 
 export interface Integration {
@@ -470,6 +480,26 @@ export const api = {
     if (!res.ok) throw new Error('Failed to clear bot history');
   },
 
+  // Accounts (vadmin only)
+  getAccounts: async (): Promise<Account[]> => {
+    const res = await fetch(`${API_BASE}/accounts`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch accounts');
+    return res.json();
+  },
+
+  createAccount: async (name: string) => {
+    const res = await fetch(`${API_BASE}/accounts`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to create account');
+    }
+    return res.json();
+  },
+
   // Users
   getUsers: async (): Promise<User[]> => {
     const res = await fetch(`${API_BASE}/users`, { headers: getHeaders() });
@@ -477,15 +507,28 @@ export const api = {
     return res.json();
   },
 
-  createUser: async (username: string, password: string) => {
+  createUser: async (username: string, password: string, accountId: number, role: 'administrator' | 'auditor') => {
     const res = await fetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, account_id: accountId, role }),
     });
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.error || 'Failed to create user');
+    }
+    return res.json();
+  },
+
+  updateMe: async (data: { username?: string; password?: string; oldPassword?: string }) => {
+    const res = await fetch(`${API_BASE}/users/me`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to update profile');
     }
     return res.json();
   },

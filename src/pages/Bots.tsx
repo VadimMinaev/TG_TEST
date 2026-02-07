@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Bot } from '../lib/api';
+import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { ExportModal } from '../components/ExportModal';
 
@@ -58,6 +59,8 @@ const TIMEZONES = [
 ];
 
 export function Bots() {
+  const { user } = useAuth();
+  const canEdit = user?.role !== 'auditor';
   const [searchParams, setSearchParams] = useSearchParams();
   const [bots, setBots] = useState<Bot[]>([]);
   const [loading, setLoading] = useState(true);
@@ -283,7 +286,7 @@ export function Bots() {
       <div className="card-header">
         <h2 className="text-xl font-semibold">🤖 Боты</h2>
         <div className="flex items-center gap-2">
-          {selectedBot && !editingBotId && (
+          {canEdit && selectedBot && !editingBotId && (
             <>
               <button
                 onClick={() => handleRunBot(selectedBot)}
@@ -319,12 +322,16 @@ export function Bots() {
           <button onClick={() => loadBots()} className="icon-button" title="Обновить список">
             <RefreshCw className="h-4 w-4" />
           </button>
-          <button onClick={() => setExportModalOpen(true)} className="icon-button" title="Экспорт ботов">
-            <Download className="h-4 w-4" />
-          </button>
-          <button onClick={handleStartCreate} className="icon-button" title="Создать бота">
-            <Plus className="h-4 w-4" />
-          </button>
+          {canEdit && (
+            <>
+              <button onClick={() => setExportModalOpen(true)} className="icon-button" title="Экспорт ботов">
+                <Download className="h-4 w-4" />
+              </button>
+              <button onClick={handleStartCreate} className="icon-button" title="Создать бота">
+                <Plus className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

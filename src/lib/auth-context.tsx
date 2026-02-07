@@ -1,9 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { api } from './api';
 
+interface AuthUser {
+  username: string;
+  userId: number | string | null;
+  accountId: number | null;
+  role: 'administrator' | 'auditor';
+  isVadmin: boolean;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
-  user: { username: string; userId: number | string } | null;
+  user: AuthUser | null;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   isLoading: boolean;
@@ -13,7 +21,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState<{ username: string; userId: number | string } | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -32,7 +40,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (data.authenticated) {
         const userData = await api.me();
         setIsAuthenticated(true);
-        setUser(userData);
+        setUser({
+          username: userData.username,
+          userId: userData.userId ?? null,
+          accountId: userData.accountId ?? null,
+          role: userData.role === 'auditor' ? 'auditor' : 'administrator',
+          isVadmin: !!userData.isVadmin,
+        });
       } else {
         localStorage.removeItem('authToken');
         setIsAuthenticated(false);
@@ -52,7 +66,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('authToken', data.token);
     const userData = await api.me();
     setIsAuthenticated(true);
-    setUser(userData);
+    setUser({
+      username: userData.username,
+      userId: userData.userId ?? null,
+      accountId: userData.accountId ?? null,
+      role: userData.role === 'auditor' ? 'auditor' : 'administrator',
+      isVadmin: !!userData.isVadmin,
+    });
   };
 
   const logout = async () => {
