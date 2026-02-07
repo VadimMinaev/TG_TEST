@@ -63,7 +63,7 @@ function DialogContent({
         onPointerDownOutside={(e) => e.preventDefault()}
         onInteractOutside={(e) => e.preventDefault()}
       >
-        {children}
+          {children}
         <DialogPrimitive.Close 
           style={{ padding: '8px' }}
           className="absolute right-3 top-3 rounded-lg opacity-70 transition-opacity hover:opacity-100 hover:bg-[hsl(var(--accent))] focus:outline-none"

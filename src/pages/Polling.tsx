@@ -330,72 +330,72 @@ export function Polling() {
               </h3>
               <form onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
-                    <input
+                  <input
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                      value={form.name}
-                      onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="Например: Проверка статуса заказа"
-                    />
-                  </div>
-                  <div>
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Например: Проверка статуса заказа"
+                  />
+                </div>
+                <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
-                    <input
+                  <input
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                      value={form.url}
-                      onChange={(e) => setForm({ ...form, url: e.target.value })}
-                      placeholder="https://api.example.com/status"
-                    />
-                  </div>
+                    value={form.url}
+                    onChange={(e) => setForm({ ...form, url: e.target.value })}
+                    placeholder="https://api.example.com/status"
+                  />
+                </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
-                    <input
+                  <input
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                      value={form.chatId}
-                      onChange={(e) => setForm({ ...form, chatId: e.target.value })}
-                      placeholder="-1001234567890"
-                    />
-                  </div>
-                  <div>
+                    value={form.chatId}
+                    onChange={(e) => setForm({ ...form, chatId: e.target.value })}
+                    placeholder="-1001234567890"
+                  />
+                </div>
+                <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
-                    <select
+                  <select
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                      value={form.method}
-                      onChange={(e) => setForm({ ...form, method: e.target.value })}
-                    >
-                      <option value="GET">GET</option>
-                      <option value="POST">POST</option>
-                      <option value="PUT">PUT</option>
-                      <option value="PATCH">PATCH</option>
-                      <option value="DELETE">DELETE</option>
-                    </select>
-                  </div>
+                    value={form.method}
+                    onChange={(e) => setForm({ ...form, method: e.target.value })}
+                  >
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="DELETE">DELETE</option>
+                  </select>
+                </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
-                  <div>
+                <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
-                    <input
-                      type="number"
-                      min={5}
+                  <input
+                    type="number"
+                    min={5}
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                      value={form.intervalSec}
-                      onChange={(e) => setForm({ ...form, intervalSec: Number(e.target.value) })}
-                    />
-                  </div>
-                  <div>
+                    value={form.intervalSec}
+                    onChange={(e) => setForm({ ...form, intervalSec: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
-                    <input
-                      type="number"
-                      min={3}
+                  <input
+                    type="number"
+                    min={3}
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                      value={form.timeoutSec}
-                      onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
-                    />
+                    value={form.timeoutSec}
+                    onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
+                  />
                   </div>
                 </div>
 
@@ -517,10 +517,10 @@ export function Polling() {
                   <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div style={{ marginBottom: '12px' }}>
                       <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.id}</code>
-                    </div>
+              </div>
                     <div style={{ marginBottom: '12px' }}>
-                      <strong>Название:</strong> {selectedPoll.name}
-                    </div>
+                  <strong>Название:</strong> {selectedPoll.name}
+                </div>
                     <div style={{ marginBottom: '12px' }}>
                       <strong>Статус:</strong>{' '}
                       <span
@@ -573,12 +573,12 @@ export function Polling() {
                         <strong>Шаблон сообщения:</strong>
                         <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
                           {selectedPoll.messageTemplate}
-                        </div>
-                      </div>
+                </div>
+                </div>
                     ) : (
                       <div className="text-[hsl(var(--muted-foreground))]">Используется шаблон по умолчанию</div>
                     )}
-                  </div>
+                </div>
                 </div>
               </div>
             </div>
