@@ -2123,6 +2123,43 @@ app.get('/api/bots', auth, async (req, res) => {
     }
 });
 
+// История ботов (MUST be before /api/bots/:id to avoid param capture)
+app.get('/api/bots/history', auth, async (req, res) => {
+    try {
+        const botIdRaw = req.query.botId;
+        const botId = botIdRaw ? parseInt(botIdRaw, 10) : null;
+        const limit = Math.min(200, parseInt(req.query.limit) || 100);
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query(
+                `SELECT id, bot_id, status, message_type, error_message, created_at
+                 FROM bot_runs
+                 WHERE ($1::bigint IS NULL OR bot_id = $1)
+                 ORDER BY created_at DESC
+                 LIMIT $2`,
+                [botId, limit]
+            );
+            return res.json(result.rows);
+        }
+        res.json([]);
+    } catch (error) {
+        console.error('Error loading bot history:', error);
+        res.status(500).json({ error: 'Failed to load bot history' });
+    }
+});
+
+app.delete('/api/bots/history', auth, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('DELETE FROM bot_runs');
+        }
+        res.json({ status: 'cleared' });
+    } catch (error) {
+        console.error('Error clearing bot history:', error);
+        res.status(500).json({ error: 'Failed to clear bot history' });
+    }
+});
+
 app.get('/api/bots/:id', auth, async (req, res) => {
     const id = parseInt(req.params.id);
     try {
@@ -2253,43 +2290,6 @@ app.post('/api/bots/:id/run', auth, async (req, res) => {
         res.json({ status: 'ok' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to run bot' });
-    }
-});
-
-// История ботов
-app.get('/api/bots/history', auth, async (req, res) => {
-    try {
-        const botIdRaw = req.query.botId;
-        const botId = botIdRaw ? parseInt(botIdRaw, 10) : null;
-        const limit = Math.min(200, parseInt(req.query.limit) || 100);
-
-        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            const result = await db.query(
-                `SELECT id, bot_id, status, message_type, error_message, created_at
-                 FROM bot_runs
-                 WHERE ($1::bigint IS NULL OR bot_id = $1)
-                 ORDER BY created_at DESC
-                 LIMIT $2`,
-                [botId, limit]
-            );
-            return res.json(result.rows);
-        }
-        res.json([]);
-    } catch (error) {
-        console.error('Error loading bot history:', error);
-        res.status(500).json({ error: 'Failed to load bot history' });
-    }
-});
-
-app.delete('/api/bots/history', auth, async (req, res) => {
-    try {
-        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-            await db.query('DELETE FROM bot_runs');
-        }
-        res.json({ status: 'cleared' });
-    } catch (error) {
-        console.error('Error clearing bot history:', error);
-        res.status(500).json({ error: 'Failed to clear bot history' });
     }
 });
 
