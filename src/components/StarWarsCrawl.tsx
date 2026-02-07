@@ -1,58 +1,54 @@
 /**
- * StarWarsCrawl — decorative intro animation for the login page.
- * Pure CSS perspective crawl inspired by the Star Wars opening.
+ * LoginIntro — decorative terminal-style boot sequence animation.
+ * Lines appear one by one with a typing cursor effect.
  *
- * Feature flag: set ENABLE_CRAWL to false to disable.
+ * Feature flag: set ENABLE_INTRO to false to disable.
  */
+import { useState, useEffect } from 'react';
 
-const ENABLE_CRAWL = true;
+const ENABLE_INTRO = true;
 
-export function StarWarsCrawl() {
-  if (!ENABLE_CRAWL) return null;
+const LINES = [
+  { text: '> initializing VadminLink v1.0 …', delay: 300 },
+  { text: '> loading webhook router ………… ok', delay: 1200 },
+  { text: '> polling scheduler online ……… ok', delay: 2000 },
+  { text: '> HTTP integrations ready ……… ok', delay: 2800 },
+  { text: '> Telegram bot engine ………………… ok', delay: 3600 },
+  { text: '> all systems operational', delay: 4400 },
+  { text: '> awaiting authentication_', delay: 5200 },
+];
+
+export function LoginIntro() {
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  useEffect(() => {
+    if (!ENABLE_INTRO) return;
+
+    const timers = LINES.map((line, i) =>
+      setTimeout(() => setVisibleCount(i + 1), line.delay)
+    );
+
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  if (!ENABLE_INTRO) return null;
 
   return (
-    <div className="crawl-viewport" aria-hidden="true">
-      <div className="crawl-fade" />
-      <div className="crawl-perspective">
-        <div className="crawl-content">
-          <p className="crawl-preamble">Давным-давно, в далёкой-далёкой серверной…</p>
-
-          <h2 className="crawl-episode">
-            ЭПИЗОД&nbsp;I
-            <br />
-            <span>НАЧАЛО ИНТЕГРАЦИИ</span>
-          </h2>
-
-          <div className="crawl-body">
-            <p>
-              В мире, где данные несутся непрерывным потоком
-              между сервисами, родилась платформа, способная
-              укротить этот хаос.
-            </p>
-            <p>
-              VadminLink объединил вебхуки, пуллинг,
-              HTTP-интеграции и умных ботов в единую
-              экосистему, подчинив себе Telegram-каналы
-              и расписания.
-            </p>
-            <p>
-              Каждый входящий сигнал проходит через правила
-              маршрутизации, каждый отклик отслеживается
-              в истории, каждое уведомление безошибочно
-              находит свой канал.
-            </p>
-            <p>
-              Автоматизация стала неизбежной. Голосования
-              уходят по расписанию, интеграции срабатывают
-              мгновенно, а ботам не нужен сон.
-            </p>
-            <p>
-              Теперь, когда все системы готовы, пришло время
-              войти и взять управление в свои руки…
-            </p>
+    <div className="intro-viewport" aria-hidden="true">
+      <div className="intro-lines">
+        {LINES.slice(0, visibleCount).map((line, i) => (
+          <div
+            key={i}
+            className={`intro-line ${i === visibleCount - 1 ? 'intro-line-active' : ''}`}
+          >
+            <span className="intro-text">{line.text}</span>
+            {i === visibleCount - 1 && <span className="intro-cursor" />}
           </div>
-        </div>
+        ))}
       </div>
     </div>
   );
 }
+
+// Keep backward compat export name used in Login.tsx
+export { LoginIntro as StarWarsCrawl };

@@ -619,124 +619,85 @@ code {
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
-/* ===== Star Wars Crawl ===== */
-.crawl-viewport {
+/* ===== Login Intro (terminal boot sequence) ===== */
+.intro-viewport {
   position: absolute;
   inset: 0;
-  overflow: hidden;
-  z-index: 1;                       /* behind login-container (z-index:10) */
-  pointer-events: none;             /* form stays fully clickable */
-}
-
-/* Top fade mask so text dissolves at the horizon */
-.crawl-fade {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 45%;
-  background: linear-gradient(
-    to bottom,
-    rgba(15, 15, 35, 1) 0%,
-    rgba(15, 15, 35, 0.95) 30%,
-    rgba(15, 15, 35, 0.6) 60%,
-    transparent 100%
-  );
-  z-index: 2;
+  z-index: 1;
   pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 32px 40px;
+  overflow: hidden;
 }
 
-/* 3-D perspective container */
-.crawl-perspective {
-  position: absolute;
-  bottom: -20%;
-  left: 50%;
-  width: 100%;
-  max-width: 700px;
-  transform: translateX(-50%);
-  perspective: 300px;
-  height: 100%;
+.intro-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 380px;
 }
 
-/* Scrolling slab of text */
-.crawl-content {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  transform-origin: 50% 100%;
-  transform: rotateX(22deg);
-  animation: crawl-scroll 70s linear infinite;
-  text-align: center;
-  color: #ffd700;
-  font-family: 'Inter', sans-serif;
-  font-weight: 600;
-  line-height: 1.6;
-  padding: 0 24px;
+.intro-line {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  animation: intro-fade-in 0.4s ease-out both;
 }
 
-@keyframes crawl-scroll {
-  0%   { bottom: -20%; }
-  100% { bottom: 300%; }
+@keyframes intro-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-/* "A long time ago…" preamble */
-.crawl-preamble {
-  font-size: 1rem;
-  color: #4fc3f7;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  margin-bottom: 40px;
-  opacity: 0.85;
+.intro-text {
+  font-family: 'Courier New', 'Fira Code', monospace;
+  font-size: 0.78rem;
+  color: rgba(100, 220, 180, 0.55);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
 }
 
-/* Episode title block */
-.crawl-episode {
-  font-size: 2.2rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 48px;
-  line-height: 1.3;
-  color: #ffd700;
+.intro-line-active .intro-text {
+  color: rgba(100, 220, 180, 0.8);
 }
 
-.crawl-episode span {
-  display: block;
-  font-size: 1.6rem;
-  margin-top: 8px;
-  letter-spacing: 0.1em;
+/* Blinking cursor */
+.intro-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 14px;
+  background: rgba(100, 220, 180, 0.7);
+  margin-left: 2px;
+  animation: intro-blink 0.9s step-end infinite;
+  border-radius: 1px;
+  flex-shrink: 0;
 }
 
-/* Main narrative paragraphs */
-.crawl-body p {
-  font-size: 1.15rem;
-  font-weight: 500;
-  margin-bottom: 28px;
-  color: #ffd700;
-  opacity: 0.92;
+@keyframes intro-blink {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0; }
 }
 
-/* Responsive: narrower screens */
+/* Responsive */
 @media (max-width: 600px) {
-  .crawl-perspective {
-    max-width: 100%;
+  .intro-viewport {
+    padding: 16px 16px;
+    align-items: flex-start;
+    padding-top: 20px;
   }
-  .crawl-episode {
-    font-size: 1.5rem;
+  .intro-lines {
+    max-width: 280px;
   }
-  .crawl-episode span {
-    font-size: 1.15rem;
-  }
-  .crawl-body p {
-    font-size: 0.95rem;
-    margin-bottom: 22px;
-  }
-  .crawl-preamble {
-    font-size: 0.8rem;
-  }
-  .crawl-content {
-    padding: 0 16px;
+  .intro-text {
+    font-size: 0.65rem;
   }
 }
 
