@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Outlet, useNavigate, Link, useLocation, useSearchParams } from 'react-router';
 import { useAuth } from '../lib/auth-context';
 import {
@@ -19,9 +19,13 @@ import {
   Link2,
   ScrollText,
   Bot,
+  Info,
 } from 'lucide-react';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { GlobalSearch } from '../components/GlobalSearch';
+
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '–';
+const buildDate = typeof __BUILD_DATE__ !== 'undefined' ? __BUILD_DATE__ : '–';
 
 export function Dashboard() {
   const { isAuthenticated, user, logout, isLoading } = useAuth();
@@ -29,6 +33,8 @@ export function Dashboard() {
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showVersionPanel, setShowVersionPanel] = useState(false);
+  const versionRef = useRef<HTMLDivElement>(null);
 
   // Определяем, можно ли создавать на текущей странице
   const canCreate = useMemo(() => {
@@ -46,6 +52,18 @@ export function Dashboard() {
       navigate('/login');
     }
   }, [isAuthenticated, isLoading, navigate]);
+
+  // Close version panel on outside click
+  useEffect(() => {
+    if (!showVersionPanel) return;
+    const handler = (e: MouseEvent) => {
+      if (versionRef.current && !versionRef.current.contains(e.target as Node)) {
+        setShowVersionPanel(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [showVersionPanel]);
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark-theme');
@@ -142,9 +160,38 @@ export function Dashboard() {
             >
               <FlaskConical className="h-4 w-4" />
             </Link>
-            <button className="icon-button desktop-only-btn" title="Настройки">
-              <Settings className="h-4 w-4" />
-            </button>
+            <div ref={versionRef} style={{ position: 'relative' }}>
+              <button
+                className="icon-button desktop-only-btn"
+                title="О приложении"
+                onClick={() => setShowVersionPanel((v) => !v)}
+              >
+                <Info className="h-4 w-4" />
+              </button>
+              {showVersionPanel && (
+                <div className="version-panel">
+                  <div className="version-panel-title">VadminLink</div>
+                  <div className="version-panel-row">
+                    <span className="version-panel-label">Версия</span>
+                    <span className="version-panel-value">{appVersion}</span>
+                  </div>
+                  <div className="version-panel-row">
+                    <span className="version-panel-label">Сборка</span>
+                    <span className="version-panel-value">
+                      {buildDate !== '–'
+                        ? new Date(buildDate).toLocaleString('ru-RU', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '–'}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               onClick={toggleTheme}
               className="icon-button"

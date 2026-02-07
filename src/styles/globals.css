@@ -619,6 +619,47 @@ code {
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
+/* ===== Version Panel ===== */
+.version-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 210px;
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  padding: 14px 16px;
+  box-shadow: 0 10px 30px -8px hsl(var(--foreground) / 0.15);
+  z-index: 100;
+  animation: fadeIn 0.15s ease;
+}
+
+.version-panel-title {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 10px;
+  color: hsl(var(--foreground));
+}
+
+.version-panel-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.version-panel-label {
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.version-panel-value {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  font-family: 'Courier New', monospace;
+}
+
 /* ===== Login Intro (terminal boot sequence) ===== */
 .intro-viewport {
   position: absolute;
