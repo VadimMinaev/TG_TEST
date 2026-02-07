@@ -93,6 +93,7 @@ export function Dashboard() {
     { path: '/integrations', label: 'Интегратор', icon: <Link2 /> },
     { path: '/integration-history', label: 'Ист. интегр.', icon: <ScrollText /> },
     { path: '/bots', label: 'Боты', icon: <Bot /> },
+    { path: '/bot-history', label: 'Ист. ботов', icon: <ScrollText /> },
   ];
 
   if (user?.username === 'vadmin') {

@@ -2281,6 +2281,18 @@ app.get('/api/bots/history', auth, async (req, res) => {
     }
 });
 
+app.delete('/api/bots/history', auth, async (req, res) => {
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('DELETE FROM bot_runs');
+        }
+        res.json({ status: 'cleared' });
+    } catch (error) {
+        console.error('Error clearing bot history:', error);
+        res.status(500).json({ error: 'Failed to clear bot history' });
+    }
+});
+
 // ============ INTEGRATIONS API ============
 
 async function loadIntegrationsCache() {
