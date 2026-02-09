@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth-context';
 import { Plus, Trash2, X } from 'lucide-react';
 
 export function Users() {
+  const { user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [users, setUsers] = useState<User[]>([]);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -14,17 +15,16 @@ export function Users() {
   const [newPassword, setNewPassword] = useState('');
   const [newAccountId, setNewAccountId] = useState<number | ''>('');
   const [newRole, setNewRole] = useState<'administrator' | 'auditor'>('administrator');
-
-  // For account admin: when opening create form, set current account
-  useEffect(() => {
-    if (showCreateForm && !user?.isVadmin && user?.accountId != null) setNewAccountId(user.accountId);
-  }, [showCreateForm, user?.isVadmin, user?.accountId]);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [profileUsername, setProfileUsername] = useState('');
   const [profilePassword, setProfilePassword] = useState('');
   const [profileOldPassword, setProfileOldPassword] = useState('');
-  const { user } = useAuth();
+
+  // For account admin: when opening create form, set current account
+  useEffect(() => {
+    if (showCreateForm && !user?.isVadmin && user?.accountId != null) setNewAccountId(user.accountId);
+  }, [showCreateForm, user?.isVadmin, user?.accountId]);
 
   useEffect(() => {
     if (message) {

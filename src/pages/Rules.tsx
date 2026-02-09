@@ -207,25 +207,30 @@ export function Rules() {
 
       let created = 0;
       let failed = 0;
+      let lastError = '';
       for (const item of items) {
         const payload = normalizeImportedRule(item);
         if (!payload.name || !payload.condition || !payload.chatId) {
           failed += 1;
+          if (!lastError) lastError = 'Не заполнены название, условие или chatId';
           continue;
         }
         try {
           const createdRule = await api.createRule(payload);
           created += 1;
           setRules((prev) => [...prev, createdRule]);
-        } catch {
+        } catch (err: any) {
           failed += 1;
+          if (!lastError) lastError = err?.message || 'Ошибка создания';
         }
       }
 
       const messageText =
         failed === 0
           ? `Импортировано Webhook: ${created}`
-          : `Импортировано: ${created}, пропущено: ${failed}`;
+          : lastError
+            ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
+            : `Импортировано: ${created}, пропущено: ${failed}`;
       setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
     } catch (error: any) {
       setMessage({ text: error.message || 'Ошибка импорта Webhook', type: 'error' });

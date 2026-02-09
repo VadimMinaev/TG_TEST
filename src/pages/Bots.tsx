@@ -318,25 +318,30 @@ export function Bots() {
 
       let created = 0;
       let failed = 0;
+      let lastError = '';
       for (const item of items) {
         const payload = normalizeImportedBot(item);
         if (!payload.name || !payload.chatId) {
           failed += 1;
+          if (!lastError) lastError = 'Не заполнены название или chatId';
           continue;
         }
         try {
           const createdBot = await api.createBot(payload);
           created += 1;
           setBots((prev) => [...prev, createdBot]);
-        } catch {
+        } catch (err: any) {
           failed += 1;
+          if (!lastError) lastError = err?.message || 'Ошибка создания';
         }
       }
 
       const messageText =
         failed === 0
           ? `Импортировано ботов: ${created}`
-          : `Импортировано: ${created}, пропущено: ${failed}`;
+          : lastError
+            ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
+            : `Импортировано: ${created}, пропущено: ${failed}`;
       setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
     } catch (error: any) {
       setMessage({ text: error.message || 'Ошибка импорта ботов', type: 'error' });

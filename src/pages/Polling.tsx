@@ -232,25 +232,30 @@ export function Polling() {
 
       let created = 0;
       let failed = 0;
+      let lastError = '';
       for (const item of items) {
         const payload = normalizeImportedPoll(item);
         if (!payload.name || !payload.url || !payload.chatId) {
           failed += 1;
+          if (!lastError) lastError = 'Не заполнены название, URL или chatId';
           continue;
         }
         try {
           const createdPoll = await api.createPoll(payload);
           created += 1;
           setPolls((prev) => [...prev, createdPoll]);
-        } catch {
+        } catch (err: any) {
           failed += 1;
+          if (!lastError) lastError = err?.message || 'Ошибка создания';
         }
       }
 
       const messageText =
         failed === 0
           ? `Импортировано пуллингов: ${created}`
-          : `Импортировано: ${created}, пропущено: ${failed}`;
+          : lastError
+            ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
+            : `Импортировано: ${created}, пропущено: ${failed}`;
       setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
     } catch (error: any) {
       setMessage({ text: error.message || 'Ошибка импорта пуллингов', type: 'error' });

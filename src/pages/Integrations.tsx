@@ -288,25 +288,30 @@ export function Integrations() {
 
       let created = 0;
       let failed = 0;
+      let lastError = '';
       for (const item of items) {
         const payload = normalizeImportedIntegration(item);
         if (!payload.name) {
           failed += 1;
+          if (!lastError) lastError = 'Не заполнено название';
           continue;
         }
         try {
           const createdIntegration = await api.createIntegration(payload);
           created += 1;
           setIntegrations((prev) => [...prev, createdIntegration]);
-        } catch {
+        } catch (err: any) {
           failed += 1;
+          if (!lastError) lastError = err?.message || 'Ошибка создания';
         }
       }
 
       const messageText =
         failed === 0
           ? `Импортировано интеграций: ${created}`
-          : `Импортировано: ${created}, пропущено: ${failed}`;
+          : lastError
+            ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
+            : `Импортировано: ${created}, пропущено: ${failed}`;
       setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
     } catch (error: any) {
       setMessage({ text: error.message || 'Ошибка импорта интеграций', type: 'error' });

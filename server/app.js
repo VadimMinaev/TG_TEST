@@ -1557,10 +1557,15 @@ app.post('/api/rules', auth, blockAuditorWrite, async (req, res) => {
             return res.status(400).json({ error: 'Bot token is required' });
         }
 
+        // Validate with Telegram only when rule has its own token; if empty we use env token at runtime
         if (trimmedToken) {
-            const response = await axios.get(`https://api.telegram.org/bot${trimmedToken}/getMe`);
-            if (!response.data.ok) {
-                return res.status(400).json({ error: 'Invalid bot token' });
+            try {
+                const response = await axios.get(`https://api.telegram.org/bot${trimmedToken}/getMe`);
+                if (!response.data.ok) {
+                    return res.status(400).json({ error: 'Invalid bot token' });
+                }
+            } catch (err) {
+                return res.status(400).json({ error: 'Invalid bot token or network error' });
             }
         }
 
