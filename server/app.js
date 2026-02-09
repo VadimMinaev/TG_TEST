@@ -201,6 +201,7 @@ if (process.env.DATABASE_URL) {
                     webhook_log_id INTEGER
                 )
             `);
+            await client.query(`ALTER TABLE message_queue ADD COLUMN IF NOT EXISTS account_id INTEGER`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_status ON message_queue(status, created_at)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_chat_id ON message_queue(chat_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_poll_runs_poll_id ON poll_runs(poll_id, created_at)`);
@@ -290,6 +291,7 @@ if (process.env.DATABASE_URL) {
                     await client.query('UPDATE poll_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE integration_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE bot_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE message_queue SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                 }
             } catch (migErr) {
                 console.error('Migration (accounts) error:', migErr);
@@ -623,15 +625,15 @@ function formatMessage(fullBody, payload, rule = {}) {
 // Функции очереди сообщений (без изменений)
 // ────────────────────────────────────────────────────────────────
 
-async function addMessageToQueue(botToken, chatId, messageText, priority = 0, webhookLogId = null) {
+async function addMessageToQueue(botToken, chatId, messageText, priority = 0, webhookLogId = null, accountId = null) {
     if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
         return sendTelegramMessageDirect(botToken, chatId, messageText);
     }
     try {
         const result = await db.query(
-            `INSERT INTO message_queue (bot_token, chat_id, message_text, priority, webhook_log_id)
-             VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-            [botToken, chatId, messageText, priority, webhookLogId]
+            `INSERT INTO message_queue (bot_token, chat_id, message_text, priority, webhook_log_id, account_id)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+            [botToken, chatId, messageText, priority, webhookLogId, accountId]
         );
         return { queued: true, id: result.rows[0].id };
     } catch (error) {
@@ -1016,7 +1018,7 @@ async function executePoll(poll, options = {}) {
             const botToken = poll.botToken || TELEGRAM_BOT_TOKEN;
             const messageText = formatMessage(payload, payload, { messageTemplate: poll.messageTemplate });
             if (botToken && poll.chatId) {
-                const result = await addMessageToQueue(botToken, poll.chatId, messageText, 0, null);
+                const result = await addMessageToQueue(botToken, poll.chatId, messageText, 0, null, poll.account_id);
                 sent = result && result.success !== false;
             }
         }
@@ -1960,7 +1962,7 @@ app.post('/webhook/:accountSlug', async (req, res) => {
             }
             for (const chat of chatIds) {
                 try {
-                    const queueResult = await addMessageToQueue(token, chat, messageText, 0, null);
+                    const queueResult = await addMessageToQueue(token, chat, messageText, 0, null, accountId);
                     if (queueResult.queued) {
                         telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
                     } else if (queueResult.success) {
@@ -2059,7 +2061,7 @@ app.post('/webhook', async (req, res) => {
 
             for (const chat of chatIds) {
                 try {
-                    const queueResult = await addMessageToQueue(token, chat, messageText, 0, null);
+                    const queueResult = await addMessageToQueue(token, chat, messageText, 0, null, rule.account_id);
                     if (queueResult.queued) {
                         telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
                     } else if (queueResult.success) {
@@ -2090,10 +2092,16 @@ app.get('/api/message-queue/status', auth, async (req, res) => {
     if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
         return res.json({ available: false, message: 'Message queue requires database' });
     }
+    const accountId = getAccountId(req);
     try {
-        const stats = await db.query(`SELECT status, COUNT(*) as count FROM message_queue GROUP BY status`);
-        const total = await db.query(`SELECT COUNT(*) as total FROM message_queue`);
-        const pending = await db.query(`SELECT COUNT(*) as count FROM message_queue WHERE status = 'pending'`);
+        const whereClause = accountId != null ? ' WHERE account_id = $1' : '';
+        const params = accountId != null ? [accountId] : [];
+        const stats = await db.query(`SELECT status, COUNT(*) as count FROM message_queue${whereClause} GROUP BY status`, params);
+        const total = await db.query(`SELECT COUNT(*) as total FROM message_queue${whereClause}`, params);
+        const pendingQ = accountId != null
+            ? db.query(`SELECT COUNT(*) as count FROM message_queue WHERE status = 'pending' AND account_id = $1`, [accountId])
+            : db.query(`SELECT COUNT(*) as count FROM message_queue WHERE status = 'pending'`);
+        const pending = await pendingQ;
 
         const statsObj = {};
         stats.rows.forEach(row => statsObj[row.status] = parseInt(row.count));
@@ -2112,23 +2120,29 @@ app.get('/api/message-queue/status', auth, async (req, res) => {
 });
 
 app.get('/api/message-queue/history', auth, async (req, res) => {
-    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return res.json([]);
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return res.json({ messages: [], pagination: { page: 1, limit: 50, total: 0, totalPages: 0 } });
 
+    const accountId = getAccountId(req);
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 50;
         const offset = (page - 1) * limit;
         const status = req.query.status;
 
-        let query = `SELECT id, bot_token, chat_id, message_text, priority, status, attempts, max_attempts, created_at, sent_at, error_message FROM message_queue`;
+        const conditions = [];
         const params = [];
+        if (accountId != null) {
+            conditions.push(`account_id = $${params.length + 1}`);
+            params.push(accountId);
+        }
         if (status) {
-            query += ` WHERE status = $1`;
+            conditions.push(`status = $${params.length + 1}`);
             params.push(status);
         }
-        query += ` ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
-        params.push(limit, offset);
+        const whereClause = conditions.length > 0 ? ' WHERE ' + conditions.join(' AND ') : '';
 
+        const query = `SELECT id, bot_token, chat_id, message_text, priority, status, attempts, max_attempts, created_at, sent_at, error_message FROM message_queue${whereClause} ORDER BY created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`;
+        params.push(limit, offset);
         const result = await db.query(query, params);
 
         const messages = result.rows.map(row => ({
@@ -2146,12 +2160,8 @@ app.get('/api/message-queue/history', auth, async (req, res) => {
             errorMessage: row.error_message
         }));
 
-        let countQuery = 'SELECT COUNT(*) as total FROM message_queue';
-        const countParams = [];
-        if (status) {
-            countQuery += ' WHERE status = $1';
-            countParams.push(status);
-        }
+        const countQuery = `SELECT COUNT(*) as total FROM message_queue${whereClause}`;
+        const countParams = params.slice(0, -2);
         const countResult = await db.query(countQuery, countParams);
         const total = parseInt(countResult.rows[0].total);
 
@@ -2319,7 +2329,7 @@ async function executeBot(bot) {
                 return;
             }
 
-            const result = await addMessageToQueue(botToken, bot.chatId, bot.messageText, 0, null);
+            const result = await addMessageToQueue(botToken, bot.chatId, bot.messageText, 0, null, bot.account_id);
             bot.lastRunAt = new Date().toISOString();
             bot.lastError = null;
             if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
@@ -2815,7 +2825,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             }
 
             try {
-                await addMessageToQueue(botToken, integration.chatId, message, 0, null);
+                await addMessageToQueue(botToken, integration.chatId, message, 0, null, integration.account_id);
                 runData.telegramSent = true;
             } catch (tgError) {
                 console.error('Telegram send error:', tgError);
