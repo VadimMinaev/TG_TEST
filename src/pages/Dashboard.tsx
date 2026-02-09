@@ -89,7 +89,7 @@ export function Dashboard() {
   const tabs = [
     { path: '/', label: 'Webhook', icon: <ListChecks /> },
     { path: '/history', label: 'История', icon: <Clock /> },
-    { path: '/queue', label: 'Очередь', icon: <Mail /> },
+    { path: '/queue', label: 'Очередь в Telegram', icon: <Mail /> },
     { path: '/polling', label: 'Пуллинг', icon: <Repeat /> },
     { path: '/polling-history', label: 'Ист. пуллинга', icon: <History /> },
     { path: '/integrations', label: 'Интегратор', icon: <Link2 /> },

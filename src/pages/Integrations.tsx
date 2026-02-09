@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Integration, Rule, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 
@@ -43,6 +43,8 @@ export function Integrations() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [running, setRunning] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
   useEffect(() => {
@@ -250,6 +252,72 @@ export function Integrations() {
     }
   };
 
+  const normalizeImportedIntegration = (raw: any): Partial<Integration> => {
+    return {
+      name: String(raw.name ?? '').trim(),
+      enabled: raw.enabled ?? true,
+      triggerType: raw.triggerType === 'polling' ? 'polling' : 'webhook',
+      triggerCondition: String(raw.triggerCondition ?? '').trim(),
+      pollingUrl: raw.pollingUrl != null ? String(raw.pollingUrl) : undefined,
+      pollingMethod: raw.pollingMethod || 'GET',
+      pollingHeaders: raw.pollingHeaders != null ? String(raw.pollingHeaders) : undefined,
+      pollingBody: raw.pollingBody != null ? String(raw.pollingBody) : undefined,
+      pollingInterval: Number(raw.pollingInterval) || 60,
+      pollingCondition: raw.pollingCondition != null ? String(raw.pollingCondition) : undefined,
+      actionUrl: raw.actionUrl != null ? String(raw.actionUrl) : undefined,
+      actionMethod: raw.actionMethod || 'POST',
+      actionHeaders: raw.actionHeaders != null ? String(raw.actionHeaders) : undefined,
+      actionBody: raw.actionBody != null ? String(raw.actionBody) : undefined,
+      timeoutSec: Number(raw.timeoutSec) || 30,
+      sendToTelegram: raw.sendToTelegram ?? false,
+      chatId: raw.chatId != null ? String(raw.chatId) : undefined,
+      botToken: raw.botToken ? String(raw.botToken) : undefined,
+      messageTemplate: raw.messageTemplate ? String(raw.messageTemplate) : undefined,
+    };
+  };
+
+  const handleImportIntegrations = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.integrations) ? parsed.integrations : [];
+      if (!items.length) throw new Error('Файл не содержит интеграций');
+
+      let created = 0;
+      let failed = 0;
+      for (const item of items) {
+        const payload = normalizeImportedIntegration(item);
+        if (!payload.name) {
+          failed += 1;
+          continue;
+        }
+        try {
+          const createdIntegration = await api.createIntegration(payload);
+          created += 1;
+          setIntegrations((prev) => [...prev, createdIntegration]);
+        } catch {
+          failed += 1;
+        }
+      }
+
+      const messageText =
+        failed === 0
+          ? `Импортировано интеграций: ${created}`
+          : `Импортировано: ${created}, пропущено: ${failed}`;
+      setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
+    } catch (error: any) {
+      setMessage({ text: error.message || 'Ошибка импорта интеграций', type: 'error' });
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="card">
       <div className="card-header">
@@ -298,6 +366,21 @@ export function Integrations() {
           </button>
           {canEdit && (
             <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={handleImportIntegrations}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                disabled={importing}
+                className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
+                title="Импорт интеграций"
+              >
+                <Upload className="h-4 w-4" />
+              </button>
               <button
                 onClick={() => setExportModalOpen(true)}
                 className="icon-button"

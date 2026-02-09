@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 
@@ -51,6 +51,8 @@ export function Polling() {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
   useEffect(() => {
@@ -199,6 +201,67 @@ export function Polling() {
     }
   };
 
+  const normalizeImportedPoll = (raw: any): Partial<Poll> => {
+    return {
+      name: String(raw.name ?? '').trim(),
+      url: String(raw.url ?? '').trim(),
+      method: raw.method || 'GET',
+      headersJson: raw.headersJson != null ? String(raw.headersJson) : undefined,
+      bodyJson: raw.bodyJson != null ? String(raw.bodyJson) : undefined,
+      conditionJson: raw.conditionJson != null ? String(raw.conditionJson) : undefined,
+      intervalSec: Number(raw.intervalSec) || 60,
+      timeoutSec: Number(raw.timeoutSec) ?? 10,
+      chatId: String(raw.chatId ?? '').trim(),
+      botToken: raw.botToken ? String(raw.botToken).trim() : undefined,
+      messageTemplate: raw.messageTemplate ? String(raw.messageTemplate) : undefined,
+      enabled: raw.enabled ?? true,
+      onlyOnChange: raw.onlyOnChange ?? false,
+      continueAfterMatch: raw.continueAfterMatch ?? false,
+    };
+  };
+
+  const handleImportPolls = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.polls) ? parsed.polls : [];
+      if (!items.length) throw new Error('Файл не содержит пуллингов');
+
+      let created = 0;
+      let failed = 0;
+      for (const item of items) {
+        const payload = normalizeImportedPoll(item);
+        if (!payload.name || !payload.url || !payload.chatId) {
+          failed += 1;
+          continue;
+        }
+        try {
+          const createdPoll = await api.createPoll(payload);
+          created += 1;
+          setPolls((prev) => [...prev, createdPoll]);
+        } catch {
+          failed += 1;
+        }
+      }
+
+      const messageText =
+        failed === 0
+          ? `Импортировано пуллингов: ${created}`
+          : `Импортировано: ${created}, пропущено: ${failed}`;
+      setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
+    } catch (error: any) {
+      setMessage({ text: error.message || 'Ошибка импорта пуллингов', type: 'error' });
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="card">
       <div className="card-header">
@@ -246,6 +309,21 @@ export function Polling() {
           </button>
           {canEdit && (
             <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={handleImportPolls}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                disabled={importing}
+                className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
+                title="Импорт пуллингов"
+              >
+                <Upload className="h-4 w-4" />
+              </button>
               <button
                 onClick={() => setExportModalOpen(true)}
                 className="icon-button"

@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Bot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { ExportModal } from '../components/ExportModal';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -69,6 +69,8 @@ export function Bots() {
   const [form, setForm] = useState(DEFAULT_FORM);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-dismiss messages
   useEffect(() => {
@@ -281,6 +283,71 @@ export function Bots() {
     setForm((prev) => ({ ...prev, pollOptions: JSON.stringify(opts) }));
   };
 
+  const normalizeImportedBot = (raw: any): Partial<Bot> => {
+    const scheduleDays = Array.isArray(raw.scheduleDays)
+      ? raw.scheduleDays
+      : [1, 2, 3, 4, 5];
+    return {
+      name: String(raw.name ?? '').trim(),
+      chatId: String(raw.chatId ?? '').trim(),
+      botToken: raw.botToken ? String(raw.botToken).trim() : undefined,
+      messageType: raw.messageType === 'text' ? 'text' : 'poll',
+      messageText: raw.messageText != null ? String(raw.messageText) : undefined,
+      pollQuestion: raw.pollQuestion != null ? String(raw.pollQuestion) : undefined,
+      pollOptions: typeof raw.pollOptions === 'string' ? raw.pollOptions : JSON.stringify(raw.pollOptions || ['Вариант 1', 'Вариант 2', 'Вариант 3']),
+      pollIsAnonymous: raw.pollIsAnonymous ?? true,
+      pollAllowsMultipleAnswers: raw.pollAllowsMultipleAnswers ?? false,
+      scheduleType: raw.scheduleType === 'once' ? 'once' : 'recurring',
+      scheduleDays,
+      scheduleDate: raw.scheduleDate != null ? String(raw.scheduleDate) : undefined,
+      scheduleTime: String(raw.scheduleTime ?? '09:00'),
+      scheduleTimezone: String(raw.scheduleTimezone ?? 'Europe/Moscow'),
+      enabled: raw.enabled ?? true,
+    };
+  };
+
+  const handleImportBots = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+      const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.bots) ? parsed.bots : [];
+      if (!items.length) throw new Error('Файл не содержит ботов');
+
+      let created = 0;
+      let failed = 0;
+      for (const item of items) {
+        const payload = normalizeImportedBot(item);
+        if (!payload.name || !payload.chatId) {
+          failed += 1;
+          continue;
+        }
+        try {
+          const createdBot = await api.createBot(payload);
+          created += 1;
+          setBots((prev) => [...prev, createdBot]);
+        } catch {
+          failed += 1;
+        }
+      }
+
+      const messageText =
+        failed === 0
+          ? `Импортировано ботов: ${created}`
+          : `Импортировано: ${created}, пропущено: ${failed}`;
+      setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
+    } catch (error: any) {
+      setMessage({ text: error.message || 'Ошибка импорта ботов', type: 'error' });
+    } finally {
+      setImporting(false);
+      if (importInputRef.current) {
+        importInputRef.current.value = '';
+      }
+    }
+  };
+
   return (
     <div className="card">
       <div className="card-header">
@@ -324,6 +391,21 @@ export function Bots() {
           </button>
           {canEdit && (
             <>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={handleImportBots}
+              />
+              <button
+                onClick={() => importInputRef.current?.click()}
+                disabled={importing}
+                className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
+                title="Импорт ботов"
+              >
+                <Upload className="h-4 w-4" />
+              </button>
               <button onClick={() => setExportModalOpen(true)} className="icon-button" title="Экспорт ботов">
                 <Download className="h-4 w-4" />
               </button>

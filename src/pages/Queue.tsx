@@ -50,7 +50,7 @@ export function Queue() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">📬 Очередь сообщений</h2>
+        <h2 className="text-xl font-semibold">📬 Очередь сообщений в Telegram</h2>
         <div className="flex items-center gap-2">
           <select
             value={filter}
