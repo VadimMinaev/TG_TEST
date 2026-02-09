@@ -440,7 +440,7 @@ function logWebhook(payload, matched, rules_count, telegram_results = [], accoun
     }
 }
 
-const auth = (req, res, next) => {
+const auth = async (req, res, next) => {
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (token && sessions.has(token)) {
         const session = sessions.get(token);
@@ -452,6 +452,19 @@ const auth = (req, res, next) => {
             return;
         }
         req.user = session;
+        // If non-vadmin has no accountId in session, try to load from DB (e.g. after migration or old session)
+        if (session.username !== 'vadmin' && (session.accountId == null || session.accountId === undefined) && session.userId != null && process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            try {
+                const r = await db.query('SELECT account_id FROM users WHERE id = $1', [session.userId]);
+                if (r.rows[0] && r.rows[0].account_id != null) {
+                    session.accountId = r.rows[0].account_id;
+                    req.user.accountId = session.accountId;
+                    saveSessions();
+                }
+            } catch (e) {
+                console.error('Auth: failed to load account_id for user', session.userId, e.message);
+            }
+        }
         return next();
     }
     res.status(401).json({ error: 'Unauthorized' });
@@ -1262,12 +1275,19 @@ app.get('/api/users', auth, async (req, res) => {
     }
 });
 
-app.post('/api/users', auth, vadminOnly, async (req, res) => {
+app.post('/api/users', auth, async (req, res) => {
     const { username, password, account_id, role } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
     if (username === 'vadmin') return res.status(400).json({ error: 'Cannot create vadmin user' });
-    const accountId = account_id != null ? parseInt(account_id, 10) : null;
-    if (accountId == null) return res.status(400).json({ error: 'Account is required' });
+    const isVadmin = req.user.username === 'vadmin';
+    let accountId = account_id != null ? parseInt(account_id, 10) : null;
+    if (isVadmin) {
+        if (accountId == null) return res.status(400).json({ error: 'Account is required' });
+    } else {
+        if (req.user.role !== 'administrator') return res.status(403).json({ error: 'Only administrator can create users in the account' });
+        accountId = req.user.accountId ?? null;
+        if (accountId == null) return res.status(400).json({ error: 'Account is required' });
+    }
     const roleVal = role === 'auditor' ? 'auditor' : 'administrator';
 
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
@@ -1374,10 +1394,18 @@ app.put('/api/users/:id/password', auth, async (req, res) => {
     }
 });
 
-app.delete('/api/users/:id', auth, vadminOnly, async (req, res) => {
+app.delete('/api/users/:id', auth, async (req, res) => {
     const userId = parseInt(req.params.id);
+    if (userId === req.user.userId) return res.status(400).json({ error: 'Cannot delete yourself' });
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
+            const isVadmin = req.user.username === 'vadmin';
+            if (!isVadmin) {
+                if (req.user.role !== 'administrator') return res.status(403).json({ error: 'Only administrator can delete users' });
+                const target = await db.query('SELECT account_id FROM users WHERE id = $1', [userId]);
+                if (target.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+                if (target.rows[0].account_id !== req.user.accountId) return res.status(403).json({ error: 'Can only delete users in your account' });
+            }
             const result = await db.query('DELETE FROM users WHERE id = $1', [userId]);
             if (result.rowCount > 0) res.json({ status: 'deleted' });
             else res.status(404).json({ error: 'User not found' });

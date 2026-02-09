@@ -14,6 +14,11 @@ export function Users() {
   const [newPassword, setNewPassword] = useState('');
   const [newAccountId, setNewAccountId] = useState<number | ''>('');
   const [newRole, setNewRole] = useState<'administrator' | 'auditor'>('administrator');
+
+  // For account admin: when opening create form, set current account
+  useEffect(() => {
+    if (showCreateForm && !user?.isVadmin && user?.accountId != null) setNewAccountId(user.accountId);
+  }, [showCreateForm, user?.isVadmin, user?.accountId]);
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
   const [showProfile, setShowProfile] = useState(false);
   const [profileUsername, setProfileUsername] = useState('');
@@ -58,12 +63,13 @@ export function Users() {
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
-    if (!newAccountId) {
+    const accountId = user?.isVadmin ? newAccountId : (user?.accountId ?? null);
+    if (accountId === '' || accountId == null) {
       setMessage({ text: 'Выберите аккаунт', type: 'error' });
       return;
     }
     try {
-      await api.createUser(newUsername, newPassword, Number(newAccountId), newRole);
+      await api.createUser(newUsername, newPassword, Number(accountId), newRole);
       setMessage({ text: 'Пользователь создан', type: 'success' });
       setNewUsername('');
       setNewPassword('');
@@ -111,6 +117,7 @@ export function Users() {
   };
 
   const isVadmin = user?.isVadmin;
+  const canManageUsers = isVadmin || (user?.role === 'administrator' && user?.accountId != null);
 
   return (
     <div className="space-y-4">
@@ -179,7 +186,7 @@ export function Users() {
         </div>
       )}
 
-      {showCreateForm && isVadmin && (
+      {showCreateForm && canManageUsers && (
         <div className="card">
           <div className="card-header">
             <h2 className="text-xl font-semibold">Создать пользователя</h2>
@@ -222,20 +229,22 @@ export function Users() {
                   className="w-full max-w-xs rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                 />
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium">Аккаунт</label>
-                <select
-                  value={newAccountId}
-                  onChange={(e) => setNewAccountId(e.target.value ? Number(e.target.value) : '')}
-                  required
-                  className="w-full max-w-xs rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
-                >
-                  <option value="">— выберите —</option>
-                  {accounts.map((a) => (
-                    <option key={a.id} value={a.id}>{a.name}</option>
-                  ))}
-                </select>
-              </div>
+              {isVadmin && (
+                <div>
+                  <label className="mb-1 block text-sm font-medium">Аккаунт</label>
+                  <select
+                    value={newAccountId}
+                    onChange={(e) => setNewAccountId(e.target.value ? Number(e.target.value) : '')}
+                    required
+                    className="w-full max-w-xs rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                  >
+                    <option value="">— выберите —</option>
+                    {accounts.map((a) => (
+                      <option key={a.id} value={a.id}>{a.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="mb-1 block text-sm font-medium">Роль</label>
                 <select
@@ -263,7 +272,7 @@ export function Users() {
       <div className="card">
         <div className="card-header">
           <h2 className="text-xl font-semibold">Пользователи</h2>
-          {isVadmin && (
+          {canManageUsers && (
             <button
               onClick={() => setShowCreateForm(true)}
               className="icon-button"
@@ -312,7 +321,7 @@ export function Users() {
                       {u.created_at && <span>{new Date(u.created_at).toLocaleString('ru-RU')}</span>}
                     </div>
                   </div>
-                  {isVadmin && (
+                  {canManageUsers && u.id !== user?.userId && (
                     <button
                       onClick={() => handleDeleteUser(u.id)}
                       className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
