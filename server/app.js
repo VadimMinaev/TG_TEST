@@ -22,6 +22,7 @@ const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const POLLS_FILE = path.join(__dirname, '../data/polls.json');
 const POLL_RUNS_FILE = path.join(__dirname, '../data/poll_runs.json');
+const INTEGRATIONS_FILE = path.join(__dirname, '../data/integrations.json');
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 const SESSIONS_FILE = path.join(__dirname, '../data/sessions.json');
 
@@ -385,6 +386,27 @@ function savePollRuns() {
         } catch (e) {
             console.error('Error saving poll runs to file:', e);
         }
+    }
+}
+
+function loadIntegrationsFromFile() {
+    try {
+        if (!fs.existsSync(INTEGRATIONS_FILE)) return [];
+        const raw = JSON.parse(fs.readFileSync(INTEGRATIONS_FILE, 'utf8'));
+        return Array.isArray(raw) ? raw : [];
+    } catch (e) {
+        console.error('Error loading integrations from file:', e);
+        return [];
+    }
+}
+
+function saveIntegrationsToFile() {
+    if (process.env.DATABASE_URL) return;
+    try {
+        fs.mkdirSync(path.dirname(INTEGRATIONS_FILE), { recursive: true });
+        fs.writeFileSync(INTEGRATIONS_FILE, JSON.stringify(integrationsCache || [], null, 2), 'utf8');
+    } catch (e) {
+        console.error('Error saving integrations to file:', e);
     }
 }
 
@@ -2706,14 +2728,17 @@ async function loadIntegrationsCache() {
                 .map(r => ({ ...r.data, id: r.id, account_id: r.account_id }))
                 .map(normalizeIntegration)
                 .filter(Boolean);
+            return true;
         } catch (e) {
             console.error('Error loading integrations cache:', e);
+            return false;
         }
-    } else {
-        integrationsCache = integrationsCache
-            .map(normalizeIntegration)
-            .filter(Boolean);
     }
+
+    integrationsCache = loadIntegrationsFromFile()
+        .map(normalizeIntegration)
+        .filter(Boolean);
+    return true;
 }
 
 function normalizeIntegration(raw) {
@@ -2776,17 +2801,21 @@ async function executeIntegrationPolling(integration) {
 }
 
 function scheduleIntegrationTimers() {
-    if (!integrationsCache || integrationsCache.length === 0) return;
+    const list = Array.isArray(integrationsCache) ? integrationsCache : [];
+    let scheduled = 0;
 
-    integrationsCache.forEach(raw => {
+    list.forEach(raw => {
         const integration = normalizeIntegration(raw);
-        if (!integration || integration.triggerType !== 'polling' || !integration.pollingUrl) return;
+        if (!integration || !integration.enabled || integration.triggerType !== 'polling' || !integration.pollingUrl) return;
         const intervalMs = Math.max(1, integration.pollingInterval || 60) * 1000;
         const timer = setInterval(() => {
             executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed:', integration.id, err.message));
         }, intervalMs);
         integrationTimers.set(integration.id, timer);
+        scheduled += 1;
     });
+
+    console.log(`Scheduling ${scheduled} polling integrations`);
 }
 
 function stopIntegrationWorkers() {
@@ -2798,10 +2827,10 @@ function stopIntegrationWorkers() {
 
 async function startIntegrationWorkers() {
     stopIntegrationWorkers();
-    try {
-        await loadIntegrationsCache();
-    } catch (err) {
-        console.error('Integration cache load error:', err);
+    const ok = await loadIntegrationsCache();
+    if (!ok) {
+        console.warn('Integration cache not loaded; skipping polling scheduling');
+        return;
     }
     scheduleIntegrationTimers();
 }
@@ -3042,6 +3071,7 @@ app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
             await db.query('INSERT INTO integrations (id, data, account_id) VALUES ($1, $2, $3)', [newIntegration.id, newIntegration, accountId]);
         } else {
             integrationsCache.push(newIntegration);
+            saveIntegrationsToFile();
         }
 
         await refreshIntegrationWorkers();
@@ -3068,6 +3098,7 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
             const idx = integrationsCache.findIndex(i => i.id === id);
             if (idx === -1) return res.status(404).json({ error: 'Integration not found' });
             integrationsCache[idx] = updated;
+            saveIntegrationsToFile();
         }
 
         await refreshIntegrationWorkers();
@@ -3089,6 +3120,7 @@ app.delete('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) =>
             if (dr.rowCount > 0) await db.query('DELETE FROM integration_runs WHERE integration_id = $1', [id]);
         } else {
             integrationsCache = integrationsCache.filter(i => i.id !== id);
+            saveIntegrationsToFile();
         }
         
         await refreshIntegrationWorkers();
