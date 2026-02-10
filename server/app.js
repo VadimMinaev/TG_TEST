@@ -2748,6 +2748,7 @@ async function loadIntegrationsCache() {
 function normalizeIntegration(raw) {
     if (!raw || typeof raw !== 'object') return null;
     const interval = Number(raw.pollingInterval);
+    const timeout = Number(raw.timeoutSec);
     return {
         ...raw,
         enabled: raw.enabled ?? true,
@@ -2762,7 +2763,7 @@ function normalizeIntegration(raw) {
         actionMethod: (raw.actionMethod || 'POST').toUpperCase(),
         actionHeaders: raw.actionHeaders || '',
         actionBody: raw.actionBody || '',
-        timeoutSec: Number(raw.timeoutSec) || 30,
+        timeoutSec: Number.isFinite(timeout) && timeout > 0 ? timeout : 30,
         chatId: raw.chatId || '',
         botToken: raw.botToken || '',
         messageTemplate: raw.messageTemplate || '',
@@ -2786,6 +2787,8 @@ async function executeIntegrationPolling(integration) {
         return;
     }
 
+    console.log(`🔄 Polling integration ${integration.id} (${integration.name})...`);
+
     const headers = parseJsonSafe(integration.pollingHeaders, {});
     const body = parseJsonSafe(integration.pollingBody, null);
     const method = (integration.pollingMethod || 'GET').toUpperCase();
@@ -2803,12 +2806,14 @@ async function executeIntegrationPolling(integration) {
 
     try {
         const response = await axios(requestConfig);
+        console.log(`✓ Integration ${integration.id} got response status ${response.status}`);
         const responseData = response.data ?? {};
         const conditionMet = evaluateIntegrationCondition(integration.pollingCondition, responseData);
+        console.log(`  Condition met: ${conditionMet}`);
         if (!conditionMet) return;
         await executeIntegration(integration, responseData, 'polling');
     } catch (error) {
-        console.error('Integration polling error:', integration.id, error.message);
+        console.error(`✗ Integration polling error [${integration.id}]:`, error.message);
     }
 }
 
@@ -2846,7 +2851,7 @@ function scheduleIntegrationTimers() {
         }, intervalMs);
         integrationTimers.set(integration.id, timer);
 
-        console.log(`✅ Scheduled polling for ${integration.name} (ID: ${integration.id}) every ${integration.pollingInterval}s`);
+        console.log(`✅ Scheduled polling for ${integration.name} (ID: ${integration.id}) every ${integration.pollingInterval}s (${intervalMs}ms)`);
         scheduled += 1;
     });
 
@@ -3086,16 +3091,16 @@ app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
             triggerType: req.body.triggerType || 'webhook',
             triggerCondition: req.body.triggerCondition || '',
             pollingUrl: req.body.pollingUrl || '',
-            pollingMethod: req.body.pollingMethod || 'GET',
+            pollingMethod: (req.body.pollingMethod || 'GET').toString(),
             pollingHeaders: req.body.pollingHeaders || '',
             pollingBody: req.body.pollingBody || '',
-            pollingInterval: req.body.pollingInterval || 60,
+            pollingInterval: Math.max(1, Number(req.body.pollingInterval) || 60),
             pollingCondition: req.body.pollingCondition || '',
             actionUrl: req.body.actionUrl || '',
-            actionMethod: req.body.actionMethod || 'POST',
+            actionMethod: (req.body.actionMethod || 'POST').toString(),
             actionHeaders: req.body.actionHeaders || '',
             actionBody: req.body.actionBody || '',
-            timeoutSec: req.body.timeoutSec || 30,
+            timeoutSec: Math.max(1, Number(req.body.timeoutSec) || 30),
             chatId: req.body.chatId || '',
             botToken: req.body.botToken || '',
             messageTemplate: req.body.messageTemplate || '',
@@ -3122,7 +3127,7 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
     const accountId = getAccountId(req);
     try {
-        // Apply defaults for missing fields
+        // Apply defaults for missing fields and ensure proper types
         const updated = {
             ...req.body,
             id,
@@ -3131,16 +3136,16 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
             triggerType: req.body.triggerType || 'webhook',
             triggerCondition: req.body.triggerCondition || '',
             pollingUrl: req.body.pollingUrl || '',
-            pollingMethod: req.body.pollingMethod || 'GET',
+            pollingMethod: (req.body.pollingMethod || 'GET').toString(),
             pollingHeaders: req.body.pollingHeaders || '',
             pollingBody: req.body.pollingBody || '',
-            pollingInterval: req.body.pollingInterval || 60,
+            pollingInterval: Math.max(1, Number(req.body.pollingInterval) || 60),
             pollingCondition: req.body.pollingCondition || '',
             actionUrl: req.body.actionUrl || '',
-            actionMethod: req.body.actionMethod || 'POST',
+            actionMethod: (req.body.actionMethod || 'POST').toString(),
             actionHeaders: req.body.actionHeaders || '',
             actionBody: req.body.actionBody || '',
-            timeoutSec: req.body.timeoutSec || 30,
+            timeoutSec: Math.max(1, Number(req.body.timeoutSec) || 30),
             chatId: req.body.chatId || '',
             botToken: req.body.botToken || '',
             messageTemplate: req.body.messageTemplate || '',
