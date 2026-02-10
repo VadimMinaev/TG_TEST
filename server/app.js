@@ -2709,6 +2709,10 @@ async function loadIntegrationsCache() {
         } catch (e) {
             console.error('Error loading integrations cache:', e);
         }
+    } else {
+        integrationsCache = integrationsCache
+            .map(normalizeIntegration)
+            .filter(Boolean);
     }
 }
 
