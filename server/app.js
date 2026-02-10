@@ -302,7 +302,7 @@ if (process.env.DATABASE_URL) {
             startMessageQueueWorker();
             startPollWorkers();
             startBotScheduler();
-            startIntegrationWorkers();
+            startIntegrationWorkers().catch(err => console.error('Failed to start integration workers:', err));
         } catch (err) {
             console.error('DB init error:', err);
             dbConnected = false;
@@ -345,6 +345,7 @@ if (process.env.DATABASE_URL) {
     }
     pollsCache = db.polls;
     startPollWorkers();
+    startIntegrationWorkers().catch(err => console.error('Failed to start integration workers:', err));
 }
 
 function saveRules() {
@@ -2701,11 +2702,87 @@ async function loadIntegrationsCache() {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             const result = await db.query('SELECT id, data, account_id FROM integrations');
-            integrationsCache = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
+            integrationsCache = result.rows
+                .map(r => ({ ...r.data, id: r.id, account_id: r.account_id }))
+                .map(normalizeIntegration)
+                .filter(Boolean);
         } catch (e) {
             console.error('Error loading integrations cache:', e);
         }
     }
+}
+
+function normalizeIntegration(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const interval = Number(raw.pollingInterval);
+    return {
+        ...raw,
+        enabled: raw.enabled ?? true,
+        triggerType: raw.triggerType || 'webhook',
+        pollingUrl: raw.pollingUrl || '',
+        pollingMethod: (raw.pollingMethod || 'GET').toUpperCase(),
+        pollingHeaders: raw.pollingHeaders || '',
+        pollingBody: raw.pollingBody || '',
+        pollingInterval: Number.isFinite(interval) && interval > 0 ? interval : 60,
+        pollingCondition: raw.pollingCondition || '',
+        timeoutSec: Number(raw.timeoutSec) || 30
+    };
+}
+
+function evaluateIntegrationCondition(condition, response) {
+    if (!condition || typeof condition !== 'string') return true;
+    try {
+        const fn = new Function('response', 'payload', 'trigger', `return !!(${condition});`);
+        return Boolean(fn(response ?? {}, response ?? {}, response ?? {}));
+    } catch (e) {
+        console.error('Integration condition evaluation failed:', e.message);
+        return false;
+    }
+}
+
+async function executeIntegrationPolling(integration) {
+    if (!integration || !integration.enabled || integration.triggerType !== 'polling' || !integration.pollingUrl) {
+        return;
+    }
+
+    const headers = parseJsonSafe(integration.pollingHeaders, {});
+    const body = parseJsonSafe(integration.pollingBody, null);
+    const method = (integration.pollingMethod || 'GET').toUpperCase();
+    const timeout = (integration.timeoutSec || 30) * 1000;
+
+    const requestConfig = {
+        url: integration.pollingUrl,
+        method,
+        headers,
+        timeout
+    };
+    if (body !== null && !['GET', 'HEAD'].includes(method)) {
+        requestConfig.data = body;
+    }
+
+    try {
+        const response = await axios(requestConfig);
+        const responseData = response.data ?? {};
+        const conditionMet = evaluateIntegrationCondition(integration.pollingCondition, responseData);
+        if (!conditionMet) return;
+        await executeIntegration(integration, responseData, 'polling');
+    } catch (error) {
+        console.error('Integration polling error:', integration.id, error.message);
+    }
+}
+
+function scheduleIntegrationTimers() {
+    if (!integrationsCache || integrationsCache.length === 0) return;
+
+    integrationsCache.forEach(raw => {
+        const integration = normalizeIntegration(raw);
+        if (!integration || integration.triggerType !== 'polling' || !integration.pollingUrl) return;
+        const intervalMs = Math.max(1, integration.pollingInterval || 60) * 1000;
+        const timer = setInterval(() => {
+            executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed:', integration.id, err.message));
+        }, intervalMs);
+        integrationTimers.set(integration.id, timer);
+    });
 }
 
 function stopIntegrationWorkers() {
@@ -2715,9 +2792,18 @@ function stopIntegrationWorkers() {
     integrationTimers.clear();
 }
 
-function startIntegrationWorkers() {
+async function startIntegrationWorkers() {
     stopIntegrationWorkers();
-    loadIntegrationsCache().catch(err => console.error('Integration cache load error:', err));
+    try {
+        await loadIntegrationsCache();
+    } catch (err) {
+        console.error('Integration cache load error:', err);
+    }
+    scheduleIntegrationTimers();
+}
+
+async function refreshIntegrationWorkers() {
+    await startIntegrationWorkers();
 }
 
 async function logIntegrationRun(integrationId, data) {
@@ -2954,7 +3040,7 @@ app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
             integrationsCache.push(newIntegration);
         }
 
-        await loadIntegrationsCache();
+        await refreshIntegrationWorkers();
         res.json(newIntegration);
     } catch (error) {
         console.error('Error creating integration:', error);
@@ -2980,7 +3066,7 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
             integrationsCache[idx] = updated;
         }
 
-        await loadIntegrationsCache();
+        await refreshIntegrationWorkers();
         res.json(updated);
     } catch (error) {
         res.status(500).json({ error: 'Failed to update integration' });
@@ -3001,7 +3087,7 @@ app.delete('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) =>
             integrationsCache = integrationsCache.filter(i => i.id !== id);
         }
         
-        await loadIntegrationsCache();
+        await refreshIntegrationWorkers();
         res.json({ status: 'deleted' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete integration' });
