@@ -320,15 +320,6 @@ if (process.env.DATABASE_URL) {
     } catch (e) {
         console.error('Error loading rules from file:', e);
     }
-
-    // Load integrations before starting workers in file mode.
-    try {
-        integrationsCache = loadIntegrationsFromFile();
-        console.log(`✅ Loaded ${integrationsCache.length} integrations from file`);
-    } catch (e) {
-        console.error('❌ Error loading integrations:', e);
-        integrationsCache = [];
-    }
     try {
         if (fs.existsSync(LOGS_FILE)) {
             db.logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8'));
@@ -344,6 +335,15 @@ if (process.env.DATABASE_URL) {
         }
     } catch (e) {
         console.error('Error loading polls from file:', e);
+    }
+
+    // Load integrations from file before starting integration workers (like polls).
+    try {
+        integrationsCache = loadIntegrationsFromFile();
+        console.log('✅ Integrations loaded from file');
+    } catch (e) {
+        console.error('❌ Error loading integrations:', e);
+        integrationsCache = [];
     }
     try {
         if (fs.existsSync(POLL_RUNS_FILE)) {
@@ -2848,7 +2848,7 @@ function scheduleIntegrationTimers() {
         scheduled += 1;
     });
 
-    console.log(`✅ Scheduled ${scheduled} polling integrations`);
+    console.log(`Scheduling ${scheduled} polling integrations`);
 }
 
 function stopIntegrationWorkers() {
