@@ -1,6 +1,6 @@
 {
   "name": "telegram-webhook-integration",
-  "version": "1.0.273",
+  "version": "1.0.274",
   "description": "Webhook to Telegram integration with routing rules",
   "main": "server/app.js",
   "scripts": {

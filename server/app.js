@@ -302,6 +302,7 @@ if (process.env.DATABASE_URL) {
             startMessageQueueWorker();
             startPollWorkers();
             startBotScheduler();
+            startIntegrationWorkers();
         } catch (err) {
             console.error('DB init error:', err);
             dbConnected = false;
@@ -521,7 +522,7 @@ function formatMessage(fullBody, payload, rule = {}) {
                 try {
                     return \`${rule.messageTemplate.replace(/`/g, '\\`')}\`;
                 } catch (e) {
-                    return \`[ОШИБКА В ШАБЛОНЕ]: \${e.message}\n\nДанные:\n\${JSON.stringify(payload, null, 2).slice(0, 4000)}\`;
+                    return '[Ошибка шаблона]: ' + e.message;
                 }
             `);
             return templateFn(payload);
@@ -2397,13 +2398,6 @@ function startBotScheduler() {
             if (!bot.enabled) continue;
             if (!bot.scheduleTime) continue;
 
-            const scheduleType = bot.scheduleType || 'recurring';
-
-            // Recurring bots need scheduleDays
-            if (scheduleType === 'recurring' && (!bot.scheduleDays || bot.scheduleDays.length === 0)) continue;
-            // Once bots need scheduleDate
-            if (scheduleType === 'once' && !bot.scheduleDate) continue;
-
             try {
                 const tz = bot.scheduleTimezone || 'Europe/Moscow';
                 const now = new Date();
@@ -2434,7 +2428,7 @@ function startBotScheduler() {
 
                 let shouldRun = false;
 
-                if (scheduleType === 'once') {
+                if (bot.scheduleType === 'once') {
                     // Run on specific date at specific time
                     shouldRun = dateStr === bot.scheduleDate && currentTime === bot.scheduleTime;
                 } else {
@@ -2900,8 +2894,8 @@ app.get('/api/integrations/:id', auth, async (req, res) => {
     try {
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
             const q = accountId != null
-                ? db.query('SELECT id, data FROM integrations WHERE id = $1 AND account_id = $2', [id, accountId])
-                : db.query('SELECT id, data FROM integrations WHERE id = $1', [id]);
+                ? db.query('SELECT id, data, account_id FROM integrations WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data, account_id FROM integrations WHERE id = $1', [id]);
             const result = await q;
             if (result.rows.length === 0) return res.status(404).json({ error: 'Integration not found' });
             return res.json({ ...result.rows[0].data, id: result.rows[0].id });
