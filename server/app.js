@@ -2708,6 +2708,18 @@ async function loadIntegrationsCache() {
     }
 }
 
+function stopIntegrationWorkers() {
+    for (const timer of integrationTimers.values()) {
+        clearInterval(timer);
+    }
+    integrationTimers.clear();
+}
+
+function startIntegrationWorkers() {
+    stopIntegrationWorkers();
+    loadIntegrationsCache().catch(err => console.error('Integration cache load error:', err));
+}
+
 async function logIntegrationRun(integrationId, data) {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
