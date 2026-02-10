@@ -338,13 +338,7 @@ if (process.env.DATABASE_URL) {
     }
 
     // Load integrations from file before starting integration workers (like polls).
-    try {
-        integrationsCache = loadIntegrationsFromFile();
-        console.log('✅ Integrations loaded from file');
-    } catch (e) {
-        console.error('❌ Error loading integrations:', e);
-        integrationsCache = [];
-    }
+    // Note: integrationsCache will be loaded and normalized by startIntegrationWorkers()
     try {
         if (fs.existsSync(POLL_RUNS_FILE)) {
             db.pollRuns = JSON.parse(fs.readFileSync(POLL_RUNS_FILE, 'utf8'));
@@ -2764,7 +2758,15 @@ function normalizeIntegration(raw) {
         pollingBody: raw.pollingBody || '',
         pollingInterval: Number.isFinite(interval) && interval > 0 ? interval : 60,
         pollingCondition: raw.pollingCondition || '',
-        timeoutSec: Number(raw.timeoutSec) || 30
+        actionUrl: raw.actionUrl || '',
+        actionMethod: (raw.actionMethod || 'POST').toUpperCase(),
+        actionHeaders: raw.actionHeaders || '',
+        actionBody: raw.actionBody || '',
+        timeoutSec: Number(raw.timeoutSec) || 30,
+        chatId: raw.chatId || '',
+        botToken: raw.botToken || '',
+        messageTemplate: raw.messageTemplate || '',
+        sendToTelegram: raw.sendToTelegram ?? false
     };
 }
 
@@ -3097,6 +3099,7 @@ app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
             chatId: req.body.chatId || '',
             botToken: req.body.botToken || '',
             messageTemplate: req.body.messageTemplate || '',
+            sendToTelegram: req.body.sendToTelegram ?? false,
             authorId: req.user.userId || req.user.username
         };
 
@@ -3119,7 +3122,30 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
     const accountId = getAccountId(req);
     try {
-        const updated = { ...req.body, id };
+        // Apply defaults for missing fields
+        const updated = {
+            ...req.body,
+            id,
+            name: req.body.name || 'Новая интеграция',
+            enabled: req.body.enabled ?? true,
+            triggerType: req.body.triggerType || 'webhook',
+            triggerCondition: req.body.triggerCondition || '',
+            pollingUrl: req.body.pollingUrl || '',
+            pollingMethod: req.body.pollingMethod || 'GET',
+            pollingHeaders: req.body.pollingHeaders || '',
+            pollingBody: req.body.pollingBody || '',
+            pollingInterval: req.body.pollingInterval || 60,
+            pollingCondition: req.body.pollingCondition || '',
+            actionUrl: req.body.actionUrl || '',
+            actionMethod: req.body.actionMethod || 'POST',
+            actionHeaders: req.body.actionHeaders || '',
+            actionBody: req.body.actionBody || '',
+            timeoutSec: req.body.timeoutSec || 30,
+            chatId: req.body.chatId || '',
+            botToken: req.body.botToken || '',
+            messageTemplate: req.body.messageTemplate || '',
+            sendToTelegram: req.body.sendToTelegram ?? false
+        };
         
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
             const updateQ = accountId != null
