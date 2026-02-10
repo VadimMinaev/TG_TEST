@@ -320,6 +320,15 @@ if (process.env.DATABASE_URL) {
     } catch (e) {
         console.error('Error loading rules from file:', e);
     }
+
+    // Load integrations before starting workers in file mode.
+    try {
+        integrationsCache = loadIntegrationsFromFile();
+        console.log(`✅ Loaded ${integrationsCache.length} integrations from file`);
+    } catch (e) {
+        console.error('❌ Error loading integrations:', e);
+        integrationsCache = [];
+    }
     try {
         if (fs.existsSync(LOGS_FILE)) {
             db.logs = JSON.parse(fs.readFileSync(LOGS_FILE, 'utf8'));
@@ -2728,6 +2737,7 @@ async function loadIntegrationsCache() {
                 .map(r => ({ ...r.data, id: r.id, account_id: r.account_id }))
                 .map(normalizeIntegration)
                 .filter(Boolean);
+            console.log(`✅ Loaded ${integrationsCache.length} integrations from database`);
             return true;
         } catch (e) {
             console.error('Error loading integrations cache:', e);
@@ -2806,16 +2816,39 @@ function scheduleIntegrationTimers() {
 
     list.forEach(raw => {
         const integration = normalizeIntegration(raw);
-        if (!integration || !integration.enabled || integration.triggerType !== 'polling' || !integration.pollingUrl) return;
+        if (!integration) {
+            console.warn('⚠️ Skipping invalid integration (null after normalize)');
+            return;
+        }
+
+        console.log(
+            `🔍 Integration ${integration.id}: enabled=${integration.enabled}, triggerType=${integration.triggerType}, pollingUrl=${integration.pollingUrl || 'EMPTY'}`
+        );
+
+        if (!integration.enabled) {
+            console.log(`⏸️ Integration ${integration.id} (${integration.name}) is disabled`);
+            return;
+        }
+        if (integration.triggerType !== 'polling') {
+            console.log(`⏭️ Integration ${integration.id} (${integration.name}) has triggerType: ${integration.triggerType}`);
+            return;
+        }
+        if (!integration.pollingUrl) {
+            console.warn(`⚠️ Integration ${integration.id} (${integration.name}) has empty pollingUrl`);
+            return;
+        }
+
         const intervalMs = Math.max(1, integration.pollingInterval || 60) * 1000;
         const timer = setInterval(() => {
             executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed:', integration.id, err.message));
         }, intervalMs);
         integrationTimers.set(integration.id, timer);
+
+        console.log(`✅ Scheduled polling for ${integration.name} (ID: ${integration.id}) every ${integration.pollingInterval}s`);
         scheduled += 1;
     });
 
-    console.log(`Scheduling ${scheduled} polling integrations`);
+    console.log(`✅ Scheduled ${scheduled} polling integrations`);
 }
 
 function stopIntegrationWorkers() {
