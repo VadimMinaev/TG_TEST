@@ -2753,6 +2753,7 @@ function normalizeIntegration(raw) {
         ...raw,
         enabled: raw.enabled ?? true,
         triggerType: raw.triggerType || 'webhook',
+        triggerCondition: raw.triggerCondition || '',
         pollingUrl: raw.pollingUrl || '',
         pollingMethod: (raw.pollingMethod || 'GET').toUpperCase(),
         pollingHeaders: raw.pollingHeaders || '',
@@ -2924,6 +2925,29 @@ async function executeIntegration(integration, triggerData = null, triggerType =
     };
 
     try {
+        // Проверяем условие перед выполнением action
+        let shouldExecuteAction = true;
+        if (triggerType === 'polling' && integration.pollingCondition) {
+            shouldExecuteAction = evaluateIntegrationCondition(integration.pollingCondition, triggerData);
+        } else if (triggerType === 'webhook' && integration.triggerCondition) {
+            shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, triggerData);
+        } else if (triggerType === 'manual') {
+            // При ручном запуске проверяем условие основного триггера
+            const sourceCondition = integration.triggerType === 'polling' 
+                ? integration.pollingCondition 
+                : integration.triggerCondition;
+            if (sourceCondition) {
+                shouldExecuteAction = evaluateIntegrationCondition(sourceCondition, triggerData);
+            }
+        }
+
+        if (!shouldExecuteAction) {
+            runData.status = 'skipped';
+            runData.errorMessage = 'Condition not met';
+            await logIntegrationRun(integration.id, runData);
+            return runData;
+        }
+
         // Выполняем action если указан URL
         if (integration.actionUrl) {
             const actionHeaders = integration.actionHeaders ? parseJsonSafe(integration.actionHeaders, {}) : {};
