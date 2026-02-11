@@ -123,10 +123,12 @@ export function IntegrationHistory() {
                             className={`rounded px-1.5 py-0.5 text-[10px] ${
                               run.status === 'success'
                                 ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                                : run.status === 'skipped'
+                                ? 'bg-[hsl(var(--muted)_/_0.15)] text-[hsl(var(--muted-foreground))]'
                                 : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
                             }`}
                           >
-                            {run.status === 'success' ? 'Успех' : 'Ошибка'}
+                            {run.status === 'success' ? 'Успех' : run.status === 'skipped' ? 'Пропущено' : 'Ошибка'}
                           </span>
                         </td>
                       </tr>
@@ -162,10 +164,12 @@ export function IntegrationHistory() {
                       className={`rounded px-2 py-1 text-xs ${
                         selectedRun.status === 'success'
                           ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                          : selectedRun.status === 'skipped'
+                          ? 'bg-[hsl(var(--muted)_/_0.15)] text-[hsl(var(--muted-foreground))]'
                           : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
                       }`}
                     >
-                      {selectedRun.status === 'success' ? 'Успех' : 'Ошибка'}
+                      {selectedRun.status === 'success' ? 'Успех' : selectedRun.status === 'skipped' ? 'Пропущено' : 'Ошибка'}
                     </span>
                   </div>
                   <div>
@@ -209,7 +213,7 @@ export function IntegrationHistory() {
                 </div>
               )}
 
-              {selectedRun.error_message && (
+              {selectedRun.error_message && selectedRun.status !== 'skipped' && (
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--destructive))]">Ошибка</h4>
                   <div className="panel border-[hsl(var(--destructive)_/_0.3)] bg-[hsl(var(--destructive)_/_0.05)]">
