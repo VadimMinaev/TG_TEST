@@ -2724,6 +2724,7 @@ app.post('/api/bots/:id/run', auth, blockAuditorWrite, async (req, res) => {
 // ============ INTEGRATIONS API ============
 
 async function loadIntegrationsCache() {
+    console.log('📥 Loading integrations cache...');
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             const result = await db.query('SELECT id, data, account_id FROM integrations');
@@ -2734,7 +2735,7 @@ async function loadIntegrationsCache() {
             console.log(`✅ Loaded ${integrationsCache.length} integrations from database`);
             return true;
         } catch (e) {
-            console.error('Error loading integrations cache:', e);
+            console.error('Error loading integrations cache from DB:', e);
             return false;
         }
     }
@@ -2742,6 +2743,7 @@ async function loadIntegrationsCache() {
     integrationsCache = loadIntegrationsFromFile()
         .map(normalizeIntegration)
         .filter(Boolean);
+    console.log(`✅ Loaded ${integrationsCache.length} integrations from file`);
     return true;
 }
 
@@ -2773,12 +2775,17 @@ function normalizeIntegration(raw) {
 }
 
 function evaluateIntegrationCondition(condition, response) {
-    if (!condition || typeof condition !== 'string') return true;
+    if (!condition || typeof condition !== 'string') {
+        console.log(`   [EVAL] No condition or not string`);
+        return true;
+    }
     try {
         const fn = new Function('payload', 'response', `return !!(${condition});`);
-        return Boolean(fn(response ?? {}, response ?? {}));
+        const result = Boolean(fn(response ?? {}, response ?? {}));
+        console.log(`   [EVAL] Condition "${condition}" evaluated to ${result}`);
+        return result;
     } catch (e) {
-        console.error('Integration condition evaluation failed:', e.message);
+        console.error(`   [EVAL] Condition evaluation failed for "${condition}":`, e.message);
         return false;
     }
 }
@@ -2806,21 +2813,28 @@ async function executeIntegrationPolling(integration) {
     }
 
     try {
+        console.log(`   📤 ${method} ${integration.pollingUrl}`);
         const response = await axios(requestConfig);
-        console.log(`✓ Integration ${integration.id} got response status ${response.status}`);
+        console.log(`   ✓ Got response: ${response.status}`);
         const responseData = response.data ?? {};
         const conditionMet = evaluateIntegrationCondition(integration.pollingCondition, responseData);
-        console.log(`  Condition met: ${conditionMet}`);
-        if (!conditionMet) return;
+        console.log(`   Condition: ${integration.pollingCondition ? conditionMet : 'no condition'}`);
+        if (!conditionMet) {
+            console.log(`   ⏭️ Condition not met, skipping action`);
+            return;
+        }
+        console.log(`   ✅ Executing action...`);
         await executeIntegration(integration, responseData, 'polling');
     } catch (error) {
-        console.error(`✗ Integration polling error [${integration.id}]:`, error.message);
+        console.error(`   ✗ Integration polling error [${integration.id}]:`, error.message);
     }
 }
 
 function scheduleIntegrationTimers() {
     const list = Array.isArray(integrationsCache) ? integrationsCache : [];
     let scheduled = 0;
+
+    console.log(`📋 Processing ${list.length} integrations for polling...`);
 
     list.forEach(raw => {
         const integration = normalizeIntegration(raw);
@@ -2830,7 +2844,7 @@ function scheduleIntegrationTimers() {
         }
 
         console.log(
-            `🔍 Integration ${integration.id}: enabled=${integration.enabled}, triggerType=${integration.triggerType}, pollingUrl=${integration.pollingUrl || 'EMPTY'}`
+            `🔍 Integration ${integration.id}: enabled=${integration.enabled}, triggerType="${integration.triggerType}", pollingUrl="${integration.pollingUrl}"`
         );
 
         if (!integration.enabled) {
@@ -2838,16 +2852,17 @@ function scheduleIntegrationTimers() {
             return;
         }
         if (integration.triggerType !== 'polling') {
-            console.log(`⏭️ Integration ${integration.id} (${integration.name}) has triggerType: ${integration.triggerType}`);
+            console.log(`⏭️ Integration ${integration.id} (${integration.name}) has triggerType: ${integration.triggerType} (skip)`);
             return;
         }
-        if (!integration.pollingUrl) {
+        if (!integration.pollingUrl || integration.pollingUrl.trim() === '') {
             console.warn(`⚠️ Integration ${integration.id} (${integration.name}) has empty pollingUrl`);
             return;
         }
 
         const intervalMs = Math.max(1, integration.pollingInterval || 60) * 1000;
         
+        console.log(`⚡ Integration ${integration.id}: executing first poll immediately...`);
         // Запускаем первую проверку сразу
         executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed (immediate):', integration.id, err.message));
         
@@ -2857,11 +2872,11 @@ function scheduleIntegrationTimers() {
         }, intervalMs);
         integrationTimers.set(integration.id, timer);
 
-        console.log(`✅ Scheduled polling for ${integration.name} (ID: ${integration.id}) every ${integration.pollingInterval}s (${intervalMs}ms)`);
+        console.log(`✅ Scheduled polling for ${integration.name} (ID: ${integration.id}) every ${integration.pollingInterval}s`);
         scheduled += 1;
     });
 
-    console.log(`Scheduling ${scheduled} polling integrations`);
+    console.log(`✨ Successfully scheduled ${scheduled} polling integrations`);
 }
 
 function stopIntegrationWorkers() {
@@ -2872,13 +2887,16 @@ function stopIntegrationWorkers() {
 }
 
 async function startIntegrationWorkers() {
+    console.log('🚀 Starting integration workers...');
     stopIntegrationWorkers();
     const ok = await loadIntegrationsCache();
     if (!ok) {
-        console.warn('Integration cache not loaded; skipping polling scheduling');
+        console.warn('⚠️ Integration cache not loaded; skipping polling scheduling');
         return;
     }
+    console.log(`📦 Integration cache loaded with ${integrationsCache.length} items`);
     scheduleIntegrationTimers();
+    console.log('✅ Integration workers started');
 }
 
 async function refreshIntegrationWorkers() {
@@ -2936,14 +2954,28 @@ async function executeIntegration(integration, triggerData = null, triggerType =
         // Для polling: условие уже проверено в executeIntegrationPolling, не проверяем еще раз
         // Для webhook: проверяем triggerCondition если есть
         if (triggerType === 'webhook' && integration.triggerCondition) {
+            console.log(`[WEBHOOK] Checking condition: ${integration.triggerCondition}`);
             shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, triggerData);
+            console.log(`[WEBHOOK] Condition result: ${shouldExecuteAction}`);
         } 
-        // Для manual: проверяем triggerCondition основного триггера если есть
-        else if (triggerType === 'manual' && integration.triggerCondition) {
-            shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, triggerData);
+        // Для manual: проверяем условие основного триггера если есть
+        else if (triggerType === 'manual') {
+            // Определяем какое условие проверять в зависимости от типа триггера интеграции
+            const conditionToCheck = integration.triggerType === 'polling' 
+                ? integration.pollingCondition 
+                : integration.triggerCondition;
+            
+            if (conditionToCheck) {
+                console.log(`[MANUAL] Integration type: ${integration.triggerType}, checking condition: ${conditionToCheck}`);
+                shouldExecuteAction = evaluateIntegrationCondition(conditionToCheck, triggerData);
+                console.log(`[MANUAL] Condition result: ${shouldExecuteAction}`);
+            } else {
+                console.log(`[MANUAL] No condition to check`);
+            }
         }
 
         if (!shouldExecuteAction) {
+            console.log(`⏭️ Skipping action: condition not met`);
             runData.status = 'skipped';
             runData.errorMessage = 'Condition not met';
             await logIntegrationRun(integration.id, runData);
@@ -3239,7 +3271,37 @@ app.post('/api/integrations/:id/run', auth, blockAuditorWrite, async (req, res) 
             if (!integration) return res.status(404).json({ error: 'Integration not found' });
         }
 
-        const result = await executeIntegration(integration, req.body.testData || null, 'manual');
+        // Нормализуем интеграцию
+        integration = normalizeIntegration(integration);
+        
+        let triggerData = req.body.testData || null;
+        
+        // Если это polling интеграция - сначала делаем polling запрос
+        if (integration.triggerType === 'polling' && integration.pollingUrl) {
+            const headers = parseJsonSafe(integration.pollingHeaders, {});
+            const body = parseJsonSafe(integration.pollingBody, null);
+            const method = (integration.pollingMethod || 'GET').toUpperCase();
+            const timeout = (integration.timeoutSec || 30) * 1000;
+
+            const requestConfig = {
+                url: integration.pollingUrl,
+                method,
+                headers,
+                timeout
+            };
+            if (body !== null && !['GET', 'HEAD'].includes(method)) {
+                requestConfig.data = body;
+            }
+
+            try {
+                const response = await axios(requestConfig);
+                triggerData = response.data ?? {};
+            } catch (error) {
+                return res.status(500).json({ error: `Polling failed: ${error.message}` });
+            }
+        }
+
+        const result = await executeIntegration(integration, triggerData, 'manual');
         res.json(result);
     } catch (error) {
         res.status(500).json({ error: 'Failed to run integration' });
