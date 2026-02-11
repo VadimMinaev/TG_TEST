@@ -2832,21 +2832,36 @@ async function executeIntegrationPolling(integration) {
         requestConfig.data = body;
     }
 
+    const runData = {
+        triggerType: 'polling',
+        status: 'success',
+        triggerData: null,
+        telegramSent: false,
+        accountId: integration.account_id ?? null
+    };
+
     try {
         console.log(`   📤 ${method} ${integration.pollingUrl}`);
         const response = await axios(requestConfig);
         console.log(`   ✓ Got response: ${response.status}`);
         const responseData = response.data ?? {};
+        runData.triggerData = JSON.stringify(responseData).slice(0, 2000);
         const conditionMet = evaluateIntegrationCondition(integration.pollingCondition, responseData);
         console.log(`   Condition: ${integration.pollingCondition ? conditionMet : 'no condition'}`);
         if (!conditionMet) {
             console.log(`   ⏭️ Condition not met, skipping action`);
+            runData.status = 'skipped';
+            runData.errorMessage = 'Condition not met';
+            await logIntegrationRun(integration.id, runData);
             return;
         }
         console.log(`   ✅ Executing action...`);
         await executeIntegration(integration, responseData, 'polling');
     } catch (error) {
         console.error(`   ✗ Integration polling error [${integration.id}]:`, error.message);
+        runData.status = 'error';
+        runData.errorMessage = error.message;
+        await logIntegrationRun(integration.id, runData);
     }
 }
 
@@ -2971,7 +2986,7 @@ async function logIntegrationRun(integrationId, data) {
                 account_id: data.accountId ?? null,
                 created_at: new Date().toISOString()
             };
-            
+        
             if (!Array.isArray(db.integrationRuns)) {
                 db.integrationRuns = [];
             }
