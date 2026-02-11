@@ -2931,15 +2931,8 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             shouldExecuteAction = evaluateIntegrationCondition(integration.pollingCondition, triggerData);
         } else if (triggerType === 'webhook' && integration.triggerCondition) {
             shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, triggerData);
-        } else if (triggerType === 'manual') {
-            // При ручном запуске проверяем условие основного триггера
-            const sourceCondition = integration.triggerType === 'polling' 
-                ? integration.pollingCondition 
-                : integration.triggerCondition;
-            if (sourceCondition) {
-                shouldExecuteAction = evaluateIntegrationCondition(sourceCondition, triggerData);
-            }
         }
+        // При ручном запуске (triggerType === 'manual') выполняем action без проверки условия
 
         if (!shouldExecuteAction) {
             runData.status = 'skipped';
