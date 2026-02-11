@@ -2774,8 +2774,8 @@ function normalizeIntegration(raw) {
 function evaluateIntegrationCondition(condition, response) {
     if (!condition || typeof condition !== 'string') return true;
     try {
-        const fn = new Function('response', 'payload', 'trigger', `return !!(${condition});`);
-        return Boolean(fn(response ?? {}, response ?? {}, response ?? {}));
+        const fn = new Function('payload', `return !!(${condition});`);
+        return Boolean(fn(response ?? {}));
     } catch (e) {
         console.error('Integration condition evaluation failed:', e.message);
         return false;
