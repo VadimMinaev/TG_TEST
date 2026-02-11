@@ -2940,9 +2940,21 @@ async function logIntegrationRun(integrationId, data) {
 async function executeIntegration(integration, triggerData = null, triggerType = 'manual') {
     if (!integration.enabled && triggerType !== 'manual') return null;
 
+    // Парсим triggerData если это JSON строка
+    let parsedTriggerData = triggerData;
+    if (typeof triggerData === 'string') {
+        try {
+            parsedTriggerData = JSON.parse(triggerData);
+            console.log(`[PARSE] Parsed triggerData from string`);
+        } catch (e) {
+            console.log(`[PARSE] triggerData is not JSON, keeping as is`);
+            parsedTriggerData = triggerData;
+        }
+    }
+
     const runData = {
         triggerType,
-        triggerData: triggerData ? JSON.stringify(triggerData).slice(0, 2000) : null,
+        triggerData: triggerData ? (typeof triggerData === 'string' ? triggerData : JSON.stringify(triggerData)).slice(0, 2000) : null,
         status: 'success',
         telegramSent: false
     };
@@ -2955,7 +2967,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
         // Для webhook: проверяем triggerCondition если есть
         if (triggerType === 'webhook' && integration.triggerCondition) {
             console.log(`[WEBHOOK] Checking condition: ${integration.triggerCondition}`);
-            shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, triggerData);
+            shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, parsedTriggerData);
             console.log(`[WEBHOOK] Condition result: ${shouldExecuteAction}`);
         } 
         // Для manual: проверяем условие основного триггера если есть
@@ -2967,7 +2979,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             
             if (conditionToCheck) {
                 console.log(`[MANUAL] Integration type: ${integration.triggerType}, checking condition: ${conditionToCheck}`);
-                shouldExecuteAction = evaluateIntegrationCondition(conditionToCheck, triggerData);
+                shouldExecuteAction = evaluateIntegrationCondition(conditionToCheck, parsedTriggerData);
                 console.log(`[MANUAL] Condition result: ${shouldExecuteAction}`);
             } else {
                 console.log(`[MANUAL] No condition to check`);
@@ -2988,10 +3000,10 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             let actionBody = integration.actionBody || '';
             
             // Подставляем данные триггера в body если есть шаблон
-            if (triggerData && actionBody) {
+            if (parsedTriggerData && actionBody) {
                 actionBody = actionBody.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
                     const keys = path.split('.');
-                    let value = triggerData;
+                    let value = parsedTriggerData;
                     for (const key of keys) {
                         value = value?.[key];
                     }
@@ -3048,9 +3060,9 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             }
             
             // Fallback на пустой объект чтобы избежать null errors
-            const safePayload = responseData || triggerData || {};
+            const safePayload = responseData || parsedTriggerData || {};
             const safeResponse = responseData || {};
-            const safeTrigger = triggerData || {};
+            const safeTrigger = parsedTriggerData || {};
             
             // Рендерим шаблон с поддержкой ${...} синтаксиса
             if (message && (message.includes('${') || message.includes('{{'))) {
