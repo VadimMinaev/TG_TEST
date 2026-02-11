@@ -433,6 +433,25 @@ function saveIntegrationsToFile() {
     }
 }
 
+async function persistIntegration(integration) {
+    if (!integration || !integration.id) return;
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            await db.query('UPDATE integrations SET data = $1 WHERE id = $2', [integration, integration.id]);
+        } catch (e) {
+            console.error('Error updating integration in database:', e);
+        }
+    } else {
+        const idx = integrationsCache.findIndex((i) => i.id === integration.id);
+        if (idx === -1) {
+            integrationsCache.push(integration);
+        } else {
+            integrationsCache[idx] = integration;
+        }
+        saveIntegrationsToFile();
+    }
+}
+
 async function loadPollsCache() {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
@@ -2782,6 +2801,7 @@ function normalizeIntegration(raw) {
         pollingBody: raw.pollingBody || '',
         pollingInterval: Number.isFinite(interval) && interval > 0 ? interval : 60,
         pollingCondition: raw.pollingCondition || '',
+        pollingContinueAfterMatch: raw.pollingContinueAfterMatch ?? false,
         actionUrl: raw.actionUrl || '',
         actionMethod: (raw.actionMethod || 'POST').toUpperCase(),
         actionHeaders: raw.actionHeaders || '',
@@ -2856,7 +2876,22 @@ async function executeIntegrationPolling(integration) {
             return;
         }
         console.log(`   ✅ Executing action...`);
-        await executeIntegration(integration, responseData, 'polling');
+        const runResult = await executeIntegration(integration, responseData, 'polling');
+        if (
+            matched &&
+            runResult?.status === 'success' &&
+            runResult.telegramSent &&
+            integration.pollingContinueAfterMatch === false
+        ) {
+            console.log(`   ⚙️ Disabling integration ${integration.id} after match`);
+            integration.enabled = false;
+            await persistIntegration(integration);
+            const timer = integrationTimers.get(integration.id);
+            if (timer) {
+                clearInterval(timer);
+                integrationTimers.delete(integration.id);
+            }
+        }
     } catch (error) {
         console.error(`   ✗ Integration polling error [${integration.id}]:`, error.message);
         runData.status = 'error';
@@ -3222,11 +3257,12 @@ app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
         const accountId = getAccountIdForCreate(req);
         if (accountId == null) return res.status(400).json({ error: 'Account required to create integration' });
 
+        const triggerType = req.body.triggerType === 'polling' ? 'polling' : 'webhook';
         const newIntegration = {
             id: Date.now(),
             name: req.body.name || 'Новая интеграция',
             enabled: req.body.enabled ?? true,
-            triggerType: req.body.triggerType || 'webhook',
+            triggerType,
             triggerCondition: req.body.triggerCondition || '',
             pollingUrl: req.body.pollingUrl || '',
             pollingMethod: (req.body.pollingMethod || 'GET').toString(),
@@ -3234,6 +3270,7 @@ app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
             pollingBody: req.body.pollingBody || '',
             pollingInterval: Math.max(1, Number(req.body.pollingInterval) || 60),
             pollingCondition: req.body.pollingCondition || '',
+            pollingContinueAfterMatch: triggerType === 'webhook' ? null : (req.body.pollingContinueAfterMatch ?? false),
             actionUrl: req.body.actionUrl || '',
             actionMethod: (req.body.actionMethod || 'POST').toString(),
             actionHeaders: req.body.actionHeaders || '',
@@ -3266,12 +3303,13 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
     const accountId = getAccountId(req);
     try {
         // Apply defaults for missing fields and ensure proper types
+        const triggerType = req.body.triggerType === 'polling' ? 'polling' : 'webhook';
         const updated = {
             ...req.body,
             id,
             name: req.body.name || 'Новая интеграция',
             enabled: req.body.enabled ?? true,
-            triggerType: req.body.triggerType || 'webhook',
+            triggerType,
             triggerCondition: req.body.triggerCondition || '',
             pollingUrl: req.body.pollingUrl || '',
             pollingMethod: (req.body.pollingMethod || 'GET').toString(),
@@ -3279,6 +3317,7 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
             pollingBody: req.body.pollingBody || '',
             pollingInterval: Math.max(1, Number(req.body.pollingInterval) || 60),
             pollingCondition: req.body.pollingCondition || '',
+            pollingContinueAfterMatch: triggerType === 'webhook' ? null : (req.body.pollingContinueAfterMatch ?? false),
             actionUrl: req.body.actionUrl || '',
             actionMethod: (req.body.actionMethod || 'POST').toString(),
             actionHeaders: req.body.actionHeaders || '',

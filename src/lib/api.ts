@@ -73,6 +73,7 @@ export interface Integration {
   pollingBody?: string;
   pollingInterval?: number;
   pollingCondition?: string;
+  pollingContinueAfterMatch?: boolean;
   actionUrl?: string;
   actionMethod?: string;
   actionHeaders?: string;

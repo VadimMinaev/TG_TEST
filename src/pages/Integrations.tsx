@@ -17,6 +17,7 @@ const DEFAULT_FORM: Omit<Integration, 'id'> = {
   pollingBody: '',
   pollingInterval: 60,
   pollingCondition: '',
+  pollingContinueAfterMatch: false,
   actionUrl: '',
   actionMethod: 'POST',
   actionHeaders: '',
@@ -163,6 +164,7 @@ export function Integrations() {
       pollingBody: integration.pollingBody || '',
       pollingInterval: integration.pollingInterval || 60,
       pollingCondition: integration.pollingCondition || '',
+      pollingContinueAfterMatch: integration.pollingContinueAfterMatch ?? false,
       actionUrl: integration.actionUrl || '',
       actionMethod: integration.actionMethod || 'POST',
       actionHeaders: integration.actionHeaders || '',
@@ -184,16 +186,22 @@ export function Integrations() {
       return;
     }
 
+    // Для webhook триггера поле pollingContinueAfterMatch должно быть null в БД
+    const dataToSave = {
+      ...form,
+      pollingContinueAfterMatch: form.triggerType === 'webhook' ? undefined : form.pollingContinueAfterMatch,
+    };
+
     try {
       if (editingId && editingId !== -1) {
-        const updated = await api.updateIntegration(editingId, form);
+        const updated = await api.updateIntegration(editingId, dataToSave);
         setEditingId(null);
         setSelectedId(updated.id);
         setMessage({ text: 'Интеграция обновлена', type: 'success' });
         // Перезагружаем список для синхронизации
         await loadIntegrations();
       } else {
-        const created = await api.createIntegration(form);
+        const created = await api.createIntegration(dataToSave);
         setEditingId(null);
         setSelectedId(created.id);
         setMessage({ text: 'Интеграция создана', type: 'success' });
@@ -253,10 +261,11 @@ export function Integrations() {
   };
 
   const normalizeImportedIntegration = (raw: any): Partial<Integration> => {
+    const triggerType = raw.triggerType === 'polling' ? 'polling' : 'webhook';
     return {
       name: String(raw.name ?? '').trim(),
       enabled: raw.enabled ?? true,
-      triggerType: raw.triggerType === 'polling' ? 'polling' : 'webhook',
+      triggerType,
       triggerCondition: String(raw.triggerCondition ?? '').trim(),
       pollingUrl: raw.pollingUrl != null ? String(raw.pollingUrl) : undefined,
       pollingMethod: raw.pollingMethod || 'GET',
@@ -264,6 +273,8 @@ export function Integrations() {
       pollingBody: raw.pollingBody != null ? String(raw.pollingBody) : undefined,
       pollingInterval: Number(raw.pollingInterval) || 60,
       pollingCondition: raw.pollingCondition != null ? String(raw.pollingCondition) : undefined,
+      // Для webhook триггера поле pollingContinueAfterMatch должно быть null в БД
+      pollingContinueAfterMatch: triggerType === 'webhook' ? undefined : (raw.pollingContinueAfterMatch ?? false),
       actionUrl: raw.actionUrl != null ? String(raw.actionUrl) : undefined,
       actionMethod: raw.actionMethod || 'POST',
       actionHeaders: raw.actionHeaders != null ? String(raw.actionHeaders) : undefined,
@@ -489,7 +500,13 @@ export function Integrations() {
                         style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                         value={form.triggerType}
                         onChange={(e) => {
-                          setForm({ ...form, triggerType: e.target.value as 'webhook' | 'polling' });
+                          const newTriggerType = e.target.value as 'webhook' | 'polling';
+                          setForm({
+                            ...form,
+                            triggerType: newTriggerType,
+                            // Сбрасываем pollingContinueAfterMatch при переключении на webhook
+                            pollingContinueAfterMatch: newTriggerType === 'webhook' ? false : form.pollingContinueAfterMatch,
+                          });
                           setSelectedSourceId('');
                         }}
                       >
@@ -633,6 +650,17 @@ export function Integrations() {
                           onChange={(e) => setForm({ ...form, pollingCondition: e.target.value })}
                           placeholder='response.status === "ready"'
                         />
+                      </div>
+                      <div>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                          <input
+                            type="checkbox"
+                            checked={form.pollingContinueAfterMatch}
+                            onChange={(e) => setForm({ ...form, pollingContinueAfterMatch: e.target.checked })}
+                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                          />
+                          Продолжать после совпадения
+                        </label>
                       </div>
                     </>
                   )}
