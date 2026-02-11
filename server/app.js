@@ -23,6 +23,7 @@ const RULES_FILE = path.join(__dirname, '../data/rules.json');
 const POLLS_FILE = path.join(__dirname, '../data/polls.json');
 const POLL_RUNS_FILE = path.join(__dirname, '../data/poll_runs.json');
 const INTEGRATIONS_FILE = path.join(__dirname, '../data/integrations.json');
+const INTEGRATION_RUNS_FILE = path.join(__dirname, '../data/integration_runs.json');
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 const SESSIONS_FILE = path.join(__dirname, '../data/sessions.json');
 
@@ -95,7 +96,7 @@ function getFieldTranslation(path) {
     return typeof current === 'string' ? current : path;
 }
 
-let db = { rules: [], logs: [], polls: [], pollRuns: [] };
+let db = { rules: [], logs: [], polls: [], pollRuns: [], integrationRuns: [] };
 let pollsCache = [];
 const pollTimers = new Map();
 let integrationsCache = [];
@@ -347,6 +348,14 @@ if (process.env.DATABASE_URL) {
     } catch (e) {
         console.error('Error loading poll runs from file:', e);
     }
+    try {
+        if (fs.existsSync(INTEGRATION_RUNS_FILE)) {
+            db.integrationRuns = JSON.parse(fs.readFileSync(INTEGRATION_RUNS_FILE, 'utf8'));
+            console.log('Integration runs loaded from file');
+        }
+    } catch (e) {
+        console.error('Error loading integration runs from file:', e);
+    }
     pollsCache = db.polls;
     startPollWorkers();
     startIntegrationWorkers().catch(err => console.error('Failed to start integration workers:', err));
@@ -388,6 +397,17 @@ function savePollRuns() {
             fs.writeFileSync(POLL_RUNS_FILE, JSON.stringify(db.pollRuns, null, 2), 'utf8');
         } catch (e) {
             console.error('Error saving poll runs to file:', e);
+        }
+    }
+}
+
+function saveIntegrationRuns() {
+    if (!process.env.DATABASE_URL) {
+        try {
+            fs.mkdirSync(path.dirname(INTEGRATION_RUNS_FILE), { recursive: true });
+            fs.writeFileSync(INTEGRATION_RUNS_FILE, JSON.stringify(db.integrationRuns || [], null, 2), 'utf8');
+        } catch (e) {
+            console.error('Error saving integration runs to file:', e);
         }
     }
 }
@@ -2932,7 +2952,40 @@ async function logIntegrationRun(integrationId, data) {
                 )`
             );
         } catch (e) {
-            console.error('Error logging integration run:', e);
+            console.error('Error logging integration run to DB:', e);
+        }
+    } else {
+        // File-based mode: log to in-memory array
+        try {
+            const runRecord = {
+                id: Date.now(),
+                integration_id: integrationId,
+                trigger_type: data.triggerType || 'manual',
+                status: data.status || 'success',
+                trigger_data: data.triggerData || null,
+                action_request: data.actionRequest || null,
+                action_response: data.actionResponse || null,
+                action_status: data.actionStatus || null,
+                telegram_sent: data.telegramSent || false,
+                error_message: data.errorMessage || null,
+                account_id: data.accountId ?? null,
+                created_at: new Date().toISOString()
+            };
+            
+            if (!Array.isArray(db.integrationRuns)) {
+                db.integrationRuns = [];
+            }
+            
+            db.integrationRuns.push(runRecord);
+            
+            // Keep only last 200 runs
+            if (db.integrationRuns.length > 200) {
+                db.integrationRuns = db.integrationRuns.slice(-200);
+            }
+            
+            saveIntegrationRuns();
+        } catch (e) {
+            console.error('Error logging integration run to file:', e);
         }
     }
 }
@@ -3347,7 +3400,30 @@ app.get('/api/integrations/history/all', auth, async (req, res) => {
             );
             return res.json(result.rows);
         }
-        res.json([]);
+        
+        // File-based mode
+        if (!Array.isArray(db.integrationRuns)) {
+            return res.json([]);
+        }
+        
+        const runs = db.integrationRuns
+            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .slice(0, limit)
+            .map(r => ({
+                id: r.id,
+                integration_id: r.integration_id,
+                trigger_type: r.trigger_type,
+                status: r.status,
+                trigger_data: r.trigger_data,
+                action_request: r.action_request,
+                action_response: r.action_response,
+                action_status: r.action_status,
+                telegram_sent: r.telegram_sent,
+                error_message: r.error_message,
+                created_at: r.created_at
+            }));
+        
+        res.json(runs);
     } catch (error) {
         console.error('Error loading integration history:', error);
         res.status(500).json({ error: 'Failed to load history' });
@@ -3363,6 +3439,10 @@ app.delete('/api/integrations/history/all', auth, blockAuditorWrite, async (req,
             } else {
                 await db.query('DELETE FROM integration_runs');
             }
+        } else {
+            // File-based mode
+            db.integrationRuns = [];
+            saveIntegrationRuns();
         }
         res.json({ status: 'cleared' });
     } catch (error) {
