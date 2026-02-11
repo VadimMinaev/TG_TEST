@@ -2847,6 +2847,11 @@ function scheduleIntegrationTimers() {
         }
 
         const intervalMs = Math.max(1, integration.pollingInterval || 60) * 1000;
+        
+        // Запускаем первую проверку сразу
+        executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed (immediate):', integration.id, err.message));
+        
+        // Затем запускаем по таймеру
         const timer = setInterval(() => {
             executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed:', integration.id, err.message));
         }, intervalMs);
@@ -2927,12 +2932,16 @@ async function executeIntegration(integration, triggerData = null, triggerType =
     try {
         // Проверяем условие перед выполнением action
         let shouldExecuteAction = true;
-        if (triggerType === 'polling' && integration.pollingCondition) {
-            shouldExecuteAction = evaluateIntegrationCondition(integration.pollingCondition, triggerData);
-        } else if (triggerType === 'webhook' && integration.triggerCondition) {
+        
+        // Для polling: условие уже проверено в executeIntegrationPolling, не проверяем еще раз
+        // Для webhook: проверяем triggerCondition если есть
+        if (triggerType === 'webhook' && integration.triggerCondition) {
+            shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, triggerData);
+        } 
+        // Для manual: проверяем triggerCondition основного триггера если есть
+        else if (triggerType === 'manual' && integration.triggerCondition) {
             shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, triggerData);
         }
-        // При ручном запуске (triggerType === 'manual') выполняем action без проверки условия
 
         if (!shouldExecuteAction) {
             runData.status = 'skipped';
