@@ -31,6 +31,15 @@ export function PollingHistory() {
     [runs, selectedRunId]
   );
 
+  const formatJsonBlock = (value?: string | null) => {
+    if (!value) return '';
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch {
+      return value;
+    }
+  };
+
   // Маппинг ID поллинга -> название
   const pollNames = useMemo(() => {
     const map: Record<number, string> = {};
@@ -214,16 +223,16 @@ export function PollingHistory() {
                   {selectedRun.request_headers && (
                     <div className="mt-3">
                       <strong>Headers:</strong>
-                      <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-[hsl(var(--muted))] p-2 text-xs">
-                        {selectedRun.request_headers}
+                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
+                        {formatJsonBlock(selectedRun.request_headers)}
                       </pre>
                     </div>
                   )}
                   {selectedRun.request_body && (
                     <div className="mt-3">
                       <strong>Body:</strong>
-                      <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-[hsl(var(--muted))] p-2 text-xs">
-                        {selectedRun.request_body}
+                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
+                        {formatJsonBlock(selectedRun.request_body)}
                       </pre>
                     </div>
                   )}
@@ -239,16 +248,16 @@ export function PollingHistory() {
                   {selectedRun.response_headers && (
                     <div className="mt-3">
                       <strong>Headers:</strong>
-                      <pre className="mt-1 max-h-32 overflow-auto whitespace-pre-wrap break-words rounded bg-[hsl(var(--muted))] p-2 text-xs">
-                        {selectedRun.response_headers}
+                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
+                        {formatJsonBlock(selectedRun.response_headers)}
                       </pre>
                     </div>
                   )}
                   {selectedRun.response_snippet && (
                     <div className="mt-3">
                       <strong>Body (фрагмент):</strong>
-                      <pre className="mt-1 max-h-48 overflow-auto whitespace-pre-wrap break-words rounded bg-[hsl(var(--muted))] p-2 text-xs">
-                        {selectedRun.response_snippet}
+                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
+                        {formatJsonBlock(selectedRun.response_snippet)}
                       </pre>
                     </div>
                   )}

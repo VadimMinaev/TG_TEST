@@ -42,6 +42,18 @@ export function Dashboard() {
   const versionRef = useRef<HTMLDivElement>(null);
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metrics, setMetrics] = useState({ totalRules: 0, activeRules: 0, polls: 0, integrations: 0, queueTotal: 0, queuePending: 0 });
+  const appVersion = __APP_VERSION__;
+  const buildDateText = useMemo(() => {
+    const buildDate = new Date(__BUILD_DATE__);
+    if (Number.isNaN(buildDate.getTime())) return __BUILD_DATE__;
+    return buildDate.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  }, []);
 
   const canCreate = useMemo(() => {
     if (user?.role === 'auditor') return false;
@@ -221,19 +233,11 @@ export function Dashboard() {
                     <div className="version-panel-title">VadminLink</div>
                     <div className="version-panel-row">
                       <span className="version-panel-label">Версия</span>
-                      <span className="version-panel-value">1.0.295</span>
+                      <span className="version-panel-value">{appVersion}</span>
                     </div>
                     <div className="version-panel-row">
                       <span className="version-panel-label">Сборка</span>
-                      <span className="version-panel-value">
-                        {new Date().toLocaleString('ru-RU', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}
-                      </span>
+                      <span className="version-panel-value">{buildDateText}</span>
                     </div>
                   </div>
                 )}
@@ -460,19 +464,11 @@ export function Dashboard() {
                   <div className="version-panel-title">VadminLink</div>
                   <div className="version-panel-row">
                     <span className="version-panel-label">Версия</span>
-                    <span className="version-panel-value">1.0.295</span>
+                    <span className="version-panel-value">{appVersion}</span>
                   </div>
                   <div className="version-panel-row">
                     <span className="version-panel-label">Сборка</span>
-                    <span className="version-panel-value">
-                      {new Date().toLocaleString('ru-RU', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        year: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
+                    <span className="version-panel-value">{buildDateText}</span>
                   </div>
                 </div>
               )}
