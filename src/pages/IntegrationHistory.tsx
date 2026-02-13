@@ -14,6 +14,15 @@ export function IntegrationHistory() {
     [runs, selectedRunId]
   );
 
+  const formatJsonBlock = (value?: string) => {
+    if (!value) return '';
+    try {
+      return JSON.stringify(JSON.parse(value), null, 2);
+    } catch {
+      return value;
+    }
+  };
+
   // Маппинг ID интеграции -> название
   const integrationNames = useMemo(() => {
     const map: Record<number, string> = {};
@@ -194,9 +203,9 @@ export function IntegrationHistory() {
               {selectedRun.trigger_data && (
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Данные триггера</h4>
-                  <div className="panel">
-                    <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words text-xs">
-                      {selectedRun.trigger_data}
+                  <div className="panel max-h-96 overflow-auto">
+                    <pre className="whitespace-pre-wrap break-words text-xs">
+                      {formatJsonBlock(selectedRun.trigger_data)}
                     </pre>
                   </div>
                 </div>
@@ -205,9 +214,9 @@ export function IntegrationHistory() {
               {selectedRun.action_request && (
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Action запрос</h4>
-                  <div className="panel">
-                    <pre className="max-h-32 overflow-auto whitespace-pre-wrap break-words text-xs">
-                      {selectedRun.action_request}
+                  <div className="panel max-h-96 overflow-auto">
+                    <pre className="whitespace-pre-wrap break-words text-xs">
+                      {formatJsonBlock(selectedRun.action_request)}
                     </pre>
                   </div>
                 </div>
@@ -218,9 +227,9 @@ export function IntegrationHistory() {
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">
                     Action ответ (HTTP {selectedRun.action_status})
                   </h4>
-                  <div className="panel">
-                    <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words text-xs">
-                      {selectedRun.action_response}
+                  <div className="panel max-h-96 overflow-auto">
+                    <pre className="whitespace-pre-wrap break-words text-xs">
+                      {formatJsonBlock(selectedRun.action_response)}
                     </pre>
                   </div>
                 </div>
