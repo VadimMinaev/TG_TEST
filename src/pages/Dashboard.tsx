@@ -40,6 +40,8 @@ export function Dashboard() {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showVersionPanel, setShowVersionPanel] = useState(false);
   const versionRef = useRef<HTMLDivElement>(null);
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metrics, setMetrics] = useState({ totalRules: 0, activeRules: 0, polls: 0, integrations: 0, queueTotal: 0, queuePending: 0 });
 
   const canCreate = useMemo(() => {
     if (user?.role === 'auditor') return false;
@@ -62,6 +64,45 @@ export function Dashboard() {
     document.addEventListener('mousedown', handleClickOutside);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Load dashboard metrics
+  useEffect(() => {
+    let mounted = true;
+
+    const loadMetrics = async () => {
+      try {
+        setMetricsLoading(true);
+        const [rules, polls, integrations, queue] = await Promise.all([
+          (await import('../lib/api')).api.getRules(),
+          (await import('../lib/api')).api.getPolls(),
+          (await import('../lib/api')).api.getIntegrations(),
+          (await import('../lib/api')).api.getQueueStatus().catch(() => ({ available: false, total: 0, pending: 0 })),
+        ]);
+
+        if (!mounted) return;
+
+        const totalRules = Array.isArray(rules) ? rules.length : 0;
+        const activeRules = Array.isArray(rules) ? rules.filter((r: any) => r.enabled).length : 0;
+        const pollsCount = Array.isArray(polls) ? polls.length : 0;
+        const integrationsCount = Array.isArray(integrations) ? integrations.length : 0;
+        const queueTotal = queue?.total ?? 0;
+        const queuePending = queue?.pending ?? 0;
+
+        setMetrics({ totalRules, activeRules, polls: pollsCount, integrations: integrationsCount, queueTotal, queuePending });
+      } catch (e) {
+        // ignore errors for dashboard metrics
+      } finally {
+        if (mounted) setMetricsLoading(false);
+      }
+    };
+
+    loadMetrics();
+    const id = setInterval(loadMetrics, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(id);
     };
   }, []);
 
@@ -243,7 +284,7 @@ export function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-[hsl(var(--muted-foreground))]">Всего Webhook</p>
-                      <p className="text-2xl font-bold">0</p>
+                      <p className="text-2xl font-bold">{metricsLoading ? <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" /> : metrics.totalRules}</p>
                     </div>
                     <div className="p-3 rounded-full bg-[hsl(var(--primary)_/_0.1)]">
                       <MessageSquare className="h-6 w-6 text-[hsl(var(--primary))]" />
@@ -255,7 +296,7 @@ export function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-[hsl(var(--muted-foreground))]">Активные Webhook</p>
-                      <p className="text-2xl font-bold">0</p>
+                      <p className="text-2xl font-bold">{metricsLoading ? <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[hsl(var(--success))] border-t-transparent" /> : metrics.activeRules}</p>
                     </div>
                     <div className="p-3 rounded-full bg-[hsl(var(--success)_/_0.1)]">
                       <Zap className="h-6 w-6 text-[hsl(var(--success))]" />
@@ -267,7 +308,7 @@ export function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-[hsl(var(--muted-foreground))]">Пуллинги</p>
-                      <p className="text-2xl font-bold">0</p>
+                      <p className="text-2xl font-bold">{metricsLoading ? <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[hsl(var(--info))] border-t-transparent" /> : metrics.polls}</p>
                     </div>
                     <div className="p-3 rounded-full bg-[hsl(var(--info)_/_0.1)]">
                       <Repeat2 className="h-6 w-6 text-[hsl(var(--info))]" />
@@ -279,7 +320,7 @@ export function Dashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-[hsl(var(--muted-foreground))]">Интеграции</p>
-                      <p className="text-2xl font-bold">0</p>
+                      <p className="text-2xl font-bold">{metricsLoading ? <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[hsl(var(--accent))] border-t-transparent" /> : metrics.integrations}</p>
                     </div>
                     <div className="p-3 rounded-full bg-[hsl(var(--accent)_/_0.1)]">
                       <Link className="h-6 w-6 text-[hsl(var(--accent))]" />

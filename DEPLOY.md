@@ -18,6 +18,8 @@ git push
 На сервере (Linux)
 1) Перейти в папку проекта (важно: не в ~, а в каталог где есть .git)
 cd ~/apps/TG_TEST
+
+cd ~/apps/TG_TEST && git fetch origin && git reset --hard origin/master && docker compose build --no-cache app && docker compose up -d --force-recreate --no-deps app
 2) Забрать изменения и обновить рабочую копию
 git fetch origin && git reset --hard origin/master
 3) Пересобрать контейнер и перезапустить только app
