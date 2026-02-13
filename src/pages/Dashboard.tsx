@@ -377,7 +377,9 @@ export function Dashboard() {
   return (
     <div className="app-shell">
       <aside className="sidebar" aria-label="Основная навигация">
-        <div className="sidebar-brand">TG</div>
+        <div className="sidebar-brand">
+          <img src="/vadminlink-logo.png.jpg" alt="VadminLink" />
+        </div>
 
         <nav className="sidebar-nav" aria-label="Разделы панели">
           {navItems.map((item) => (

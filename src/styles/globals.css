@@ -91,6 +91,14 @@ body {
   box-shadow: 0 12px 24px -16px hsl(var(--primary) / 0.6);
 }
 
+.sidebar-brand img {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
 .sidebar-nav {
   display: flex;
   flex-direction: column;
@@ -433,6 +441,11 @@ body {
   .sidebar-item svg {
     width: 20px;
     height: 20px;
+  }
+
+  .sidebar-brand img {
+    width: 22px;
+    height: 22px;
   }
   
   .sidebar-footer {

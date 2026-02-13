@@ -44,8 +44,9 @@ function TooltipContent({
     <TooltipPrimitive.Portal>
       <TooltipPrimitive.Content
         sideOffset={sideOffset}
+        collisionPadding={12}
         className={cn(
-          "z-50 max-w-[320px] border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs shadow-md",
+          "z-50 max-w-[min(320px,calc(100vw-24px))] border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs shadow-md",
           className,
         )}
         style={{ padding: '16px', borderRadius: '12px', ...style }}

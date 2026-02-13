@@ -29,7 +29,7 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
             <Info className="h-3 w-3" />
           </button>
         </TooltipTrigger>
-        <TooltipContent side="right" className="max-w-xs text-left" onPointerDownOutside={() => setOpen(false)}>
+        <TooltipContent side="top" align="start" className="max-w-xs text-left" onPointerDownOutside={() => setOpen(false)}>
           {children}
         </TooltipContent>
       </Tooltip>
