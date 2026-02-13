@@ -9,7 +9,6 @@ import {
 } from './ui/tooltip';
 import { TemplateHelp } from './TemplateHelp';
 import { TelegramPreviewWithToggle } from './TelegramPreviewWithToggle';
-import { FieldValidator, validators } from './FieldValidator';
 
 function InfoTooltip({ children }: { children: React.ReactNode }) {
   return (
@@ -126,112 +125,79 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         </div>
       )}
 
-      <FieldValidator
-        value={name}
-        rules={[
-          validators.required('Название обязательно для заполнения'),
-          validators.minLength(3, 'Название должно содержать минимум 3 символа')
-        ]}
-      >
-        <div>
-          <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-            Название Webhook
-            <InfoTooltip>
-              Уникальное имя для идентификации Webhook в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
-            </InfoTooltip>
-          </label>
-          <input
-            type="text"
-            id="ruleName"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Например: Отправить в основной чат"
-            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-          />
-        </div>
-      </FieldValidator>
+      <div>
+        <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+          Название Webhook
+          <InfoTooltip>
+            Уникальное имя для идентификации Webhook в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
+          </InfoTooltip>
+        </label>
+        <input
+          type="text"
+          id="ruleName"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="Например: Отправить в основной чат"
+          required
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+        />
+      </div>
 
-      <FieldValidator
-        value={condition}
-        rules={[
-          validators.required('Условие обязательно для заполнения'),
-          validators.custom(
-            (value) => {
-              if (!value) return true;
-              try {
-                // Проверяем, является ли строка допустимым JavaScript выражением
-                new Function('payload', `return (${value})`);
-                return true;
-              } catch {
-                return false;
-              }
-            },
-            'Условие должно быть допустимым JavaScript выражением'
-          )
-        ]}
-      >
-        <div>
-          <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-            Условие (JavaScript выражение)
-            <InfoTooltip>
-              <div className="space-y-2">
-                <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания Webhook.</p>
-                <p><strong>Доступные переменные:</strong></p>
-                <ul className="list-inside list-disc">
-                  <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload</code> — данные вебхука</li>
-                </ul>
-                <p><strong>Примеры:</strong></p>
-                <ul className="list-inside list-disc">
-                  <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.status === "open"</code></li>
-                  <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.priority &gt; 3</code></li>
-                  <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.category === "incident"</code></li>
-                </ul>
-              </div>
-            </InfoTooltip>
-          </label>
-          <textarea
-            id="condition"
-            value={condition}
-            onChange={(e) => setCondition(e.target.value)}
-            placeholder='payload.category === "incident"'
-            rows={4}
-            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
-          />
-        </div>
-      </FieldValidator>
+      <div>
+        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+          Условие (JavaScript выражение)
+          <InfoTooltip>
+            <div className="space-y-2">
+              <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания Webhook.</p>
+              <p><strong>Доступные переменные:</strong></p>
+              <ul className="list-inside list-disc">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload</code> — данные вебхука</li>
+              </ul>
+              <p><strong>Примеры:</strong></p>
+              <ul className="list-inside list-disc">
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.status === "open"</code></li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.priority &gt; 3</code></li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.category === "incident"</code></li>
+              </ul>
+            </div>
+          </InfoTooltip>
+        </label>
+        <textarea
+          id="condition"
+          value={condition}
+          onChange={(e) => setCondition(e.target.value)}
+          placeholder='payload.category === "incident"'
+          required
+          rows={4}
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+        />
+      </div>
 
-      <FieldValidator
-        value={chatId}
-        rules={[
-          validators.required('Chat ID обязателен для заполнения'),
-          validators.pattern(/^(-?\d+|@[\w]+)$/, 'Chat ID должен быть числом или ником канала (@)')
-        ]}
-      >
-        <div>
-          <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-            ID Telegram чата
-            <InfoTooltip>
-              <div className="space-y-2">
-                <p>Числовой идентификатор чата/канала в Telegram.</p>
-                <p><strong>Как получить:</strong></p>
-                <ul className="list-inside list-disc">
-                  <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
-                  <li>Или перешлите сообщение боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
-                </ul>
-                <p><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
-              </div>
-            </InfoTooltip>
-          </label>
-          <input
-            type="text"
-            id="chatId"
-            value={chatId}
-            onChange={(e) => setChatId(e.target.value)}
-            placeholder="Например: -1001234567890"
-            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-          />
-        </div>
-      </FieldValidator>
+      <div>
+        <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+          ID Telegram чата
+          <InfoTooltip>
+            <div className="space-y-2">
+              <p>Числовой идентификатор чата/канала в Telegram.</p>
+              <p><strong>Как получить:</strong></p>
+              <ul className="list-inside list-disc">
+                <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
+                <li>Или перешлите сообщение боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
+              </ul>
+              <p><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
+            </div>
+          </InfoTooltip>
+        </label>
+        <input
+          type="text"
+          id="chatId"
+          value={chatId}
+          onChange={(e) => setChatId(e.target.value)}
+          placeholder="Например: -1001234567890"
+          required
+          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+        />
+      </div>
 
       <div>
         <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
@@ -274,10 +240,10 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <TelegramPreviewWithToggle 
-          message={messageTemplate} 
-          payload={payloadExample} 
-          context="rule" 
+        <TelegramPreviewWithToggle
+          message={messageTemplate}
+          payload={payloadExample}
+          context="rule"
         />
       </div>
 

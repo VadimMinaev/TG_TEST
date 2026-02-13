@@ -5,8 +5,6 @@ import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
-import { Breadcrumb } from '../components/Breadcrumb';
-import { PollWizard } from '../components/PollWizard';
 
 const DEFAULT_FORM = {
   name: '',
@@ -272,19 +270,7 @@ export function Polling() {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h2 className="text-xl font-semibold">🔁 Пуллинг</h2>
-            <div className="mt-1">
-              <Breadcrumb 
-                items={[
-                  { label: 'Главная', path: '/' },
-                  { label: 'Пуллинг', active: true }
-                ]} 
-              />
-            </div>
-          </div>
-        </div>
+        <h2 className="text-xl font-semibold">🔁 Пуллинг</h2>
         <div className="flex items-center gap-2">
           {canEdit && selectedPoll && !editingPollId && (
             <>
@@ -431,48 +417,186 @@ export function Polling() {
               <h3 className="mb-4 text-lg font-semibold">
                 {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
-              <PollWizard
-                initialData={editingPollId === -1 ? undefined : selectedPoll}
-                onComplete={async (data) => {
-                  try {
-                    const payload = {
-                      ...data,
-                      intervalSec: Number(data.intervalSec) || 60,
-                      timeoutSec: Number(data.timeoutSec) || 10,
-                      headersJson: data.headersJson || undefined,
-                      bodyJson: data.bodyJson || undefined,
-                      conditionJson: data.conditionJson || undefined,
-                      botToken: data.botToken || undefined,
-                      messageTemplate: data.messageTemplate || undefined,
-                    };
+              <form onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
+                  <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Например: Проверка статуса заказа"
+                  />
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
+                  <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    value={form.url}
+                    onChange={(e) => setForm({ ...form, url: e.target.value })}
+                    placeholder="https://api.example.com/status"
+                  />
+                </div>
+                </div>
 
-                    if (editingPollId && editingPollId !== -1) {
-                      const updated = await api.updatePoll(editingPollId, payload);
+                <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
+                  <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    value={form.chatId}
+                    onChange={(e) => setForm({ ...form, chatId: e.target.value })}
+                    placeholder="-1001234567890"
+                  />
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
+                  <select
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    value={form.method}
+                    onChange={(e) => setForm({ ...form, method: e.target.value })}
+                  >
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="PATCH">PATCH</option>
+                    <option value="DELETE">DELETE</option>
+                  </select>
+                </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
+                  <input
+                    type="number"
+                    min={5}
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    value={form.intervalSec}
+                    onChange={(e) => setForm({ ...form, intervalSec: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
+                  <input
+                    type="number"
+                    min={3}
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    value={form.timeoutSec}
+                    onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
+                  />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
+                  <textarea
+                    rows={3}
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    value={form.headersJson}
+                    onChange={(e) => setForm({ ...form, headersJson: e.target.value })}
+                    placeholder='{"Authorization": "Bearer token"}'
+                  />
+                  <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                    Пример: <code>{'{"Authorization":"Bearer <TOKEN>","Content-Type":"application/json"}'}</code>
+                  </p>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
+                  <textarea
+                    rows={3}
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    value={form.bodyJson}
+                    onChange={(e) => setForm({ ...form, bodyJson: e.target.value })}
+                    placeholder='{"id": 123}'
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условия (JSON)</label>
+                  <textarea
+                    rows={4}
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    value={form.conditionJson}
+                    onChange={(e) => setForm({ ...form, conditionJson: e.target.value })}
+                    placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'
+                  />
+                  <div style={{ padding: '12px 16px', marginTop: '8px' }} className="rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--muted)_/_0.2)] text-xs">
+                    <div className="mb-1 font-semibold">Пример:</div>
+                    <pre className="whitespace-pre-wrap">{`{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"},{"path":"data.priority","op":">=","value":3}]}`}</pre>
+                    <div className="mt-2 text-[hsl(var(--muted-foreground))]">
+                      <code>logic</code> — AND/OR. <code>conditions</code> — массив проверок. <code>path</code> — путь к
+                      полю. <code>op</code> — оператор (==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists).
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                    Шаблон сообщения (опционально)
+                    <TemplateHelp context="poll" />
+                  </label>
+                  <textarea
+                    rows={3}
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    value={form.messageTemplate}
+                    onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
+                    placeholder="${payload.name} — ${payload.status}"
+                  />
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '4px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.enabled}
+                      onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    Включено
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.onlyOnChange}
+                      onChange={(e) => setForm({ ...form, onlyOnChange: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    Только при изменении
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={form.continueAfterMatch}
+                      onChange={(e) => setForm({ ...form, continueAfterMatch: e.target.checked })}
+                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    />
+                    Продолжать после совпадения
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                  <button
+                    type="submit"
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                  >
+                    Сохранить
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
                       setEditingPollId(null);
-                      setSelectedPollId(updated.id);
-                      setMessage({ text: 'Пуллинг обновлён', type: 'success' });
-                      // Перезагружаем список для синхронизации
-                      await loadPolls();
-                    } else {
-                      const created = await api.createPoll(payload);
-                      setEditingPollId(null);
-                      setSelectedPollId(created.id);
-                      setMessage({ text: 'Пуллинг создан', type: 'success' });
-                      // Перезагружаем список для синхронизации
-                      await loadPolls();
-                    }
-                  } catch (error: any) {
-                    setMessage({ text: error.message || 'Не удалось сохранить пуллинг', type: 'error' });
-                  }
-                }}
-                onCancel={() => {
-                  if (selectedPollId) {
-                    setEditingPollId(null);
-                  } else {
-                    handleStartCreate();
-                  }
-                }}
-              />
+                      if (selectedPoll) {
+                        setForm(normalizeForm(selectedPoll));
+                      }
+                    }}
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </form>
             </div>
           ) : selectedPoll ? (
             <div>
