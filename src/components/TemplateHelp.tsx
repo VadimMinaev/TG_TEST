@@ -20,6 +20,16 @@ interface TemplateHelpProps {
 export function TemplateHelp({ context = 'integration' }: TemplateHelpProps) {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  const handleTriggerPointerDown = (event: React.PointerEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
+  const handleTriggerClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
+
   const handleCopy = async (code: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -74,6 +84,8 @@ export function TemplateHelp({ context = 'integration' }: TemplateHelpProps) {
         <TooltipTrigger asChild>
           <button
             type="button"
+            onPointerDown={handleTriggerPointerDown}
+            onClick={handleTriggerClick}
             className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
           >
             <Info className="h-3 w-3" />
