@@ -51,6 +51,16 @@ export interface Account {
   created_at?: string;
 }
 
+export interface AccountCloneOptions {
+  sourceAccountId?: number;
+  include?: {
+    rules?: boolean;
+    polls?: boolean;
+    integrations?: boolean;
+    bots?: boolean;
+  };
+}
+
 export interface User {
   id: number;
   username: string;
@@ -489,11 +499,11 @@ export const api = {
     return res.json();
   },
 
-  createAccount: async (name: string) => {
+  createAccount: async (name: string, cloneOptions?: AccountCloneOptions) => {
     const res = await fetch(`${API_BASE}/accounts`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ name }),
+      body: JSON.stringify({ name, cloneOptions }),
     });
     if (!res.ok) {
       const error = await res.json();

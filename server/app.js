@@ -1288,11 +1288,71 @@ function slugifyAccountName(name) {
         || 'account';
 }
 
+function normalizeAccountCloneOptions(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+    const sourceAccountId = raw.sourceAccountId != null ? parseInt(raw.sourceAccountId, 10) : null;
+    if (!sourceAccountId || Number.isNaN(sourceAccountId)) return null;
+    const include = raw.include && typeof raw.include === 'object' ? raw.include : {};
+    const normalized = {
+        sourceAccountId,
+        include: {
+            rules: Boolean(include.rules),
+            polls: Boolean(include.polls),
+            integrations: Boolean(include.integrations),
+            bots: Boolean(include.bots),
+        },
+    };
+    const hasAny = Object.values(normalized.include).some(Boolean);
+    return hasAny ? normalized : null;
+}
+
+function createEntityIdFactory() {
+    let seq = 0;
+    return () => {
+        seq += 1;
+        return Date.now() * 1000 + seq;
+    };
+}
+
+async function cloneEntitiesToAccount(client, sourceAccountId, targetAccountId, include) {
+    const tablePlan = [
+        { key: 'rules', table: 'rules' },
+        { key: 'polls', table: 'polls' },
+        { key: 'integrations', table: 'integrations' },
+        { key: 'bots', table: 'bots' },
+    ].filter((item) => include[item.key]);
+
+    const counts = { rules: 0, polls: 0, integrations: 0, bots: 0 };
+    if (tablePlan.length === 0) return counts;
+
+    const nextId = createEntityIdFactory();
+
+    for (const item of tablePlan) {
+        const srcRows = await client.query(
+            `SELECT id, data FROM ${item.table} WHERE account_id = $1 ORDER BY id`,
+            [sourceAccountId]
+        );
+        for (const row of srcRows.rows) {
+            const clonedId = nextId();
+            const clonedData = { ...(row.data || {}), id: clonedId };
+            await client.query(
+                `INSERT INTO ${item.table} (id, data, account_id) VALUES ($1, $2, $3)`,
+                [clonedId, clonedData, targetAccountId]
+            );
+            counts[item.key] += 1;
+        }
+    }
+
+    return counts;
+}
+
 app.post('/api/accounts', auth, vadminOnly, async (req, res) => {
     const name = req.body.name && String(req.body.name).trim();
+    const cloneOptions = normalizeAccountCloneOptions(req.body.cloneOptions);
     if (!name) return res.status(400).json({ error: 'Account name is required' });
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
+            await db.query('BEGIN');
             let slug = slugifyAccountName(name);
             const existing = await db.query('SELECT id FROM accounts WHERE slug = $1', [slug]);
             if (existing.rows.length > 0) {
@@ -1300,9 +1360,31 @@ app.post('/api/accounts', auth, vadminOnly, async (req, res) => {
                 while ((await db.query('SELECT id FROM accounts WHERE slug = $1', [slug + '_' + n])).rows.length > 0) n++;
                 slug = slug + '_' + n;
             }
-            const result = await db.query('INSERT INTO accounts (name, slug) VALUES ($1, $2) RETURNING id, name, slug, created_at', [name, slug]);
-            res.status(201).json(result.rows[0]);
+            const inserted = await db.query(
+                'INSERT INTO accounts (name, slug) VALUES ($1, $2) RETURNING id, name, slug, created_at',
+                [name, slug]
+            );
+            const created = inserted.rows[0];
+
+            let cloned = { rules: 0, polls: 0, integrations: 0, bots: 0 };
+            if (cloneOptions) {
+                const sourceExists = await db.query('SELECT id FROM accounts WHERE id = $1', [cloneOptions.sourceAccountId]);
+                if (sourceExists.rows.length === 0) {
+                    await db.query('ROLLBACK');
+                    return res.status(400).json({ error: 'Source account not found for cloning' });
+                }
+                cloned = await cloneEntitiesToAccount(
+                    db,
+                    cloneOptions.sourceAccountId,
+                    created.id,
+                    cloneOptions.include
+                );
+            }
+
+            await db.query('COMMIT');
+            res.status(201).json({ ...created, cloned });
         } catch (err) {
+            try { await db.query('ROLLBACK'); } catch (_) {}
             console.error('DB error:', err);
             res.status(500).json({ error: 'DB error' });
         }
