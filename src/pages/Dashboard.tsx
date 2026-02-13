@@ -406,7 +406,7 @@ export function Dashboard() {
 
       <div className="app-page">
         <header className="topbar">
-          <div className="topbar-title">Интеграция Telegram</div>
+          <div className="topbar-title">Интеграция VadminLink</div>
           <GlobalSearch />
 
           <div className="topbar-actions">
