@@ -65,7 +65,7 @@ export function IntegrationHistory() {
 
   return (
     <div className="card">
-      <div className="card-header">
+      <div className="card-header entity-page-header-sticky">
         <div className="flex flex-col gap-2">
           <div>
             <h2 className="text-xl font-semibold">📜 История интеграций</h2>

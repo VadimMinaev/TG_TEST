@@ -277,6 +277,14 @@ body {
   border-bottom: 1px solid hsl(var(--border));
 }
 
+.entity-page-header-sticky {
+  position: sticky;
+  top: 74px;
+  z-index: 15;
+  background: hsl(var(--card) / 0.96);
+  backdrop-filter: blur(10px);
+}
+
 .card-body {
   padding: 24px;
 }
@@ -497,6 +505,10 @@ body {
   
   .card-header {
     padding: 14px 16px;
+  }
+
+  .entity-page-header-sticky {
+    top: 50px;
   }
   
   .card-body {
