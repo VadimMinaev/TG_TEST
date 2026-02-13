@@ -29,6 +29,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     checkAuth();
   }, []);
 
+  const withTimeout = async <T,>(promise: Promise<T>, timeoutMs = 8000): Promise<T> => {
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error('Auth request timeout')), timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId) clearTimeout(timeoutId);
+    }
+  };
+
   const checkAuth = async () => {
     const token = localStorage.getItem('authToken');
     if (!token) {
@@ -37,9 +50,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      const data = await api.authStatus();
+      const data = await withTimeout(api.authStatus());
       if (data.authenticated) {
-        const userData = await api.me();
+        const userData = await withTimeout(api.me());
         setIsAuthenticated(true);
         setUser({
           username: userData.username,
