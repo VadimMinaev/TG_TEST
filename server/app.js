@@ -1277,13 +1277,14 @@ app.get('/api/auth-status', (req, res) => {
     if (session && Date.now() - session.timestamp > 24 * 60 * 60 * 1000) {
         sessions.delete(token);
         saveSessions();
-        res.json({ authenticated: false });
+        res.json({ authenticated: false, username: null, redirect: '/login' });
         return;
     }
 
     res.json({
         authenticated: !!session,
-        username: session ? session.username : null
+        username: session ? session.username : null,
+        redirect: session ? null : '/login'
     });
 });
 

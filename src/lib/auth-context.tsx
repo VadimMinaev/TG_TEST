@@ -66,6 +66,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         localStorage.removeItem('authToken');
         setIsAuthenticated(false);
         setUser(null);
+        if (data?.redirect && window.location.pathname !== data.redirect) {
+          window.location.assign(data.redirect);
+        }
       }
     } catch (error) {
       localStorage.removeItem('authToken');

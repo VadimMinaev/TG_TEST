@@ -40,7 +40,7 @@ export function PollingHistory() {
     }
   };
 
-  // Маппинг ID поллинга -> название
+  // Маппинг ID пуллинга -> название
   const pollNames = useMemo(() => {
     const map: Record<number, string> = {};
     polls.forEach((p) => {
@@ -133,7 +133,7 @@ export function PollingHistory() {
                 <table className="table-basic w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Поллинг</th>
+                      <th className="px-2 py-2">Пуллинг</th>
                       <th className="px-2 py-2">Дата/Время</th>
                       <th className="px-2 py-2">Статус</th>
                     </tr>
@@ -183,7 +183,7 @@ export function PollingHistory() {
                 <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о запуске</h4>
                 <div className="panel">
                   <div className="mb-2">
-                    <strong>Поллинг:</strong>{' '}
+                    <strong>Пуллинг:</strong>{' '}
                     <span className="font-medium">{pollNames[selectedRun.poll_id] || '—'}</span>
                     <code className="ml-2 text-xs text-[hsl(var(--muted-foreground))]">#{selectedRun.poll_id}</code>
                   </div>

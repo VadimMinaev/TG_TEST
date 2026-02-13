@@ -82,7 +82,7 @@ export function Integrations() {
     loadIntegrations();
   }, []);
 
-  // Применить настройки из выбранного Webhook или поллинга
+  // Применить настройки из выбранного Webhook или пуллинга
   const handleApplySource = (sourceId: string) => {
     setSelectedSourceId(sourceId);
     if (!sourceId) return;
@@ -557,7 +557,7 @@ export function Integrations() {
                     <>
                       {polls.length > 0 && (
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>🔄 Использовать поллинг</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>🔄 Использовать пуллинг</label>
                           <select
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={selectedSourceId}
@@ -571,7 +571,7 @@ export function Integrations() {
                             ))}
                           </select>
                           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                            Выберите существующий поллинг для копирования настроек
+                            Выберите существующий пуллинг для копирования настроек
                           </p>
                         </div>
                       )}

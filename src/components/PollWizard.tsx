@@ -66,7 +66,7 @@ export function PollWizard({ initialData, onComplete, onCancel }: PollWizardProp
   // Пример payload для предварительного просмотра
   const payloadExample = {
     id: 12345,
-    name: formData.name || 'Пример поллинга',
+    name: formData.name || 'Пример пуллинга',
     status: 'success',
     data: {
       status: 'ok',
@@ -76,7 +76,7 @@ export function PollWizard({ initialData, onComplete, onCancel }: PollWizardProp
   };
 
   // Генерация предварительного просмотра сообщения
-  const previewMessage = formData.messageTemplate || `Поллинг "${formData.name}" сработал`;
+  const previewMessage = formData.messageTemplate || `Пуллинг "${formData.name}" сработал`;
 
   return (
     <MultiStepForm
@@ -280,7 +280,7 @@ export function PollWizard({ initialData, onComplete, onCancel }: PollWizardProp
         </div>
         
         <div className="border rounded-lg p-4 bg-muted">
-          <h3 className="font-medium mb-2">Проверьте настройки поллинга</h3>
+          <h3 className="font-medium mb-2">Проверьте настройки пуллинга</h3>
           <div className="text-sm space-y-1">
             <p><span className="font-medium">Название:</span> {formData.name}</p>
             <p><span className="font-medium">Статус:</span> {formData.enabled ? 'Активна' : 'Неактивна'}</p>
