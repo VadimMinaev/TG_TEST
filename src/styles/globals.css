@@ -286,6 +286,15 @@ body {
   backdrop-filter: blur(10px);
 }
 
+.queue-stats-sticky {
+  position: sticky;
+  top: 166px;
+  z-index: 14;
+  background: hsl(var(--card) / 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid hsl(var(--border) / 0.7);
+}
+
 .card-body {
   padding: 24px;
 }
@@ -301,6 +310,12 @@ body {
   gap: 28px;
   min-height: calc(100vh - 240px);
   align-items: stretch;
+  background:
+    radial-gradient(120% 100% at 0% 0%, hsl(var(--primary) / 0.14), transparent 55%),
+    radial-gradient(110% 100% at 100% 0%, hsl(var(--info) / 0.12), transparent 58%),
+    linear-gradient(180deg, hsl(var(--background)), hsl(var(--card) / 0.92));
+  border-radius: 12px;
+  box-shadow: inset 0 0 0 1px hsl(var(--border) / 0.45);
 }
 
 .split-left {
@@ -511,6 +526,10 @@ body {
   .app-page .card > .card-header,
   .entity-page-header-sticky {
     top: 50px;
+  }
+
+  .queue-stats-sticky {
+    top: 132px;
   }
   
   .card-body {

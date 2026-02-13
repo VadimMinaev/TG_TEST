@@ -87,7 +87,7 @@ export function Queue() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-4 gap-4 p-6">
+        <div className="grid grid-cols-4 gap-4 p-6 queue-stats-sticky">
           <div className="panel">
             <div className="text-xs text-[hsl(var(--muted-foreground))]">Всего</div>
             <div className="text-2xl font-semibold">{stats.total || 0}</div>
