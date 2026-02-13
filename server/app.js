@@ -2077,6 +2077,9 @@ app.post('/webhook/:accountSlug', async (req, res) => {
         }
     }
 
+    // Выполнить интеграции, соответствующие этому вебхуку
+    await executeMatchingIntegrations(incomingPayload, 'webhook', accountId);
+
     logWebhook(req.body, matched, rules.length, telegram_results, accountId);
     res.json({ matched, telegram_results });
 });
@@ -2176,6 +2179,9 @@ app.post('/webhook', async (req, res) => {
             }
         }
     }
+
+    // Выполнить интеграции, соответствующие этому вебхуку
+    await executeMatchingIntegrations(incomingPayload, 'webhook', firstMatchedAccountId);
 
     logWebhook(req.body, matched, rules.length, telegram_results, firstMatchedAccountId);
     res.json({ matched, telegram_results });
@@ -2877,13 +2883,12 @@ async function executeIntegrationPolling(integration) {
         }
         console.log(`   ✅ Executing action...`);
         const runResult = await executeIntegration(integration, responseData, 'polling');
+        // Если интеграция сработала успешно и pollingContinueAfterMatch равно false, то выключаем интеграцию
         if (
-            matched &&
             runResult?.status === 'success' &&
-            runResult.telegramSent &&
             integration.pollingContinueAfterMatch === false
         ) {
-            console.log(`   ⚙️ Disabling integration ${integration.id} after match`);
+            console.log(`   ⚙️ Disabling integration ${integration.id} after match (pollingContinueAfterMatch=false)`);
             integration.enabled = false;
             await persistIntegration(integration);
             const timer = integrationTimers.get(integration.id);
@@ -3037,6 +3042,70 @@ async function logIntegrationRun(integrationId, data) {
         } catch (e) {
             console.error('Error logging integration run to file:', e);
         }
+    }
+}
+
+// Выполнить интеграции, соответствующие вебхуку
+async function executeMatchingIntegrations(payload, triggerType = 'webhook', accountId = null) {
+    try {
+        let integrations = [];
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            if (accountId != null) {
+                const result = await db.query('SELECT id, data, account_id FROM integrations WHERE account_id = $1', [accountId]);
+                integrations = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
+            } else {
+                const result = await db.query('SELECT id, data, account_id FROM integrations');
+                integrations = result.rows.map(r => ({ ...r.data, id: r.id, account_id: r.account_id }));
+            }
+        } else {
+            integrations = integrationsCache;
+        }
+
+        // Нормализуем интеграции
+        const normalizedIntegrations = integrations.map(normalizeIntegration).filter(Boolean);
+
+        // Найдем интеграции, которые должны сработать
+        for (const integration of normalizedIntegrations) {
+            // Проверяем, что интеграция включена и имеет тип webhook
+            if (!integration.enabled || integration.triggerType !== 'webhook') {
+                continue;
+            }
+
+            // Проверяем условие срабатывания интеграции
+            let shouldExecute = true;
+            if (integration.triggerCondition) {
+                try {
+                    const fn = new Function('payload', `
+                        try {
+                            return ${integration.triggerCondition};
+                        } catch (e) {
+                            console.error('Condition evaluation error in integration ${integration.id || "(no id)"}:', e.message);
+                            return false;
+                        }
+                    `);
+                    shouldExecute = !!fn(payload);
+                } catch (evalErr) {
+                    console.error('Integration condition evaluation setup error for integration', integration.id || '(no id):', evalErr.message);
+                    shouldExecute = false;
+                }
+            }
+
+            if (shouldExecute) {
+                // Выполняем интеграцию
+                await executeIntegration(integration, payload, 'webhook');
+
+                // Для вебхук-интеграций нет специального поля "продолжать после совпадения", 
+                // так как они срабатывают при каждом вебхуке. Это поле используется только для polling интеграций.
+                // Но если в будущем добавится такое поле, логика будет такой:
+                // if (integration.triggerType === 'webhook' && integration.webhookContinueAfterMatch === false) {
+                //     console.log(`   ⚙️ Disabling integration ${integration.id} after match (webhookContinueAfterMatch=false)`);
+                //     integration.enabled = false;
+                //     await persistIntegration(integration);
+                // }
+            }
+        }
+    } catch (error) {
+        console.error('Error executing matching integrations:', error);
     }
 }
 

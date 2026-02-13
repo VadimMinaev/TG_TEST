@@ -4,6 +4,7 @@ import { api, Bot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { ExportModal } from '../components/ExportModal';
+import { Breadcrumb } from '../components/Breadcrumb';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -356,7 +357,19 @@ export function Bots() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">🤖 Боты</h2>
+        <div className="flex flex-col gap-2">
+          <div>
+            <h2 className="text-xl font-semibold">🤖 Боты</h2>
+            <div className="mt-1">
+              <Breadcrumb 
+                items={[
+                  { label: 'Главная', path: '/' },
+                  { label: 'Боты', active: true }
+                ]} 
+              />
+            </div>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {canEdit && selectedBot && !editingBotId && (
             <>

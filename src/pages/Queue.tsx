@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
 import { RefreshCw } from 'lucide-react';
+import { Breadcrumb } from '../components/Breadcrumb';
 
 export function Queue() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -50,7 +51,19 @@ export function Queue() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">📬 Очередь сообщений в Telegram</h2>
+        <div className="flex flex-col gap-2">
+          <div>
+            <h2 className="text-xl font-semibold">📬 Очередь сообщений в Telegram</h2>
+            <div className="mt-1">
+              <Breadcrumb 
+                items={[
+                  { label: 'Главная', path: '/' },
+                  { label: 'Очередь в Telegram', active: true }
+                ]} 
+              />
+            </div>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <select
             value={filter}

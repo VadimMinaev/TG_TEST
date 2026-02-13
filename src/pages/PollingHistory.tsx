@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, Poll } from '../lib/api';
 import { RefreshCw, Trash2 } from 'lucide-react';
+import { Breadcrumb } from '../components/Breadcrumb';
 
 type PollRun = {
   id: number;
@@ -74,7 +75,19 @@ export function PollingHistory() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">🧾 История пуллинга</h2>
+        <div className="flex flex-col gap-2">
+          <div>
+            <h2 className="text-xl font-semibold">🧾 История пуллинга</h2>
+            <div className="mt-1">
+              <Breadcrumb 
+                items={[
+                  { label: 'Главная', path: '/' },
+                  { label: 'Ист. пуллинга', active: true }
+                ]} 
+              />
+            </div>
+          </div>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={loadHistory}

@@ -5,6 +5,8 @@ import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
+import { Breadcrumb } from '../components/Breadcrumb';
+import { IntegrationWizard } from '../components/IntegrationWizard';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -177,42 +179,6 @@ export function Integrations() {
     });
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setMessage(null);
-
-    if (!form.name) {
-      setMessage({ text: 'Укажите название', type: 'error' });
-      return;
-    }
-
-    // Для webhook триггера поле pollingContinueAfterMatch должно быть null в БД
-    const dataToSave = {
-      ...form,
-      pollingContinueAfterMatch: form.triggerType === 'webhook' ? undefined : form.pollingContinueAfterMatch,
-    };
-
-    try {
-      if (editingId && editingId !== -1) {
-        const updated = await api.updateIntegration(editingId, dataToSave);
-        setEditingId(null);
-        setSelectedId(updated.id);
-        setMessage({ text: 'Интеграция обновлена', type: 'success' });
-        // Перезагружаем список для синхронизации
-        await loadIntegrations();
-      } else {
-        const created = await api.createIntegration(dataToSave);
-        setEditingId(null);
-        setSelectedId(created.id);
-        setMessage({ text: 'Интеграция создана', type: 'success' });
-        // Перезагружаем список для синхронизации
-        await loadIntegrations();
-      }
-    } catch (error: any) {
-      setMessage({ text: error.message || 'Ошибка сохранения', type: 'error' });
-    }
-  };
-
   const handleDelete = async (id: number) => {
     if (!confirm('Удалить интеграцию?')) return;
     try {
@@ -337,7 +303,19 @@ export function Integrations() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">🔗 Интегратор</h2>
+        <div className="flex flex-col gap-2">
+          <div>
+            <h2 className="text-xl font-semibold">🔗 Интегратор</h2>
+            <div className="mt-1">
+              <Breadcrumb 
+                items={[
+                  { label: 'Главная', path: '/' },
+                  { label: 'Интегратор', active: true }
+                ]} 
+              />
+            </div>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           {canEdit && selectedIntegration && !editingId && (
             <>
@@ -483,330 +461,37 @@ export function Integrations() {
                 <h3 className="mb-4 text-lg font-semibold">
                   {editingId === -1 ? 'Создание интеграции' : 'Редактирование'}
                 </h3>
-                <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
-                      <input
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                        value={form.name}
-                        onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        placeholder="Моя интеграция"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Тип триггера</label>
-                      <select
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                        value={form.triggerType}
-                        onChange={(e) => {
-                          const newTriggerType = e.target.value as 'webhook' | 'polling';
-                          setForm({
-                            ...form,
-                            triggerType: newTriggerType,
-                            // Сбрасываем pollingContinueAfterMatch при переключении на webhook
-                            pollingContinueAfterMatch: newTriggerType === 'webhook' ? false : form.pollingContinueAfterMatch,
-                          });
-                          setSelectedSourceId('');
-                        }}
-                      >
-                        <option value="webhook">Webhook (входящий)</option>
-                        <option value="polling">Polling (опрос)</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {form.triggerType === 'webhook' && (
-                    <>
-                      {rules.length > 0 && (
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>📥 Использовать Webhook</label>
-                          <select
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={selectedSourceId}
-                            onChange={(e) => handleApplySource(e.target.value)}
-                          >
-                            <option value="">— Настроить вручную —</option>
-                            {rules.map((rule) => (
-                              <option key={rule.id} value={rule.id}>
-                                {rule.name} {rule.enabled ? '✅' : '⏸️'}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                            Выберите существующий Webhook для копирования настроек
-                          </p>
-                        </div>
-                      )}
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
-                        <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
-                          value={form.triggerCondition}
-                          onChange={(e) => setForm({ ...form, triggerCondition: e.target.value })}
-                          placeholder='payload.type === "order"'
-                        />
-                        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                          JavaScript-выражение. Доступна переменная <code>payload</code>
-                        </p>
-                      </div>
-                    </>
-                  )}
-
-                  {form.triggerType === 'polling' && (
-                    <>
-                      {polls.length > 0 && (
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>🔄 Использовать поллинг</label>
-                          <select
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={selectedSourceId}
-                            onChange={(e) => handleApplySource(e.target.value)}
-                          >
-                            <option value="">— Настроить вручную —</option>
-                            {polls.map((poll) => (
-                              <option key={poll.id} value={poll.id}>
-                                {poll.name} {poll.enabled ? '✅' : '⏸️'}
-                              </option>
-                            ))}
-                          </select>
-                          <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                            Выберите существующий поллинг для копирования настроек
-                          </p>
-                        </div>
-                      )}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-2">
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL для опроса</label>
-                          <input
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={form.pollingUrl}
-                            onChange={(e) => setForm({ ...form, pollingUrl: e.target.value })}
-                            placeholder="https://api.example.com/status"
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
-                          <select
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={form.pollingMethod}
-                            onChange={(e) => setForm({ ...form, pollingMethod: e.target.value })}
-                          >
-                            <option value="GET">GET</option>
-                            <option value="POST">POST</option>
-                            <option value="PUT">PUT</option>
-                          </select>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
-                          <input
-                            type="number"
-                            min={5}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={form.pollingInterval}
-                            onChange={(e) => setForm({ ...form, pollingInterval: Number(e.target.value) })}
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
-                          <input
-                            type="number"
-                            min={1}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={form.timeoutSec}
-                            onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
-                        <textarea
-                          rows={2}
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
-                          value={form.pollingHeaders}
-                          onChange={(e) => setForm({ ...form, pollingHeaders: e.target.value })}
-                          placeholder='{"Authorization": "Bearer token"}'
-                        />
-                      </div>
-                      {form.pollingMethod !== 'GET' && (
-                        <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
-                          <textarea
-                            rows={2}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
-                            value={form.pollingBody}
-                            onChange={(e) => setForm({ ...form, pollingBody: e.target.value })}
-                            placeholder='{"query": "status"}'
-                          />
-                        </div>
-                      )}
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
-                        <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
-                          value={form.pollingCondition}
-                          onChange={(e) => setForm({ ...form, pollingCondition: e.target.value })}
-                          placeholder='response.status === "ready"'
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
-                          <input
-                            type="checkbox"
-                            checked={form.pollingContinueAfterMatch}
-                            onChange={(e) => setForm({ ...form, pollingContinueAfterMatch: e.target.checked })}
-                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                          />
-                          Продолжать после совпадения
-                        </label>
-                      </div>
-                    </>
-                  )}
-
-                  <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
-                    <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>🚀 Action (вызов API)</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
-                        <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                          value={form.actionUrl}
-                          onChange={(e) => setForm({ ...form, actionUrl: e.target.value })}
-                          placeholder="https://api.example.com/action"
-                        />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
-                        <select
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                          value={form.actionMethod}
-                          onChange={(e) => setForm({ ...form, actionMethod: e.target.value })}
-                        >
-                          <option value="GET">GET</option>
-                          <option value="POST">POST</option>
-                          <option value="PUT">PUT</option>
-                          <option value="PATCH">PATCH</option>
-                          <option value="DELETE">DELETE</option>
-                        </select>
-                      </div>
-                    </div>
-                    <div style={{ marginTop: '16px' }}>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
-                      <textarea
-                        rows={2}
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
-                        value={form.actionHeaders}
-                        onChange={(e) => setForm({ ...form, actionHeaders: e.target.value })}
-                        placeholder='{"Authorization": "Bearer token", "X-Api-Key": "key"}'
-                      />
-                      <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                        Дополнительные заголовки запроса. Content-Type добавляется автоматически.
-                      </p>
-                    </div>
-                    {form.actionMethod !== 'GET' && (
-                      <div style={{ marginTop: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
-                        <textarea
-                          rows={3}
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
-                          value={form.actionBody}
-                          onChange={(e) => setForm({ ...form, actionBody: e.target.value })}
-                          placeholder={'{"orderId": "{{payload.id}}"}'}
-                        />
-                        <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                          Используйте <code>{'{{payload.field}}'}</code> для подстановки данных
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                      <input
-                        type="checkbox"
-                        id="sendToTelegram"
-                        checked={form.sendToTelegram}
-                        onChange={(e) => setForm({ ...form, sendToTelegram: e.target.checked })}
-                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                      />
-                      <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-                        📱 Telegram уведомление
-                      </label>
-                    </div>
-                    
-                    {form.sendToTelegram && (
-                      <div style={{ paddingLeft: '30px', opacity: form.sendToTelegram ? 1 : 0.5 }}>
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
-                            <input
-                              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                              value={form.chatId}
-                              onChange={(e) => setForm({ ...form, chatId: e.target.value })}
-                              placeholder="-1001234567890"
-                            />
-                          </div>
-                          <div>
-                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (опц.)</label>
-                            <input
-                              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                              value={form.botToken}
-                              onChange={(e) => setForm({ ...form, botToken: e.target.value })}
-                              placeholder="Глобальный токен"
-                            />
-                          </div>
-                        </div>
-                        <div style={{ marginTop: '16px' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                            Шаблон сообщения
-                            <TemplateHelp context="integration" />
-                          </label>
-                          <textarea
-                            rows={2}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
-                            value={form.messageTemplate}
-                            onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
-                            placeholder="${payload.name} — ${payload.status}"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                    <input
-                      type="checkbox"
-                      id="enabled"
-                      checked={form.enabled}
-                      onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                    />
-                    <label htmlFor="enabled" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
-                      Включена
-                    </label>
-                  </div>
-
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button
-                      type="submit"
-                      style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-                    >
-                      Сохранить
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
+                <IntegrationWizard
+                  initialData={editingId === -1 ? undefined : selectedIntegration}
+                  onComplete={async (data) => {
+                    try {
+                      if (editingId && editingId !== -1) {
+                        const updated = await api.updateIntegration(editingId, data);
                         setEditingId(null);
-                        if (!selectedId) setForm(DEFAULT_FORM);
-                      }}
-                      style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-                    >
-                      Отмена
-                    </button>
-                  </div>
-                </form>
+                        setSelectedId(updated.id);
+                        setMessage({ text: 'Интеграция обновлена', type: 'success' });
+                        // Перезагружаем список для синхронизации
+                        await loadIntegrations();
+                      } else {
+                        const created = await api.createIntegration(data);
+                        setEditingId(null);
+                        setSelectedId(created.id);
+                        setMessage({ text: 'Интеграция создана', type: 'success' });
+                        // Перезагружаем список для синхронизации
+                        await loadIntegrations();
+                      }
+                    } catch (error: any) {
+                      setMessage({ text: error.message || 'Ошибка сохранения', type: 'error' });
+                    }
+                  }}
+                  onCancel={() => {
+                    if (selectedId) {
+                      setEditingId(null);
+                    } else {
+                      handleStartCreate();
+                    }
+                  }}
+                />
               </>
             ) : selectedIntegration ? (
               <div>

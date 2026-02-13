@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, Account } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Plus, X } from 'lucide-react';
+import { Breadcrumb } from '../components/Breadcrumb';
 
 export function Accounts() {
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -65,7 +66,19 @@ export function Accounts() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">Аккаунты</h2>
+        <div className="flex flex-col gap-2">
+          <div>
+            <h2 className="text-xl font-semibold">Аккаунты</h2>
+            <div className="mt-1">
+              <Breadcrumb 
+                items={[
+                  { label: 'Главная', path: '/' },
+                  { label: 'Аккаунты', active: true }
+                ]} 
+              />
+            </div>
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => setShowCreate(!showCreate)}

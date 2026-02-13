@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router';
 import { api, User, Account } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Plus, Trash2, X } from 'lucide-react';
+import { Breadcrumb } from '../components/Breadcrumb';
 
 export function Users() {
   const { user } = useAuth();
@@ -124,7 +125,19 @@ export function Users() {
       {!isVadmin && (
         <div className="card">
           <div className="card-header">
-            <h2 className="text-xl font-semibold">Мой профиль</h2>
+            <div className="flex flex-col gap-2">
+              <div>
+                <h2 className="text-xl font-semibold">Мой профиль</h2>
+                <div className="mt-1">
+                  <Breadcrumb 
+                    items={[
+                      { label: 'Главная', path: '/' },
+                      { label: 'Пользователи', active: true }
+                    ]} 
+                  />
+                </div>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => setShowProfile(!showProfile)}
@@ -271,7 +284,19 @@ export function Users() {
 
       <div className="card">
         <div className="card-header">
-          <h2 className="text-xl font-semibold">Пользователи</h2>
+          <div className="flex flex-col gap-2">
+            <div>
+              <h2 className="text-xl font-semibold">Пользователи</h2>
+              <div className="mt-1">
+                <Breadcrumb 
+                  items={[
+                    { label: 'Главная', path: '/' },
+                    { label: 'Пользователи', active: true }
+                  ]} 
+                />
+              </div>
+            </div>
+          </div>
           {canManageUsers && (
             <button
               onClick={() => setShowCreateForm(true)}

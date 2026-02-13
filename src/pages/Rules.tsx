@@ -7,6 +7,7 @@ import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
 import { ExportModal } from '../components/ExportModal';
+import { Breadcrumb } from '../components/Breadcrumb';
 import {
   Tooltip,
   TooltipContent,
@@ -41,7 +42,7 @@ export function Rules() {
   useEffect(() => {
     const createParam = searchParams.get('create');
     const selectParam = searchParams.get('select');
-    
+
     if (createParam === 'true') {
       setSelectedRuleId(null);
       setEditingRuleId(-1);
@@ -84,18 +85,6 @@ export function Rules() {
   useEffect(() => {
     loadRules();
   }, []);
-
-  const loadRules = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getRules();
-      setRules(data);
-    } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const filteredRules = rules.filter((rule) => {
     const query = searchQuery.toLowerCase();
@@ -245,48 +234,62 @@ export function Rules() {
   return (
     <div className="card">
       <div className="card-header">
-        <div className="flex items-center gap-3">
-        <h2 className="text-xl font-semibold">📥 Webhook</h2>
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
-                >
-                  <Info className="h-4 w-4" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-sm">
-                <div className="space-y-3">
-                  <div>
-                    <p className="mb-2 font-medium">Адрес вебхука для внешних систем:</p>
-                    <div className="flex items-center gap-2">
-                      <code className="flex-1 rounded bg-[hsl(var(--muted))] px-2 py-1 break-all">
-                        {webhookUrl}
-                      </code>
-                      <button
-                        onClick={handleCopyWebhookUrl}
-                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary)_/_0.9)]"
-                        title="Копировать"
-                      >
-                        {webhookUrlCopied ? (
-                          <CheckCheck className="h-3.5 w-3.5" />
-                        ) : (
-                          <Copy className="h-3.5 w-3.5" />
-                        )}
-                      </button>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold">📥 Webhook</h2>
+              <div className="mt-1">
+                <Breadcrumb 
+                  items={[
+                    { label: 'Главная', path: '/' },
+                    { label: 'Webhook', active: true }
+                  ]} 
+                />
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <TooltipProvider delayDuration={200}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                  >
+                    <Info className="h-4 w-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-sm">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="mb-2 font-medium">Адрес вебхука для внешних систем:</p>
+                      <div className="flex items-center gap-2">
+                        <code className="flex-1 rounded bg-[hsl(var(--muted))] px-2 py-1 break-all">
+                          {webhookUrl}
+                        </code>
+                        <button
+                          onClick={handleCopyWebhookUrl}
+                          className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary)_/_0.9)]"
+                          title="Копировать"
+                        >
+                          {webhookUrlCopied ? (
+                            <CheckCheck className="h-3.5 w-3.5" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-[hsl(var(--muted-foreground))]">
+                      <p className="mb-1"><strong>Метод:</strong> POST</p>
+                      <p className="mb-1"><strong>Content-Type:</strong> application/json</p>
+                      <p>Укажите этот URL в настройках вебхуков вашей внешней системы (ITSM, CRM и т.д.)</p>
                     </div>
                   </div>
-                  <div className="text-[hsl(var(--muted-foreground))]">
-                    <p className="mb-1"><strong>Метод:</strong> POST</p>
-                    <p className="mb-1"><strong>Content-Type:</strong> application/json</p>
-                    <p>Укажите этот URL в настройках вебхуков вашей внешней системы (ITSM, CRM и т.д.)</p>
-                  </div>
-                </div>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {canEdit && selectedRuleId && !editingRuleId && (
