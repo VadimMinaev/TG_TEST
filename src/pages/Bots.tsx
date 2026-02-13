@@ -468,7 +468,7 @@ export function Bots() {
             ) : bots.length === 0 ? (
               <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Боты не найдены</p>
             ) : (
-              <div className="max-h-[calc(100vh-320px)] overflow-y-auto">
+              <div className="entity-list-scroll scrollbar-thin">
                 <table className="table-basic w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">

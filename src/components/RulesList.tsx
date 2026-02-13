@@ -25,7 +25,7 @@ export function RulesList({ rules, selectedId, onSelect, loading }: RulesListPro
   }
 
   return (
-    <div className="max-h-[calc(100vh-320px)] overflow-y-auto scrollbar-thin">
+    <div className="entity-list-scroll scrollbar-thin">
       <table className="table-basic w-full border-collapse text-sm">
         <thead>
           <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
