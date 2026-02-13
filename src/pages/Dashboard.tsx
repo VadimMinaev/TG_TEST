@@ -172,6 +172,15 @@ export function Dashboard() {
     return [...baseItems, { path: '/users', label: 'Пользователи', icon: <Users className="h-4 w-4" /> }];
   }, [user?.isVadmin]);
 
+  const breadcrumbItems = useMemo(() => {
+    const active = navItems.find((item) => item.path === location.pathname);
+    if (location.pathname === '/') return [{ label: 'Главная', active: true }];
+    return [
+      { label: 'Главная', path: '/' },
+      { label: active?.label ?? 'Раздел', active: true },
+    ];
+  }, [location.pathname, navItems]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (versionRef.current && !versionRef.current.contains(event.target as Node)) {
@@ -468,7 +477,7 @@ export function Dashboard() {
 
         <main className="content-area" id="main-content">
           <div className="content-inner">
-            <Breadcrumb />
+            <Breadcrumb items={breadcrumbItems} />
 
             {location.pathname === '/' ? (
               <section className="dashboard-home">

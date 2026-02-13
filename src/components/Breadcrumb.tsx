@@ -9,10 +9,10 @@ interface BreadcrumbItem {
 }
 
 interface BreadcrumbProps {
-  items: BreadcrumbItem[];
+  items?: BreadcrumbItem[];
 }
 
-export function Breadcrumb({ items }: BreadcrumbProps) {
+export function Breadcrumb({ items = [] }: BreadcrumbProps) {
   return (
     <nav className="flex" aria-label="Breadcrumb">
       <ol className="flex items-center space-x-2 text-sm">
