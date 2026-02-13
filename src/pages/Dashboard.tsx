@@ -86,7 +86,7 @@ export function Dashboard() {
 
   const tabs = [
     { path: '/', label: 'Главная', icon: <Activity className="h-4 w-4" /> },
-    { path: '/', label: 'Webhook', icon: <MessageSquare className="h-4 w-4" /> },
+    { path: '/rules', label: 'Webhook', icon: <MessageSquare className="h-4 w-4" /> },
     { path: '/history', label: 'История', icon: <Clock className="h-4 w-4" /> },
     { path: '/queue', label: 'Очередь в Telegram', icon: <Mail className="h-4 w-4" /> },
     { path: '/polling', label: 'Пуллинг', icon: <Repeat2 className="h-4 w-4" /> },

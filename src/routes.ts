@@ -26,6 +26,7 @@ export const router = createBrowserRouter([
         Component: Dashboard,
         children: [
           { index: true, Component: Rules },
+          { path: 'rules', Component: Rules },
           { path: 'testing', Component: Testing },
           { path: 'history', Component: History },
           { path: 'queue', Component: Queue },
