@@ -323,8 +323,14 @@ body {
 }
 
 .entity-list-scroll {
-  max-height: calc(100vh - 380px);
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+}
+
+.split-left > .panel {
+  display: flex;
+  flex-direction: column;
 }
 
 
@@ -348,7 +354,8 @@ body {
   }
 
   .entity-list-scroll {
-    max-height: calc(100vh - 320px);
+    flex: 1;
+    min-height: 0;
   }
 }
 
@@ -475,6 +482,7 @@ body {
   }
 
   .entity-list-scroll {
+    flex: initial;
     max-height: none;
   }
   
