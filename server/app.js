@@ -2511,12 +2511,12 @@ function startBotScheduler() {
                     const runKey = `${bot.id}-${dateStr}`;
                     if (!botRanToday.has(runKey)) {
                         botRanToday.set(runKey, true);
-                        console.log(`Bot scheduler: executing bot ${bot.id} (${bot.name}) at ${currentTime} ${tz} [${scheduleType}]`);
+                        console.log(`Bot scheduler: executing bot ${bot.id} (${bot.name}) at ${currentTime} ${tz} [${bot.scheduleType}]`);
                         const botCopy = { ...bot };
                         await executeBot(botCopy);
 
                         // For 'once' bots: disable after successful run
-                        if (scheduleType === 'once') {
+                        if (bot.scheduleType === 'once') {
                             botCopy.enabled = false;
                             if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
                                 await db.query('UPDATE bots SET data = $1 WHERE id = $2', [botCopy, botCopy.id]);

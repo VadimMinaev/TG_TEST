@@ -24,3 +24,5 @@ git fetch origin && git reset --hard origin/master
 docker compose build --no-cache app && docker compose up -d --force-recreate --no-deps app
 Если на сервере ругается “not a git repository”
 Значит вы не в папке проекта. Сначала найдите/перейдите в правильную директорию (где лежит .git и docker-compose.yml), обычно:
+4) Проверить логи 
+docker compose logs -f app
