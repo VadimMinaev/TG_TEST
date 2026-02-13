@@ -512,6 +512,18 @@ export const api = {
     return res.json();
   },
 
+  deleteAccount: async (id: number) => {
+    const res = await fetch(`${API_BASE}/accounts/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to delete account');
+    }
+    return res.json();
+  },
+
   // Users
   getUsers: async (): Promise<User[]> => {
     const res = await fetch(`${API_BASE}/users`, { headers: getHeaders() });

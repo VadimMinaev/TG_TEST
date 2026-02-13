@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, Account, AccountCloneOptions } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { Breadcrumb } from '../components/Breadcrumb';
 
 type CloneIncludeState = {
@@ -33,6 +33,15 @@ export function Accounts() {
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === selectedAccountId) || null,
     [accounts, selectedAccountId]
+  );
+  const mainAccountId = useMemo(() => {
+    if (accounts.length === 0) return null;
+    return accounts.reduce((minId, account) => (account.id < minId ? account.id : minId), accounts[0].id);
+  }, [accounts]);
+  const normalizedNewName = newName.trim().toLowerCase();
+  const duplicateNameExists = useMemo(
+    () => !!normalizedNewName && accounts.some((a) => a.name.trim().toLowerCase() === normalizedNewName),
+    [accounts, normalizedNewName]
   );
 
   const filteredAccounts = useMemo(() => {
@@ -96,6 +105,11 @@ export function Accounts() {
       return;
     }
 
+    if (duplicateNameExists) {
+      setMessage({ text: 'Такое название уже используется', type: 'error' });
+      return;
+    }
+
     let cloneOptions: AccountCloneOptions | undefined;
     if (cloneSourceAccountId !== '') {
       const hasAny = Object.values(cloneInclude).some(Boolean);
@@ -128,6 +142,24 @@ export function Accounts() {
       if (created?.id) setSelectedAccountId(created.id);
     } catch (error: any) {
       setMessage({ text: error?.message || 'Ошибка создания аккаунта', type: 'error' });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!selectedAccount) return;
+    if (mainAccountId != null && selectedAccount.id === mainAccountId) {
+      setMessage({ text: 'Нельзя удалить главный аккаунт', type: 'error' });
+      return;
+    }
+    if (!confirm(`Удалить аккаунт "${selectedAccount.name}"? Данные будут перенесены в главный аккаунт.`)) return;
+
+    try {
+      await api.deleteAccount(selectedAccount.id);
+      setMessage({ text: 'Аккаунт удален', type: 'success' });
+      await loadAccounts();
+      setSelectedAccountId(mainAccountId);
+    } catch (error: any) {
+      setMessage({ text: error?.message || 'Ошибка удаления аккаунта', type: 'error' });
     }
   };
 
@@ -257,6 +289,9 @@ export function Accounts() {
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
                     required
                   />
+                  {duplicateNameExists && (
+                    <p className="mt-1 text-xs text-[hsl(var(--destructive))]">Такое название уже используется</p>
+                  )}
                 </div>
 
                 <div className="rounded border border-[hsl(var(--border))] p-3">
@@ -314,7 +349,8 @@ export function Accounts() {
                 <div className="flex gap-2">
                   <button
                     type="submit"
-                    className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm text-[hsl(var(--primary-foreground))] hover:opacity-90"
+                    disabled={duplicateNameExists}
+                    className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm text-[hsl(var(--primary-foreground))] hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     Создать
                   </button>
@@ -357,6 +393,21 @@ export function Accounts() {
                   <strong>Создан:</strong>{' '}
                   {selectedAccount.created_at ? new Date(selectedAccount.created_at).toLocaleString('ru-RU') : '—'}
                 </div>
+                <div>
+                  <strong>Тип:</strong>{' '}
+                  {mainAccountId != null && selectedAccount.id === mainAccountId ? 'Главный' : 'Обычный'}
+                </div>
+                {mainAccountId != null && selectedAccount.id !== mainAccountId && (
+                  <div className="pt-2">
+                    <button
+                      onClick={handleDeleteAccount}
+                      className="inline-flex items-center gap-2 rounded border border-[hsl(var(--destructive)_/_0.4)] px-3 py-2 text-sm text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Удалить аккаунт
+                    </button>
+                  </div>
+                )}
               </div>
             ) : (
               <p className="py-16 text-center text-[hsl(var(--muted-foreground))]">

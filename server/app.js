@@ -105,6 +105,30 @@ let botsCache = [];
 let botSchedulerInterval = null;
 let dbConnected = false;
 
+async function ensureUniqueAccountNames(client) {
+    const result = await client.query('SELECT id, name FROM accounts ORDER BY id');
+    const usedNames = new Set();
+
+    for (const row of result.rows) {
+        const baseName = String(row.name || '').trim() || `account_${row.id}`;
+        let candidate = baseName;
+        let suffix = 1;
+        let normalized = candidate.toLowerCase();
+
+        while (usedNames.has(normalized)) {
+            candidate = `${baseName}_${suffix}`;
+            normalized = candidate.toLowerCase();
+            suffix += 1;
+        }
+
+        usedNames.add(normalized);
+
+        if (candidate !== row.name) {
+            await client.query('UPDATE accounts SET name = $1 WHERE id = $2', [candidate, row.id]);
+        }
+    }
+}
+
 if (process.env.DATABASE_URL) {
     const { Client } = require('pg');
     const client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -135,7 +159,9 @@ if (process.env.DATABASE_URL) {
                 )
             `);
             await client.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS slug VARCHAR(255)`);
+            await ensureUniqueAccountNames(client);
             await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_slug ON accounts(slug) WHERE slug IS NOT NULL`);
+            await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_name_unique ON accounts ((LOWER(TRIM(name))))`);
             await client.query(`CREATE TABLE IF NOT EXISTS rules (id BIGINT PRIMARY KEY, data JSONB)`);
             await client.query(`ALTER TABLE rules ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
             await client.query(`CREATE TABLE IF NOT EXISTS logs (id SERIAL PRIMARY KEY, data JSONB)`);
@@ -1353,6 +1379,14 @@ app.post('/api/accounts', auth, vadminOnly, async (req, res) => {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             await db.query('BEGIN');
+            const duplicateByName = await db.query(
+                'SELECT id FROM accounts WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1',
+                [name]
+            );
+            if (duplicateByName.rows.length > 0) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'Account name already exists' });
+            }
             let slug = slugifyAccountName(name);
             const existing = await db.query('SELECT id FROM accounts WHERE slug = $1', [slug]);
             if (existing.rows.length > 0) {
@@ -1383,6 +1417,82 @@ app.post('/api/accounts', auth, vadminOnly, async (req, res) => {
 
             await db.query('COMMIT');
             res.status(201).json({ ...created, cloned });
+        } catch (err) {
+            try { await db.query('ROLLBACK'); } catch (_) {}
+            console.error('DB error:', err);
+            if (err && err.code === '23505') {
+                return res.status(400).json({ error: 'Account name already exists' });
+            }
+            res.status(500).json({ error: 'DB error' });
+        }
+    } else {
+        res.status(400).json({ error: 'Accounts require database' });
+    }
+});
+
+app.delete('/api/accounts/:id', auth, vadminOnly, async (req, res) => {
+    const accountId = parseInt(req.params.id, 10);
+    if (!accountId) return res.status(400).json({ error: 'Invalid account id' });
+
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            await db.query('BEGIN');
+
+            const targetResult = await db.query('SELECT id, name FROM accounts WHERE id = $1', [accountId]);
+            if (targetResult.rows.length === 0) {
+                await db.query('ROLLBACK');
+                return res.status(404).json({ error: 'Account not found' });
+            }
+
+            const mainResult = await db.query('SELECT id, name FROM accounts ORDER BY id ASC LIMIT 1');
+            const mainAccountId = mainResult.rows[0]?.id;
+            if (!mainAccountId) {
+                await db.query('ROLLBACK');
+                return res.status(500).json({ error: 'Main account not found' });
+            }
+            if (mainAccountId === accountId) {
+                await db.query('ROLLBACK');
+                return res.status(400).json({ error: 'Cannot delete main account' });
+            }
+
+            const moveAccountData = async (tableName) => {
+                const result = await db.query(
+                    `UPDATE ${tableName} SET account_id = $1 WHERE account_id = $2`,
+                    [mainAccountId, accountId]
+                );
+                return result.rowCount || 0;
+            };
+
+            const moved = {
+                users: await moveAccountData('users'),
+                rules: await moveAccountData('rules'),
+                polls: await moveAccountData('polls'),
+                integrations: await moveAccountData('integrations'),
+                bots: await moveAccountData('bots'),
+                logs: await moveAccountData('logs'),
+                pollRuns: await moveAccountData('poll_runs'),
+                integrationRuns: await moveAccountData('integration_runs'),
+                botRuns: await moveAccountData('bot_runs'),
+                messageQueue: await moveAccountData('message_queue'),
+            };
+
+            await db.query('DELETE FROM accounts WHERE id = $1', [accountId]);
+            await db.query('COMMIT');
+
+            sessions.forEach((session, token) => {
+                if (session && session.accountId === accountId) {
+                    sessions.set(token, { ...session, accountId: mainAccountId });
+                }
+            });
+            saveSessions();
+
+            res.json({
+                status: 'deleted',
+                moved,
+                targetAccountId: accountId,
+                targetAccountName: targetResult.rows[0].name,
+                mainAccountId,
+            });
         } catch (err) {
             try { await db.query('ROLLBACK'); } catch (_) {}
             console.error('DB error:', err);
