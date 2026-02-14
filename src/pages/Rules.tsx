@@ -25,6 +25,7 @@ export function Rules() {
   const [searchQuery, setSearchQuery] = useState('');
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [importing, setImporting] = useState(false);
+  const [togglingRuleId, setTogglingRuleId] = useState<number | null>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
   useEffect(() => {
@@ -179,6 +180,23 @@ export function Rules() {
     } catch (error: any) {
       setMessage({ text: error.message, type: 'error' });
       throw error;
+    }
+  };
+
+  const handleToggleRuleEnabled = async (rule: Rule) => {
+    const nextEnabled = !rule.enabled;
+    try {
+      setTogglingRuleId(rule.id);
+      const updated = await api.updateRule(rule.id, { enabled: nextEnabled });
+      setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
+      setMessage({
+        text: nextEnabled ? 'Webhook включен' : 'Webhook выключен',
+        type: 'success',
+      });
+    } catch (error: any) {
+      setMessage({ text: error.message || 'Не удалось обновить статус Webhook', type: 'error' });
+    } finally {
+      setTogglingRuleId(null);
     }
   };
 
@@ -411,7 +429,12 @@ export function Rules() {
               }}
             />
           ) : selectedRuleId ? (
-            <RuleDetails ruleId={selectedRuleId} />
+            <RuleDetails
+              ruleId={selectedRuleId}
+              canEdit={canEdit}
+              onToggleEnabled={handleToggleRuleEnabled}
+              toggling={togglingRuleId === selectedRuleId}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
               <p className="mb-4">Выберите Webhook из списка слева для редактирования или просмотра</p>

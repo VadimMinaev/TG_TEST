@@ -71,6 +71,7 @@ export function Bots() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [togglingBotId, setTogglingBotId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Auto-dismiss messages
@@ -243,6 +244,23 @@ export function Bots() {
       setMessage({ text: 'Бот запущен вручную', type: 'success' });
     } catch (error: any) {
       setMessage({ text: error.message || 'Не удалось запустить бота', type: 'error' });
+    }
+  };
+
+  const handleToggleBotEnabled = async (bot: Bot) => {
+    const nextEnabled = !bot.enabled;
+    try {
+      setTogglingBotId(bot.id);
+      const updated = await api.updateBot(bot.id, { enabled: nextEnabled });
+      setBots((prev) => prev.map((b) => (b.id === bot.id ? updated : b)));
+      setMessage({
+        text: nextEnabled ? 'Бот включен' : 'Бот выключен',
+        type: 'success',
+      });
+    } catch (error: any) {
+      setMessage({ text: error.message || 'Не удалось обновить статус бота', type: 'error' });
+    } finally {
+      setTogglingBotId(null);
     }
   };
 
@@ -907,6 +925,20 @@ export function Bots() {
                       >
                         {selectedBot.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleBotEnabled(selectedBot)}
+                          disabled={togglingBotId === selectedBot.id}
+                          className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {togglingBotId === selectedBot.id
+                            ? 'Сохранение...'
+                            : selectedBot.enabled
+                              ? 'Выключить'
+                              : 'Включить'}
+                        </button>
+                      )}
                     </div>
                     <div style={{ marginBottom: '12px' }}>
                       <strong>Тип:</strong>{' '}

@@ -45,6 +45,7 @@ export function Integrations() {
   const [running, setRunning] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [togglingIntegrationId, setTogglingIntegrationId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
@@ -257,6 +258,23 @@ export function Integrations() {
       setMessage({ text: error.message, type: 'error' });
     } finally {
       setRunning(false);
+    }
+  };
+
+  const handleToggleIntegrationEnabled = async (integration: Integration) => {
+    const nextEnabled = !integration.enabled;
+    try {
+      setTogglingIntegrationId(integration.id);
+      const updated = await api.updateIntegration(integration.id, { enabled: nextEnabled });
+      setIntegrations((prev) => prev.map((item) => (item.id === integration.id ? updated : item)));
+      setMessage({
+        text: nextEnabled ? 'Интеграция включена' : 'Интеграция выключена',
+        type: 'success',
+      });
+    } catch (error: any) {
+      setMessage({ text: error.message || 'Не удалось обновить статус интеграции', type: 'error' });
+    } finally {
+      setTogglingIntegrationId(null);
     }
   };
 
@@ -832,6 +850,20 @@ export function Integrations() {
                         >
                           {selectedIntegration.enabled ? '✅ Включена' : '⏸️ Отключена'}
                         </span>
+                        {canEdit && (
+                          <button
+                            type="button"
+                            onClick={() => handleToggleIntegrationEnabled(selectedIntegration)}
+                            disabled={togglingIntegrationId === selectedIntegration.id}
+                            className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {togglingIntegrationId === selectedIntegration.id
+                              ? 'Сохранение...'
+                              : selectedIntegration.enabled
+                                ? 'Выключить'
+                                : 'Включить'}
+                          </button>
+                        )}
                       </div>
                       <div>
                         <strong>Тип триггера:</strong>{' '}

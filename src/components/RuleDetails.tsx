@@ -3,9 +3,12 @@ import { api, Rule } from '../lib/api';
 
 interface RuleDetailsProps {
   ruleId: number;
+  canEdit?: boolean;
+  onToggleEnabled?: (rule: Rule) => Promise<void>;
+  toggling?: boolean;
 }
 
-export function RuleDetails({ ruleId }: RuleDetailsProps) {
+export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling = false }: RuleDetailsProps) {
   const [rule, setRule] = useState<Rule | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -61,6 +64,16 @@ export function RuleDetails({ ruleId }: RuleDetailsProps) {
               >
                 {rule.enabled ? '✅ Включено' : '⏸️ Отключено'}
               </span>
+              {canEdit && onToggleEnabled && (
+                <button
+                  type="button"
+                  onClick={() => onToggleEnabled(rule)}
+                  disabled={toggling}
+                  className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {toggling ? 'Сохранение...' : rule.enabled ? 'Выключить' : 'Включить'}
+                </button>
+              )}
             </div>
             {rule.updated_at && (
               <div className="text-xs text-[hsl(var(--muted-foreground))]">

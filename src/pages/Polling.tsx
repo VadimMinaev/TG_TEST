@@ -52,6 +52,7 @@ export function Polling() {
   const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [togglingPollId, setTogglingPollId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
@@ -198,6 +199,23 @@ export function Polling() {
       setMessage({ text: 'Запуск выполнен', type: 'success' });
     } catch (error: any) {
       setMessage({ text: error.message || 'Не удалось запустить пуллинг', type: 'error' });
+    }
+  };
+
+  const handleTogglePollEnabled = async (poll: Poll) => {
+    const nextEnabled = !poll.enabled;
+    try {
+      setTogglingPollId(poll.id);
+      const updated = await api.updatePoll(poll.id, { enabled: nextEnabled });
+      setPolls((prev) => prev.map((p) => (p.id === poll.id ? updated : p)));
+      setMessage({
+        text: nextEnabled ? 'Пуллинг включен' : 'Пуллинг выключен',
+        type: 'success',
+      });
+    } catch (error: any) {
+      setMessage({ text: error.message || 'Не удалось обновить статус пуллинга', type: 'error' });
+    } finally {
+      setTogglingPollId(null);
     }
   };
 
@@ -622,6 +640,20 @@ export function Polling() {
                       >
                         {selectedPoll.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
+                      {canEdit && (
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePollEnabled(selectedPoll)}
+                          disabled={togglingPollId === selectedPoll.id}
+                          className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                          {togglingPollId === selectedPoll.id
+                            ? 'Сохранение...'
+                            : selectedPoll.enabled
+                              ? 'Выключить'
+                              : 'Включить'}
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
