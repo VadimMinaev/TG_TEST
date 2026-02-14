@@ -6,6 +6,7 @@ import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'l
 import { ExportModal } from '../components/ExportModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { StatusRadio } from '../components/StatusRadio';
+import { StateToggle } from '../components/StateToggle';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -865,14 +866,13 @@ export function Bots() {
                   />
                 </div>
 
-                {/* Enabled checkbox */}
+                {/* Enabled toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={form.enabled}
-                      onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    <StateToggle
+                      idPrefix="bot-edit"
+                      enabled={form.enabled}
+                      onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
                     />
                     Включено
                   </label>
@@ -926,6 +926,18 @@ export function Bots() {
                       >
                         {selectedBot.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
+                      {canEdit && (
+                        <span style={{ marginLeft: '20px' }}>
+                          <StateToggle
+                            idPrefix={`bot-${selectedBot.id}`}
+                            enabled={selectedBot.enabled}
+                            disabled={togglingBotId === selectedBot.id}
+                            onChange={(nextEnabled) => {
+                              if (nextEnabled !== selectedBot.enabled) handleToggleBotEnabled(selectedBot);
+                            }}
+                          />
+                        </span>
+                      )}
                     </div>
                     <div style={{ marginBottom: '12px' }}>
                       <strong>Тип:</strong>{' '}

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, Rule } from '../lib/api';
 import { StatusRadio } from './StatusRadio';
+import { StateToggle } from './StateToggle';
 
 interface RuleDetailsProps {
   ruleId: number;
@@ -65,6 +66,18 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
               >
                 {rule.enabled ? '✅ Включено' : '⏸️ Отключено'}
               </span>
+              {canEdit && onToggleEnabled && (
+                <span style={{ marginLeft: '20px' }}>
+                  <StateToggle
+                    idPrefix={`rule-${rule.id}`}
+                    enabled={rule.enabled}
+                    disabled={toggling}
+                    onChange={(nextEnabled) => {
+                      if (nextEnabled !== rule.enabled) onToggleEnabled(rule);
+                    }}
+                  />
+                </span>
+              )}
             </div>
             {rule.updated_at && (
               <div className="text-xs text-[hsl(var(--muted-foreground))]">

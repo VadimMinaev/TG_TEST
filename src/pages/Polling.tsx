@@ -6,6 +6,7 @@ import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'l
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
+import { StateToggle } from '../components/StateToggle';
 
 const DEFAULT_FORM = {
   name: '',
@@ -567,11 +568,10 @@ export function Polling() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '4px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={form.enabled}
-                      onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    <StateToggle
+                      idPrefix="poll-edit"
+                      enabled={form.enabled}
+                      onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
                     />
                     Включено
                   </label>
@@ -641,6 +641,18 @@ export function Polling() {
                       >
                         {selectedPoll.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
+                      {canEdit && (
+                        <span style={{ marginLeft: '20px' }}>
+                          <StateToggle
+                            idPrefix={`poll-${selectedPoll.id}`}
+                            enabled={selectedPoll.enabled}
+                            disabled={togglingPollId === selectedPoll.id}
+                            onChange={(nextEnabled) => {
+                              if (nextEnabled !== selectedPoll.enabled) handleTogglePollEnabled(selectedPoll);
+                            }}
+                          />
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>

@@ -8,6 +8,7 @@ import {
   TooltipTrigger,
 } from './ui/tooltip';
 import { StatusRadio } from './StatusRadio';
+import { StateToggle } from './StateToggle';
 import { TemplateHelp } from './TemplateHelp';
 import { TelegramPreviewWithToggle } from './TelegramPreviewWithToggle';
 
@@ -259,7 +260,14 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
           Статус
         </label>
-        <StatusRadio idPrefix="rule-form" enabled={enabled} onChange={setEnabled} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <StateToggle
+            idPrefix="rule-form"
+            enabled={enabled}
+            onChange={setEnabled}
+          />
+          <span>{enabled ? 'Включено' : 'Отключено'}</span>
+        </div>
       </div>
 
       <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>

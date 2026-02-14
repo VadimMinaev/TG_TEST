@@ -6,6 +6,7 @@ import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'l
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
+import { StateToggle } from '../components/StateToggle';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -795,14 +796,12 @@ export function Integrations() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                    <input
-                      type="checkbox"
-                      id="enabled"
-                      checked={form.enabled}
-                      onChange={(e) => setForm({ ...form, enabled: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                    <StateToggle
+                      idPrefix="integration-edit"
+                      enabled={form.enabled}
+                      onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
                     />
-                    <label htmlFor="enabled" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
+                    <label style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
                       Включена
                     </label>
                   </div>
@@ -851,6 +850,18 @@ export function Integrations() {
                         >
                           {selectedIntegration.enabled ? '✅ Включена' : '⏸️ Отключена'}
                         </span>
+                        {canEdit && (
+                          <span style={{ marginLeft: '20px' }}>
+                            <StateToggle
+                              idPrefix={`integration-${selectedIntegration.id}`}
+                              enabled={selectedIntegration.enabled}
+                              disabled={togglingIntegrationId === selectedIntegration.id}
+                              onChange={(nextEnabled) => {
+                                if (nextEnabled !== selectedIntegration.enabled) handleToggleIntegrationEnabled(selectedIntegration);
+                              }}
+                            />
+                          </span>
+                        )}
                       </div>
                       <div>
                         <strong>Тип триггера:</strong>{' '}
