@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { StatusRadio } from './StatusRadio';
 import { TemplateHelp } from './TemplateHelp';
 import { TelegramPreviewWithToggle } from './TelegramPreviewWithToggle';
 
@@ -254,17 +255,11 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-        <input
-          type="checkbox"
-          id="enabled"
-          checked={enabled}
-          onChange={(e) => setEnabled(e.target.checked)}
-          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-        />
-        <label htmlFor="enabled" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
-          Включено
+      <div>
+        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+          Статус
         </label>
+        <StatusRadio idPrefix="rule-form" enabled={enabled} onChange={setEnabled} />
       </div>
 
       <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>

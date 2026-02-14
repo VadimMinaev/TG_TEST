@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, Rule } from '../lib/api';
+import { StatusRadio } from './StatusRadio';
 
 interface RuleDetailsProps {
   ruleId: number;
@@ -64,16 +65,6 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
               >
                 {rule.enabled ? '✅ Включено' : '⏸️ Отключено'}
               </span>
-              {canEdit && onToggleEnabled && (
-                <button
-                  type="button"
-                  onClick={() => onToggleEnabled(rule)}
-                  disabled={toggling}
-                  className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {toggling ? 'Сохранение...' : rule.enabled ? 'Выключить' : 'Включить'}
-                </button>
-              )}
             </div>
             {rule.updated_at && (
               <div className="text-xs text-[hsl(var(--muted-foreground))]">
@@ -82,6 +73,22 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
             )}
           </div>
         </div>
+
+        {canEdit && onToggleEnabled && (
+          <div>
+            <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
+            <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+              <StatusRadio
+                idPrefix="rule"
+                enabled={rule.enabled}
+                disabled={toggling}
+                onChange={(nextEnabled) => {
+                  if (nextEnabled !== rule.enabled) onToggleEnabled(rule);
+                }}
+              />
+            </div>
+          </div>
+        )}
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие</h4>

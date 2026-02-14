@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { ExportModal } from '../components/ExportModal';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { StatusRadio } from '../components/StatusRadio';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -925,20 +926,6 @@ export function Bots() {
                       >
                         {selectedBot.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => handleToggleBotEnabled(selectedBot)}
-                          disabled={togglingBotId === selectedBot.id}
-                          className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {togglingBotId === selectedBot.id
-                            ? 'Сохранение...'
-                            : selectedBot.enabled
-                              ? 'Выключить'
-                              : 'Включить'}
-                        </button>
-                      )}
                     </div>
                     <div style={{ marginBottom: '12px' }}>
                       <strong>Тип:</strong>{' '}
@@ -946,6 +933,22 @@ export function Bots() {
                     </div>
                   </div>
                 </div>
+
+                {canEdit && (
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
+                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                      <StatusRadio
+                        idPrefix="bot"
+                        enabled={selectedBot.enabled}
+                        disabled={togglingBotId === selectedBot.id}
+                        onChange={(nextEnabled) => {
+                          if (nextEnabled !== selectedBot.enabled) handleToggleBotEnabled(selectedBot);
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {selectedBot.messageType === 'poll' && (
                   <div>

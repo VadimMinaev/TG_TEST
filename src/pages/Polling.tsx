@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
+import { StatusRadio } from '../components/StatusRadio';
 
 const DEFAULT_FORM = {
   name: '',
@@ -640,23 +641,25 @@ export function Polling() {
                       >
                         {selectedPoll.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
-                      {canEdit && (
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePollEnabled(selectedPoll)}
-                          disabled={togglingPollId === selectedPoll.id}
-                          className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          {togglingPollId === selectedPoll.id
-                            ? 'Сохранение...'
-                            : selectedPoll.enabled
-                              ? 'Выключить'
-                              : 'Включить'}
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
+
+                {canEdit && (
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
+                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                      <StatusRadio
+                        idPrefix="poll"
+                        enabled={selectedPoll.enabled}
+                        disabled={togglingPollId === selectedPoll.id}
+                        onChange={(nextEnabled) => {
+                          if (nextEnabled !== selectedPoll.enabled) handleTogglePollEnabled(selectedPoll);
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки опроса</h4>

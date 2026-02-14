@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
+import { StatusRadio } from '../components/StatusRadio';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -850,20 +851,6 @@ export function Integrations() {
                         >
                           {selectedIntegration.enabled ? '✅ Включена' : '⏸️ Отключена'}
                         </span>
-                        {canEdit && (
-                          <button
-                            type="button"
-                            onClick={() => handleToggleIntegrationEnabled(selectedIntegration)}
-                            disabled={togglingIntegrationId === selectedIntegration.id}
-                            className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {togglingIntegrationId === selectedIntegration.id
-                              ? 'Сохранение...'
-                              : selectedIntegration.enabled
-                                ? 'Выключить'
-                                : 'Включить'}
-                          </button>
-                        )}
                       </div>
                       <div>
                         <strong>Тип триггера:</strong>{' '}
@@ -873,6 +860,22 @@ export function Integrations() {
                       </div>
                     </div>
                   </div>
+
+                  {canEdit && (
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
+                      <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                        <StatusRadio
+                          idPrefix="integration"
+                          enabled={selectedIntegration.enabled}
+                          disabled={togglingIntegrationId === selectedIntegration.id}
+                          onChange={(nextEnabled) => {
+                            if (nextEnabled !== selectedIntegration.enabled) handleToggleIntegrationEnabled(selectedIntegration);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {selectedIntegration.triggerType === 'webhook' ? (
                     selectedIntegration.triggerCondition && (
