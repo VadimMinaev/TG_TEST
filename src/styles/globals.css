@@ -124,6 +124,36 @@ body {
   filter: brightness(1.05);
 }
 
+.entity-edit-panel {
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 18px;
+  background: hsl(var(--card));
+}
+
+.entity-edit-form input:not([type='checkbox']):not([type='radio']),
+.entity-edit-form select,
+.entity-edit-form textarea {
+  border-radius: 14px !important;
+  border: 1px solid hsl(var(--input)) !important;
+  background: hsl(var(--background)) !important;
+  padding: 14px 16px !important;
+}
+
+.entity-edit-form input:not([type='checkbox']):not([type='radio']):focus,
+.entity-edit-form select:focus,
+.entity-edit-form textarea:focus {
+  outline: none !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2) !important;
+}
+
+.entity-edit-form button[type='submit'],
+.entity-edit-form button[type='button'] {
+  border-radius: 14px !important;
+  padding: 14px 22px !important;
+  font-weight: 700 !important;
+}
+
 /* Layout primitives */
 .app-shell {
   min-height: 100vh;

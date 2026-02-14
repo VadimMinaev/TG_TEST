@@ -434,11 +434,11 @@ export function Polling() {
 
         <div className="split-right">
           {editingPollId !== null ? (
-            <div className="panel">
+            <div className="panel entity-edit-panel">
               <h3 className="mb-4 text-lg font-semibold">
                 {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
-              <form onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form className="entity-edit-form" onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>

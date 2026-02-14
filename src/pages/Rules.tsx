@@ -397,7 +397,7 @@ export function Rules() {
 
       <div className="split-layout p-6">
         <div className="split-left">
-          <div className="panel">
+          <div className={`panel ${editingRuleId !== null ? 'entity-edit-panel' : ''}`}>
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold">📋 Список Webhook</h3>
               <button

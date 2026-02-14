@@ -127,7 +127,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
   };
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+    <form className="entity-edit-form" onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {error && (
         <div style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid hsl(var(--destructive) / 0.2)', background: 'hsl(var(--destructive) / 0.1)', color: 'hsl(var(--destructive))', fontSize: '14px' }}>
           {error}

@@ -498,13 +498,13 @@ export function Integrations() {
         </div>
 
         <div className="split-right">
-          <div className="panel">
+          <div className={`panel ${editingId !== null ? 'entity-edit-panel' : ''}`}>
             {editingId !== null ? (
               <>
                 <h3 className="mb-4 text-lg font-semibold">
                   {editingId === -1 ? 'Создание интеграции' : 'Редактирование'}
                 </h3>
-                <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <form className="entity-edit-form" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>

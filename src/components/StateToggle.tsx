@@ -72,7 +72,7 @@ export function EntityStateSwitch({
           aria-disabled={disabled || isLoading}
           disabled={disabled || isLoading}
           onClick={handleChange}
-          className={`relative inline-flex items-center justify-center rounded-md p-1 ${hitAreaClasses[size]} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`relative inline-flex items-center justify-center rounded-md border-2 p-1 ${hitAreaClasses[size]} ${disabled ? 'cursor-not-allowed border-[hsl(var(--muted-foreground)_/_0.4)]' : 'cursor-pointer border-[hsl(var(--primary))] shadow-[0_0_0_3px_hsl(var(--primary)_/_0.25)]'}`}
         >
           <div 
             className={`relative ${sizeClasses[size]} rounded-full border border-[hsl(var(--border)_/_0.7)] transition-colors duration-300 ease-in-out ${
