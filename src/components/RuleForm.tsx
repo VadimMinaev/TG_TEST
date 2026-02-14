@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Info } from 'lucide-react';
 import { api, Rule } from '../lib/api';
 import {
@@ -7,6 +7,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from './ui/tooltip';
+import { Switch } from './ui/switch';
 import { TemplateHelp } from './TemplateHelp';
 import { TelegramPreviewWithToggle } from './TelegramPreviewWithToggle';
 
@@ -24,7 +25,7 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
               setOpen((prev) => !prev);
             }}
             className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
-            aria-label="Показать подсказку"
+            aria-label="РџРѕРєР°Р·Р°С‚СЊ РїРѕРґСЃРєР°Р·РєСѓ"
           >
             <Info className="h-3 w-3" />
           </button>
@@ -53,25 +54,25 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Пример payload для предварительного просмотра
+  // РџСЂРёРјРµСЂ payload РґР»СЏ РїСЂРµРґРІР°СЂРёС‚РµР»СЊРЅРѕРіРѕ РїСЂРѕСЃРјРѕС‚СЂР°
   const payloadExample = {
     id: 12345,
-    subject: 'Новая заявка в техподдержку',
+    subject: 'РќРѕРІР°СЏ Р·Р°СЏРІРєР° РІ С‚РµС…РїРѕРґРґРµСЂР¶РєСѓ',
     status: 'open',
     category: 'incident',
     priority: 'high',
     impact: 'medium',
     team_name: 'Support Team',
     requested_by: {
-      name: 'Иван Петров',
+      name: 'РРІР°РЅ РџРµС‚СЂРѕРІ',
       account: {
         name: 'Acme Corp'
       }
     },
     note: [
       {
-        person: { name: 'Алексей Сидоров' },
-        text: 'Проверяю проблему',
+        person: { name: 'РђР»РµРєСЃРµР№ РЎРёРґРѕСЂРѕРІ' },
+        text: 'РџСЂРѕРІРµСЂСЏСЋ РїСЂРѕР±Р»РµРјСѓ',
         created_at: '2023-05-15T10:30:00Z'
       }
     ]
@@ -103,7 +104,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
     setError('');
 
     if (!name || !condition || !chatId) {
-      setError('Заполните все обязательные поля');
+      setError('Р—Р°РїРѕР»РЅРёС‚Рµ РІСЃРµ РѕР±СЏР·Р°С‚РµР»СЊРЅС‹Рµ РїРѕР»СЏ');
       return;
     }
 
@@ -134,9 +135,9 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
 
       <div>
         <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          Название Webhook
+          РќР°Р·РІР°РЅРёРµ Webhook
           <InfoTooltip>
-            Уникальное имя для идентификации Webhook в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
+            РЈРЅРёРєР°Р»СЊРЅРѕРµ РёРјСЏ РґР»СЏ РёРґРµРЅС‚РёС„РёРєР°С†РёРё Webhook РІ СЃРїРёСЃРєРµ. Р РµРєРѕРјРµРЅРґСѓРµС‚СЃСЏ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїРѕРЅСЏС‚РЅС‹Рµ РЅР°Р·РІР°РЅРёСЏ, РЅР°РїСЂРёРјРµСЂ: В«РРЅС†РёРґРµРЅС‚С‹ РІ РѕСЃРЅРѕРІРЅРѕР№ С‡Р°С‚В» РёР»Рё В«РЈРІРµРґРѕРјР»РµРЅРёСЏ Рѕ Р·Р°РґР°С‡Р°С…В».
           </InfoTooltip>
         </label>
         <input
@@ -144,7 +145,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           id="ruleName"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Например: Отправить в основной чат"
+          placeholder="РќР°РїСЂРёРјРµСЂ: РћС‚РїСЂР°РІРёС‚СЊ РІ РѕСЃРЅРѕРІРЅРѕР№ С‡Р°С‚"
           required
           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
@@ -152,15 +153,15 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
 
       <div>
         <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          Условие (JavaScript выражение)
+          РЈСЃР»РѕРІРёРµ (JavaScript РІС‹СЂР°Р¶РµРЅРёРµ)
           <InfoTooltip>
             <div className="space-y-2">
-              <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания Webhook.</p>
-              <p><strong>Доступные переменные:</strong></p>
+              <p>JavaScript РІС‹СЂР°Р¶РµРЅРёРµ, РєРѕС‚РѕСЂРѕРµ РґРѕР»Р¶РЅРѕ РІРµСЂРЅСѓС‚СЊ <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> РґР»СЏ СЃСЂР°Р±Р°С‚С‹РІР°РЅРёСЏ Webhook.</p>
+              <p><strong>Р”РѕСЃС‚СѓРїРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ:</strong></p>
               <ul className="list-inside list-disc">
-                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload</code> — данные вебхука</li>
+                <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload</code> вЂ” РґР°РЅРЅС‹Рµ РІРµР±С…СѓРєР°</li>
               </ul>
-              <p><strong>Примеры:</strong></p>
+              <p><strong>РџСЂРёРјРµСЂС‹:</strong></p>
               <ul className="list-inside list-disc">
                 <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.status === "open"</code></li>
                 <li><code className="rounded bg-[hsl(var(--muted))] px-1">payload.priority &gt; 3</code></li>
@@ -182,16 +183,16 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
 
       <div>
         <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          ID Telegram чата
+          ID Telegram С‡Р°С‚Р°
           <InfoTooltip>
             <div className="space-y-2">
-              <p>Числовой идентификатор чата/канала в Telegram.</p>
-              <p><strong>Как получить:</strong></p>
+              <p>Р§РёСЃР»РѕРІРѕР№ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ С‡Р°С‚Р°/РєР°РЅР°Р»Р° РІ Telegram.</p>
+              <p><strong>РљР°Рє РїРѕР»СѓС‡РёС‚СЊ:</strong></p>
               <ul className="list-inside list-disc">
-                <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
-                <li>Или перешлите сообщение боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
+                <li>Р”РѕР±Р°РІСЊС‚Рµ Р±РѕС‚Р° <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> РІ С‡Р°С‚</li>
+                <li>РР»Рё РїРµСЂРµС€Р»РёС‚Рµ СЃРѕРѕР±С‰РµРЅРёРµ Р±РѕС‚Сѓ <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
               </ul>
-              <p><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
+              <p><strong>Р¤РѕСЂРјР°С‚:</strong> РґР»СЏ РіСЂСѓРїРї/РєР°РЅР°Р»РѕРІ ID РЅР°С‡РёРЅР°РµС‚СЃСЏ СЃ <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
             </div>
           </InfoTooltip>
         </label>
@@ -200,7 +201,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           id="chatId"
           value={chatId}
           onChange={(e) => setChatId(e.target.value)}
-          placeholder="Например: -1001234567890"
+          placeholder="РќР°РїСЂРёРјРµСЂ: -1001234567890"
           required
           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
@@ -208,16 +209,16 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
 
       <div>
         <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          Токен Telegram бота
+          РўРѕРєРµРЅ Telegram Р±РѕС‚Р°
           <InfoTooltip>
             <div className="space-y-2">
-              <p>Токен бота для отправки сообщений. Если оставить пустым — используется глобальный токен из настроек.</p>
-              <p><strong>Как получить:</strong></p>
+              <p>РўРѕРєРµРЅ Р±РѕС‚Р° РґР»СЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№. Р•СЃР»Рё РѕСЃС‚Р°РІРёС‚СЊ РїСѓСЃС‚С‹Рј вЂ” РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РіР»РѕР±Р°Р»СЊРЅС‹Р№ С‚РѕРєРµРЅ РёР· РЅР°СЃС‚СЂРѕРµРє.</p>
+              <p><strong>РљР°Рє РїРѕР»СѓС‡РёС‚СЊ:</strong></p>
               <ul className="list-inside list-disc">
-                <li>Создайте бота через <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
-                <li>Скопируйте токен из сообщения</li>
+                <li>РЎРѕР·РґР°Р№С‚Рµ Р±РѕС‚Р° С‡РµСЂРµР· <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
+                <li>РЎРєРѕРїРёСЂСѓР№С‚Рµ С‚РѕРєРµРЅ РёР· СЃРѕРѕР±С‰РµРЅРёСЏ</li>
               </ul>
-              <p>Формат: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABC...</code></p>
+              <p>Р¤РѕСЂРјР°С‚: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABC...</code></p>
             </div>
           </InfoTooltip>
         </label>
@@ -226,21 +227,21 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           id="botToken"
           value={botToken}
           onChange={(e) => setBotToken(e.target.value)}
-          placeholder="Оставьте пустым для глобального токена"
+          placeholder="РћСЃС‚Р°РІСЊС‚Рµ РїСѓСЃС‚С‹Рј РґР»СЏ РіР»РѕР±Р°Р»СЊРЅРѕРіРѕ С‚РѕРєРµРЅР°"
           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
       </div>
 
       <div>
         <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          Шаблон сообщения
+          РЁР°Р±Р»РѕРЅ СЃРѕРѕР±С‰РµРЅРёСЏ
           <TemplateHelp context="rule" />
         </label>
         <textarea
           id="messageTemplate"
           value={messageTemplate}
           onChange={(e) => setMessageTemplate(e.target.value)}
-          placeholder="Оставьте пусто для автоформатирования"
+          placeholder="РћСЃС‚Р°РІСЊС‚Рµ РїСѓСЃС‚Рѕ РґР»СЏ Р°РІС‚РѕС„РѕСЂРјР°С‚РёСЂРѕРІР°РЅРёСЏ"
           rows={4}
           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
         />
@@ -254,15 +255,9 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-        <input
-          type="checkbox"
-          id="enabled"
-          checked={enabled}
-          onChange={(e) => setEnabled(e.target.checked)}
-          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-        />
-        <label htmlFor="enabled" style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginTop: '4px' }}>
+        <Switch id="enabled" checked={enabled} onCheckedChange={setEnabled} aria-label="Включено" />
+        <label htmlFor="enabled" style={{ cursor: 'pointer', fontSize: '40px', fontWeight: 700, lineHeight: 1 }}>
           Включено
         </label>
       </div>
@@ -273,16 +268,17 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           disabled={loading}
           style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: loading ? 0.5 : 1 }}
         >
-          {loading ? 'Сохранение...' : 'Сохранить Webhook'}
+          {loading ? 'РЎРѕС…СЂР°РЅРµРЅРёРµ...' : 'РЎРѕС…СЂР°РЅРёС‚СЊ Webhook'}
         </button>
         <button
           type="button"
           onClick={onCancel}
           style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
         >
-          Отмена
+          РћС‚РјРµРЅР°
         </button>
       </div>
     </form>
   );
 }
+

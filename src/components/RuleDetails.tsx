@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { api, Rule } from '../lib/api';
+import { Switch } from './ui/switch';
 
 interface RuleDetailsProps {
   ruleId: number;
@@ -64,16 +65,6 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
               >
                 {rule.enabled ? '✅ Включено' : '⏸️ Отключено'}
               </span>
-              {canEdit && onToggleEnabled && (
-                <button
-                  type="button"
-                  onClick={() => onToggleEnabled(rule)}
-                  disabled={toggling}
-                  className="ml-2 rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))] disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {toggling ? 'Сохранение...' : rule.enabled ? 'Выключить' : 'Включить'}
-                </button>
-              )}
             </div>
             {rule.updated_at && (
               <div className="text-xs text-[hsl(var(--muted-foreground))]">
@@ -82,6 +73,28 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
             )}
           </div>
         </div>
+
+        {canEdit && onToggleEnabled && (
+          <div>
+            <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Контроль статуса</h4>
+            <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <Switch
+                  id="rule-enabled-view"
+                  checked={rule.enabled}
+                  disabled={toggling}
+                  onCheckedChange={(checked) => {
+                    if (checked !== rule.enabled) onToggleEnabled(rule);
+                  }}
+                  aria-label="Включено"
+                />
+                <label htmlFor="rule-enabled-view" style={{ cursor: 'pointer', fontSize: '28px', fontWeight: 700, lineHeight: 1 }}>
+                  Включено
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие</h4>
