@@ -34,7 +34,11 @@ interface DashboardMetrics {
   totalRules: number;
   activeRules: number;
   polls: number;
+  activePolls: number;
   integrations: number;
+  activeIntegrations: number;
+  bots: number;
+  activeBots: number;
   queueTotal: number;
   queuePending: number;
 }
@@ -44,7 +48,9 @@ interface DashboardEventItem {
   title: string;
   details: string;
   timestamp: string;
-  status: 'success' | 'error' | 'pending';
+  status: 'success' | 'error' | 'pending' | 'warning' | 'info';
+  service: 'webhook' | 'integration' | 'polling' | 'telegram' | 'bot';
+  type: 'info' | 'success' | 'warning' | 'error' | 'recovery';
 }
 
 interface TrendPoint {
@@ -56,7 +62,11 @@ const initialMetrics: DashboardMetrics = {
   totalRules: 0,
   activeRules: 0,
   polls: 0,
+  activePolls: 0,
   integrations: 0,
+  activeIntegrations: 0,
+  bots: 0,
+  activeBots: 0,
   queueTotal: 0,
   queuePending: 0,
 };
@@ -199,10 +209,11 @@ export function Dashboard() {
       try {
         setMetricsLoading(true);
         const { api } = await import('../lib/api');
-        const [rules, polls, integrations, queue] = await Promise.all([
+        const [rules, polls, integrations, bots, queue] = await Promise.all([
           api.getRules(),
           api.getPolls(),
           api.getIntegrations(),
+          api.getBots(),
           api.getQueueStatus().catch(() => ({ available: false, total: 0, pending: 0 })),
         ]);
 
@@ -212,7 +223,11 @@ export function Dashboard() {
           totalRules: Array.isArray(rules) ? rules.length : 0,
           activeRules: Array.isArray(rules) ? rules.filter((rule: any) => rule.enabled).length : 0,
           polls: Array.isArray(polls) ? polls.length : 0,
+          activePolls: Array.isArray(polls) ? polls.filter((poll: any) => poll.enabled && poll.lastError === null).length : 0,
           integrations: Array.isArray(integrations) ? integrations.length : 0,
+          activeIntegrations: Array.isArray(integrations) ? integrations.filter((integration: any) => integration.enabled && integration.lastError === null).length : 0,
+          bots: Array.isArray(bots) ? bots.length : 0,
+          activeBots: Array.isArray(bots) ? bots.filter((bot: any) => bot.enabled && bot.lastError === null).length : 0,
           queueTotal: queue?.total ?? 0,
           queuePending: queue?.pending ?? 0,
         };
@@ -241,21 +256,19 @@ export function Dashboard() {
       try {
         setEventsLoading(true);
         const { api } = await import('../lib/api');
-        const [webhookLogs, queueHistory] = await Promise.all([
+        // Load data from all services
+        const [webhookLogs, integrationHistory, pollHistory, botHistory, queueHistory] = await Promise.all([
           api.getWebhookLogs().catch(() => []),
+          api.getIntegrationHistory().catch(() => []),
+          api.getPollHistory().catch(() => ({ items: [] })),
+          api.getBotHistory().catch(() => ({ items: [] })),
           api.getQueueHistory(1).catch(() => ({ items: [] })),
         ]);
 
         if (!mounted) return;
 
+        // Process webhook logs
         const webhookList = Array.isArray(webhookLogs) ? webhookLogs.slice(0, 8) : [];
-        const queueItemsRaw = Array.isArray(queueHistory?.items)
-          ? queueHistory.items
-          : Array.isArray(queueHistory)
-            ? queueHistory
-            : [];
-        const queueList = queueItemsRaw.slice(0, 8);
-
         const webhookPoints = webhookList
           .slice()
           .reverse()
@@ -263,39 +276,168 @@ export function Dashboard() {
             label: `${index + 1}`,
             value: Number(entry?.matched ?? 0),
           }));
+
+        // Process queue logs
+        const queueItemsRaw = Array.isArray(queueHistory?.items)
+          ? queueHistory.items
+          : Array.isArray(queueHistory)
+            ? queueHistory
+            : [];
+        const queueList = queueItemsRaw.slice(0, 8);
         const queuePoints = queueList
           .slice()
           .reverse()
           .map((entry: any, index: number) => ({
             label: `${index + 1}`,
-            value: Number(entry?.attempt_count ?? entry?.retry_count ?? 0),
+            value: Number(entry.attempt_count ?? entry.retry_count ?? 0),
           }));
 
         setWebhookTrend(webhookPoints.length ? webhookPoints : initialTrend);
         setQueueTrend(queuePoints.length ? queuePoints : initialTrend);
 
-        const webhookEvents: DashboardEventItem[] = webhookList.map((entry: any) => ({
-          id: `webhook-${entry.id}`,
-          title: `Webhook: ${entry.status === 'ok' ? 'успешная обработка' : 'ошибка обработки'}`,
-          details: `Совпадений: ${entry.matched ?? 0} из ${entry.total_rules ?? 0}`,
-          timestamp: entry.timestamp,
-          status: entry.status === 'ok' ? 'success' : 'error',
-        }));
+        // Convert timestamps to Date objects for sorting
+        const parseTimestamp = (timestamp: string) => {
+          const date = new Date(timestamp);
+          return isNaN(date.getTime()) ? new Date() : date;
+        };
 
-        const queueEvents: DashboardEventItem[] = queueList.map((entry: any) => ({
-          id: `queue-${entry.id ?? entry.created_at}`,
-          title: `Очередь: ${entry.status ?? 'pending'}`,
-          details: `Попыток отправки: ${entry.attempt_count ?? entry.retry_count ?? 0}`,
-          timestamp: entry.updated_at ?? entry.created_at ?? new Date().toISOString(),
-          status: entry.status === 'sent' ? 'success' : entry.status === 'failed' ? 'error' : 'pending',
-        }));
+        // Create events from all sources
+        const allEvents: DashboardEventItem[] = [];
 
-        const merged = [...webhookEvents, ...queueEvents]
-          .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-          .slice(0, 6);
+        // Webhook events
+        webhookList.forEach((entry: any) => {
+          const statusType = entry.status === 'ok' ? 'success' : 'error';
+          allEvents.push({
+            id: `webhook-${entry.id}`,
+            title: `Webhook — ${entry.status === 'ok' ? 'обработан' : 'ошибка'}`,
+            details: `Совпадений: ${entry.matched ?? 0} из ${entry.total_rules ?? 0}`,
+            timestamp: entry.timestamp,
+            status: statusType,
+            service: 'webhook',
+            type: statusType as 'success' | 'error',
+          });
+        });
 
-        setEvents(merged);
-      } catch {
+        // Integration events
+        Array.isArray(integrationHistory) && integrationHistory.slice(0, 8).forEach((entry: any) => {
+          let eventType: 'info' | 'success' | 'warning' | 'error' | 'recovery' = 'info';
+          let status: 'success' | 'error' | 'pending' | 'warning' | 'info' = 'info';
+          
+          if (entry.status === 'success') {
+            eventType = 'success';
+            status = 'success';
+          } else if (entry.status === 'error') {
+            eventType = 'error';
+            status = 'error';
+          } else if (entry.status === 'warning') {
+            eventType = 'warning';
+            status = 'warning';
+          }
+
+          allEvents.push({
+            id: `integration-${entry.id}`,
+            title: `Integration — ${entry.status}`,
+            details: entry.error_message || `Action: ${entry.action_status || 'N/A'}`,
+            timestamp: entry.created_at,
+            status,
+            service: 'integration',
+            type: eventType,
+          });
+        });
+
+        // Polling events
+        const pollItems = Array.isArray(pollHistory?.items) ? pollHistory.items : 
+                         Array.isArray(pollHistory) ? pollHistory : [];
+        pollItems.slice(0, 8).forEach((entry: any) => {
+          let eventType: 'info' | 'success' | 'warning' | 'error' | 'recovery' = 'info';
+          let status: 'success' | 'error' | 'pending' | 'warning' | 'info' = 'info';
+          
+          if (entry.status === 'success') {
+            eventType = 'success';
+            status = 'success';
+          } else if (entry.status === 'error') {
+            eventType = 'error';
+            status = 'error';
+          } else if (entry.status === 'warning') {
+            eventType = 'warning';
+            status = 'warning';
+          }
+
+          allEvents.push({
+            id: `poll-${entry.id}`,
+            title: `Polling — ${entry.status}`,
+            details: entry.result || 'Polling executed',
+            timestamp: entry.created_at || entry.timestamp,
+            status,
+            service: 'polling',
+            type: eventType,
+          });
+        });
+
+        // Bot events
+        const botItems = Array.isArray(botHistory?.items) ? botHistory.items : 
+                         Array.isArray(botHistory) ? botHistory : [];
+        botItems.slice(0, 8).forEach((entry: any) => {
+          let eventType: 'info' | 'success' | 'warning' | 'error' | 'recovery' = 'info';
+          let status: 'success' | 'error' | 'pending' | 'warning' | 'info' = 'info';
+          
+          if (entry.status === 'success') {
+            eventType = 'success';
+            status = 'success';
+          } else if (entry.status === 'error') {
+            eventType = 'error';
+            status = 'error';
+          } else if (entry.status === 'warning') {
+            eventType = 'warning';
+            status = 'warning';
+          }
+
+          allEvents.push({
+            id: `bot-${entry.id}`,
+            title: `Bot — ${entry.status}`,
+            details: entry.message_type || entry.error_message || 'Message sent',
+            timestamp: entry.created_at,
+            status,
+            service: 'bot',
+            type: eventType,
+          });
+        });
+
+        // Queue events
+        queueList.forEach((entry: any) => {
+          let eventType: 'info' | 'success' | 'warning' | 'error' | 'recovery' = 'info';
+          let status: 'success' | 'error' | 'pending' | 'warning' | 'info' = 'pending';
+          
+          if (entry.status === 'sent') {
+            eventType = 'success';
+            status = 'success';
+          } else if (entry.status === 'failed') {
+            eventType = 'error';
+            status = 'error';
+          } else if (entry.status === 'pending') {
+            eventType = 'info';
+            status = 'pending';
+          }
+
+          allEvents.push({
+            id: `queue-${entry.id ?? entry.created_at}`,
+            title: `Telegram — ${entry.status}`,
+            details: `Попыток: ${entry.attempt_count ?? entry.retry_count ?? 0}`,
+            timestamp: entry.updated_at ?? entry.created_at ?? new Date().toISOString(),
+            status,
+            service: 'telegram',
+            type: eventType,
+          });
+        });
+
+        // Sort events by timestamp (newest first) and take top 10
+        const sortedEvents = allEvents
+          .sort((a, b) => parseTimestamp(b.timestamp).getTime() - parseTimestamp(a.timestamp).getTime())
+          .slice(0, 10);
+
+        setEvents(sortedEvents);
+      } catch (error) {
+        console.error('Error loading dashboard events:', error);
         if (mounted) setEvents([]);
       } finally {
         if (mounted) setEventsLoading(false);
@@ -354,23 +496,23 @@ export function Dashboard() {
     {
       title: 'Интеграции',
       value: metrics.integrations,
-      subtitle: 'Обработчики событий',
+      subtitle: `${metrics.activeIntegrations} активных`,
       icon: <LinkIcon className="h-5 w-5" />,
       tone: 'info',
     },
     {
       title: 'Пуллинги',
       value: metrics.polls,
-      subtitle: 'Запланированные проверки',
+      subtitle: `${metrics.activePolls} выполняются`,
       icon: <Repeat2 className="h-5 w-5" />,
       tone: 'success',
     },
     {
-      title: 'Очередь Telegram',
-      value: metrics.queuePending,
-      subtitle: `Всего в очереди: ${metrics.queueTotal}`,
-      icon: <Mail className="h-5 w-5" />,
-      tone: metrics.queuePending > 20 ? 'warn' : 'neutral',
+      title: 'Боты',
+      value: metrics.bots,
+      subtitle: `${metrics.activeBots} активных`,
+      icon: <Bot className="h-5 w-5" />,
+      tone: 'info',
     },
   ];
 
@@ -578,35 +720,69 @@ export function Dashboard() {
                   ) : events.length === 0 ? (
                     <div className="dashboard-empty">События пока отсутствуют</div>
                   ) : (
-                    <div className="dashboard-events-list" role="list" aria-label="Лента последних событий">
-                      {events.map((event) => (
-                        <div key={event.id} className="dashboard-event-item" role="listitem">
-                          <div className="dashboard-event-title-row">
-                            <strong>{event.title}</strong>
-                            <span
-                              className={`dashboard-badge ${
-                                event.status === 'error'
-                                  ? 'dashboard-badge-warn'
-                                  : event.status === 'pending'
-                                    ? 'dashboard-badge-neutral'
-                                    : 'dashboard-badge-ok'
-                              }`}
-                            >
-                              {event.status === 'error' ? 'Ошибка' : event.status === 'pending' ? 'В обработке' : 'Успех'}
-                            </span>
-                          </div>
-                          <p>{event.details}</p>
-                          <time dateTime={event.timestamp}>
-                            {new Date(event.timestamp).toLocaleString('ru-RU', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </time>
+                    <>
+                      {/* Event counters */}
+                      <div className="dashboard-event-counters mb-4">
+                        <div className="dashboard-counter-item">
+                          <span className="dashboard-counter-label">События за 10 мин:</span>
+                          <span className="dashboard-counter-value">{events.length}</span>
                         </div>
-                      ))}
-                    </div>
+                        <div className="dashboard-counter-item">
+                          <span className="dashboard-counter-label">Ошибки:</span>
+                          <span className="dashboard-counter-value dashboard-counter-error">
+                            {events.filter(e => e.type === 'error').length}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <div className="dashboard-events-list" role="list" aria-label="Лента последних событий">
+                        {events.map((event) => {
+                          // Format timestamp to show only time (HH:MM:SS)
+                          const timeStr = new Date(event.timestamp).toLocaleTimeString('ru-RU', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          });
+                          
+                          // Determine badge class based on event type
+                          const badgeClass = 
+                            event.type === 'error' ? 'dashboard-badge-error' :
+                            event.type === 'warning' ? 'dashboard-badge-warning' :
+                            event.type === 'success' ? 'dashboard-badge-success' :
+                            'dashboard-badge-info';
+                            
+                          // Determine badge text based on event type
+                          const badgeText = 
+                            event.type === 'error' ? 'ERROR' :
+                            event.type === 'warning' ? 'WARNING' :
+                            event.type === 'success' ? 'SUCCESS' :
+                            event.type === 'recovery' ? 'RECOVERY' :
+                            'INFO';
+                            
+                          // Determine service icon
+                          const serviceIcon = 
+                            event.service === 'webhook' ? '📥' :
+                            event.service === 'integration' ? '🔗' :
+                            event.service === 'polling' ? '🔄' :
+                            event.service === 'bot' ? '🤖' :
+                            '💬';
+                          
+                          return (
+                            <div key={event.id} className={`dashboard-event-item ${event.type === 'error' ? 'dashboard-event-error' : event.type === 'warning' ? 'dashboard-event-warning' : ''}`} role="listitem">
+                              <div className="dashboard-event-title-row">
+                                <div className="dashboard-event-timestamp">{timeStr}</div>
+                                <div className={`dashboard-badge ${badgeClass}`}>
+                                  {badgeText}
+                                </div>
+                                <div className="dashboard-event-service">{serviceIcon}</div>
+                                <strong>{event.title}</strong>
+                              </div>
+                              <p>{event.details}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
                   )}
                 </article>
               </section>
