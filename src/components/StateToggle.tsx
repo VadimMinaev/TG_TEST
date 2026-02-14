@@ -47,37 +47,42 @@ export function EntityStateSwitch({ enabled, disabled = false, onChange, idPrefi
     lg: 'w-6 h-6',
   };
 
+  const hitAreaClasses = {
+    sm: 'min-w-10 min-h-8',
+    md: 'min-w-11 min-h-9',
+    lg: 'min-w-12 min-h-10',
+  };
+
   return (
     <div className="relative inline-block">
-      <label 
-        htmlFor={`${idPrefix}-state-toggle`} 
-        className={`relative inline-flex cursor-pointer items-center ${sizeClasses[size]} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+      <button
+        type="button"
+        id={`${idPrefix}-state-toggle`}
+        role="switch"
+        aria-checked={localEnabled}
+        aria-disabled={disabled || isLoading}
+        disabled={disabled || isLoading}
+        onClick={handleChange}
+        className={`relative inline-flex items-center justify-center rounded-md p-1 ${hitAreaClasses[size]} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
       >
-        <input
-          type="checkbox"
-          id={`${idPrefix}-state-toggle`}
-          checked={localEnabled}
-          disabled={disabled || isLoading}
-          onChange={handleChange}
-          className="sr-only"
-        />
         <div 
-          className={`absolute inset-0 rounded-full transition-colors duration-300 ease-in-out ${
+          className={`relative ${sizeClasses[size]} rounded-full transition-colors duration-300 ease-in-out ${
             localEnabled 
               ? 'bg-[hsl(var(--success))]' 
               : 'bg-[hsl(var(--muted-foreground))]'
           } ${isLoading ? 'opacity-70' : ''}`}
-        ></div>
-        <div 
-          className={`absolute top-0.5 left-0.5 transform transition-transform duration-300 ease-in-out ${
-            localEnabled ? 'translate-x-full' : 'translate-x-0'
-          } ${thumbSizeClasses[size]} rounded-full bg-white shadow-md flex items-center justify-center`}
         >
-          {isLoading ? (
-            <div className="h-2 w-2 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent"></div>
-          ) : null}
+          <div
+            className={`absolute top-0.5 left-0.5 transform transition-transform duration-300 ease-in-out ${
+              localEnabled ? 'translate-x-full' : 'translate-x-0'
+            } ${thumbSizeClasses[size]} rounded-full bg-white shadow-md flex items-center justify-center`}
+          >
+            {isLoading ? (
+              <div className="h-2 w-2 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent"></div>
+            ) : null}
+          </div>
         </div>
-      </label>
+      </button>
       
       {/* Subtle glow effect when enabled */}
       {localEnabled && (

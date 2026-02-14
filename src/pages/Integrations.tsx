@@ -796,7 +796,7 @@ export function Integrations() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                    <StateToggle
+                    <EntityStateSwitch
                       idPrefix="integration-edit"
                       enabled={form.enabled}
                       onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
