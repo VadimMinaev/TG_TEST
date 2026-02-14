@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, User, Account } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Plus, Search, Trash2, UserRound } from 'lucide-react';
+import { Eye, Plus, Search, Trash2, UserRound } from 'lucide-react';
 import { Breadcrumb } from '../components/Breadcrumb';
 
 type Mode = 'view' | 'create' | 'profile';
@@ -259,39 +259,40 @@ export function Users() {
         </div>
 
         <div className="split-right">
-          <div className="panel">
+          <div className="panel users-entity-panel">
             {mode === 'create' && canManageUsers ? (
-              <form onSubmit={handleCreateUser} className="space-y-4">
-                <h3 className="text-base font-semibold">Создать пользователя</h3>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Логин</label>
+              <form onSubmit={handleCreateUser} className="users-form space-y-5">
+                <h3 className="text-xl font-semibold">Создать пользователя</h3>
+                <div className="users-field">
+                  <label className="mb-2 block text-sm font-semibold">Логин *</label>
                   <input
                     type="text"
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
                     placeholder="username"
                     required
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                    className="users-input"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Пароль</label>
+                <div className="users-field">
+                  <label className="mb-2 block text-sm font-semibold">Пароль *</label>
                   <input
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Введите пароль"
                     required
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                    className="users-input"
                   />
                 </div>
                 {isVadmin && (
-                  <div>
-                    <label className="mb-1 block text-sm font-medium">Аккаунт</label>
+                  <div className="users-field">
+                    <label className="mb-2 block text-sm font-semibold">Аккаунт *</label>
                     <select
                       value={newAccountId}
                       onChange={(e) => setNewAccountId(e.target.value ? Number(e.target.value) : '')}
                       required
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                      className="users-input"
                     >
                       <option value="">— выберите —</option>
                       {accounts.map((a) => (
@@ -302,75 +303,90 @@ export function Users() {
                     </select>
                   </div>
                 )}
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Роль</label>
+                <div className="users-field">
+                  <label className="mb-2 block text-sm font-semibold">Роль</label>
                   <select
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value as 'administrator' | 'auditor')}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                    className="users-input"
                   >
                     <option value="administrator">Администратор</option>
                     <option value="auditor">Аудитор</option>
                   </select>
                 </div>
-                <div className="flex gap-2">
+                <div className="users-preview-block">
+                  <div className="mb-3 flex items-center justify-between">
+                    <strong className="text-base">Предварительный просмотр</strong>
+                    <span className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
+                      <Eye className="h-4 w-4" />
+                      Показать
+                    </span>
+                  </div>
+                  <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
+                    <div className="text-base font-semibold">{newUsername || 'Новый пользователь'}</div>
+                    <div className="text-sm text-[hsl(var(--muted-foreground))]">
+                      {newRole === 'auditor' ? 'Аудитор' : 'Администратор'}
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-2 flex gap-3">
                   <button
                     type="submit"
-                    className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm text-[hsl(var(--primary-foreground))] hover:opacity-90"
+                    className="users-btn users-btn-primary"
                   >
-                    Создать
+                    Сохранить пользователя
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode('view')}
-                    className="rounded border border-[hsl(var(--border))] px-4 py-2 text-sm hover:bg-[hsl(var(--accent))]"
+                    className="users-btn users-btn-secondary"
                   >
                     Отмена
                   </button>
                 </div>
               </form>
             ) : mode === 'profile' && !isVadmin ? (
-              <form onSubmit={handleUpdateMe} className="space-y-4">
-                <h3 className="text-base font-semibold">Мой профиль</h3>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Новый логин</label>
+              <form onSubmit={handleUpdateMe} className="users-form space-y-5">
+                <h3 className="text-xl font-semibold">Мой профиль</h3>
+                <div className="users-field">
+                  <label className="mb-2 block text-sm font-semibold">Новый логин</label>
                   <input
                     type="text"
                     value={profileUsername}
                     onChange={(e) => setProfileUsername(e.target.value)}
                     placeholder={user?.username}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                    className="users-input"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Текущий пароль (для смены пароля)</label>
+                <div className="users-field">
+                  <label className="mb-2 block text-sm font-semibold">Текущий пароль</label>
                   <input
                     type="password"
                     value={profileOldPassword}
                     onChange={(e) => setProfileOldPassword(e.target.value)}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                    className="users-input"
                   />
                 </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium">Новый пароль</label>
+                <div className="users-field">
+                  <label className="mb-2 block text-sm font-semibold">Новый пароль</label>
                   <input
                     type="password"
                     value={profilePassword}
                     onChange={(e) => setProfilePassword(e.target.value)}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+                    className="users-input"
                   />
                 </div>
-                <div className="flex gap-2">
+                <div className="mt-2 flex gap-3">
                   <button
                     type="submit"
-                    className="rounded bg-[hsl(var(--primary))] px-4 py-2 text-sm text-[hsl(var(--primary-foreground))] hover:opacity-90"
+                    className="users-btn users-btn-primary"
                   >
                     Сохранить
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode('view')}
-                    className="rounded border border-[hsl(var(--border))] px-4 py-2 text-sm hover:bg-[hsl(var(--accent))]"
+                    className="users-btn users-btn-secondary"
                   >
                     Отмена
                   </button>

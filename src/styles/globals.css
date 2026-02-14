@@ -22,18 +22,18 @@
 }
 
 .dark-theme {
-  --background: 222.2 84% 4.9%;
+  --background: 223 56% 12%;
   --foreground: 210 40% 98%;
-  --card: 216 12% 17%;
+  --card: 219 34% 20%;
   --card-foreground: 210 40% 98%;
-  --primary: 221.2 83.2% 53.3%;
+  --primary: 217 83% 60%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 216 10% 25%;
+  --secondary: 218 28% 30%;
   --secondary-foreground: 210 40% 98%;
-  --muted: 216 10% 25%;
-  --muted-foreground: 215.4 16.3% 66.9%;
-  --border: 216 10% 30%;
-  --input: 216 10% 30%;
+  --muted: 221 30% 16%;
+  --muted-foreground: 214 27% 73%;
+  --border: 220 31% 28%;
+  --input: 222 49% 14%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
 }
@@ -55,6 +55,73 @@ body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+}
+
+.users-entity-panel {
+  border: 1px solid hsl(var(--border) / 0.85);
+  border-radius: 18px;
+  background: hsl(var(--card));
+}
+
+.users-form {
+  padding: 6px;
+}
+
+.users-field {
+  margin-bottom: 2px;
+}
+
+.users-input {
+  width: 100%;
+  border-radius: 16px;
+  border: 1px solid hsl(var(--input));
+  background: hsl(var(--background));
+  padding: 14px 18px;
+  font-size: 14px;
+  line-height: 1.4;
+  color: hsl(var(--foreground));
+}
+
+.users-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.users-input:focus {
+  outline: none;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+
+.users-preview-block {
+  margin-top: 8px;
+}
+
+.users-btn {
+  flex: 1;
+  border-radius: 16px;
+  padding: 16px 20px;
+  font-size: 20px;
+  font-weight: 700;
+  border: 1px solid transparent;
+  cursor: pointer;
+}
+
+.users-btn-primary {
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
+.users-btn-primary:hover {
+  filter: brightness(1.06);
+}
+
+.users-btn-secondary {
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
+}
+
+.users-btn-secondary:hover {
+  filter: brightness(1.05);
 }
 
 /* Layout primitives */
