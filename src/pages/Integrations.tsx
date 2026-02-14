@@ -6,7 +6,7 @@ import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'l
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
-import { StateToggle } from '../components/StateToggle';
+import { EntityStateSwitch } from '../components/StateToggle';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -801,9 +801,6 @@ export function Integrations() {
                       enabled={form.enabled}
                       onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
                     />
-                    <label style={{ cursor: 'pointer', fontSize: '14px', fontWeight: 500 }}>
-                      Включена
-                    </label>
                   </div>
 
                   <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
@@ -852,7 +849,7 @@ export function Integrations() {
                         </span>
                         {canEdit && (
                           <span style={{ marginLeft: '20px' }}>
-                            <StateToggle
+                            <EntityStateSwitch
                               idPrefix={`integration-${selectedIntegration.id}`}
                               enabled={selectedIntegration.enabled}
                               disabled={togglingIntegrationId === selectedIntegration.id}
@@ -872,21 +869,6 @@ export function Integrations() {
                     </div>
                   </div>
 
-                  {canEdit && (
-                    <div>
-                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
-                      <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-                        <StatusRadio
-                          idPrefix="integration"
-                          enabled={selectedIntegration.enabled}
-                          disabled={togglingIntegrationId === selectedIntegration.id}
-                          onChange={(nextEnabled) => {
-                            if (nextEnabled !== selectedIntegration.enabled) handleToggleIntegrationEnabled(selectedIntegration);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
 
                   {selectedIntegration.triggerType === 'webhook' ? (
                     selectedIntegration.triggerCondition && (

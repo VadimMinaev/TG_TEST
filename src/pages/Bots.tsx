@@ -6,7 +6,7 @@ import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'l
 import { ExportModal } from '../components/ExportModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { StatusRadio } from '../components/StatusRadio';
-import { StateToggle } from '../components/StateToggle';
+import { EntityStateSwitch } from '../components/StateToggle';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -869,12 +869,11 @@ export function Bots() {
                 {/* Enabled toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
-                    <StateToggle
+                    <EntityStateSwitch
                       idPrefix="bot-edit"
                       enabled={form.enabled}
                       onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
                     />
-                    Включено
                   </label>
                 </div>
 
@@ -928,7 +927,7 @@ export function Bots() {
                       </span>
                       {canEdit && (
                         <span style={{ marginLeft: '20px' }}>
-                          <StateToggle
+                          <EntityStateSwitch
                             idPrefix={`bot-${selectedBot.id}`}
                             enabled={selectedBot.enabled}
                             disabled={togglingBotId === selectedBot.id}
@@ -946,21 +945,6 @@ export function Bots() {
                   </div>
                 </div>
 
-                {canEdit && (
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
-                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-                      <StatusRadio
-                        idPrefix="bot"
-                        enabled={selectedBot.enabled}
-                        disabled={togglingBotId === selectedBot.id}
-                        onChange={(nextEnabled) => {
-                          if (nextEnabled !== selectedBot.enabled) handleToggleBotEnabled(selectedBot);
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
 
                 {selectedBot.messageType === 'poll' && (
                   <div>

@@ -6,7 +6,7 @@ import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'l
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
-import { StateToggle } from '../components/StateToggle';
+import { EntityStateSwitch } from '../components/StateToggle';
 
 const DEFAULT_FORM = {
   name: '',
@@ -568,12 +568,11 @@ export function Polling() {
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '4px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
-                    <StateToggle
+                    <EntityStateSwitch
                       idPrefix="poll-edit"
                       enabled={form.enabled}
                       onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
                     />
-                    Включено
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
                     <input
@@ -643,7 +642,7 @@ export function Polling() {
                       </span>
                       {canEdit && (
                         <span style={{ marginLeft: '20px' }}>
-                          <StateToggle
+                          <EntityStateSwitch
                             idPrefix={`poll-${selectedPoll.id}`}
                             enabled={selectedPoll.enabled}
                             disabled={togglingPollId === selectedPoll.id}
@@ -657,21 +656,6 @@ export function Polling() {
                   </div>
                 </div>
 
-                {canEdit && (
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
-                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-                      <StatusRadio
-                        idPrefix="poll"
-                        enabled={selectedPoll.enabled}
-                        disabled={togglingPollId === selectedPoll.id}
-                        onChange={(nextEnabled) => {
-                          if (nextEnabled !== selectedPoll.enabled) handleTogglePollEnabled(selectedPoll);
-                        }}
-                      />
-                    </div>
-                  </div>
-                )}
 
                 <div>
                   <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки опроса</h4>

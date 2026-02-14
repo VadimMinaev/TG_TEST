@@ -7,7 +7,7 @@ import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
 import { ExportModal } from '../components/ExportModal';
-import { StateToggle } from '../components/StateToggle';
+import { EntityStateSwitch } from '../components/StateToggle';
 import {
   Tooltip,
   TooltipContent,

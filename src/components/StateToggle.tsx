@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-interface StateToggleProps {
+export interface EntityStateSwitchProps {
   enabled: boolean;
   disabled?: boolean;
   onChange: (nextEnabled: boolean) => void;
@@ -8,7 +8,7 @@ interface StateToggleProps {
   size?: 'sm' | 'md' | 'lg';
 }
 
-export function StateToggle({ enabled, disabled = false, onChange, idPrefix, size = 'md' }: StateToggleProps) {
+export function EntityStateSwitch({ enabled, disabled = false, onChange, idPrefix, size = 'md' }: EntityStateSwitchProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [localEnabled, setLocalEnabled] = useState(enabled);
 
@@ -36,9 +36,9 @@ export function StateToggle({ enabled, disabled = false, onChange, idPrefix, siz
   };
 
   const sizeClasses = {
-    sm: 'w-10 h-5 rounded-full',
-    md: 'w-12 h-6 rounded-full',
-    lg: 'w-14 h-7 rounded-full',
+    sm: 'w-10 h-5',
+    md: 'w-12 h-6',
+    lg: 'w-14 h-7',
   };
 
   const thumbSizeClasses = {
@@ -64,8 +64,8 @@ export function StateToggle({ enabled, disabled = false, onChange, idPrefix, siz
         <div 
           className={`absolute inset-0 rounded-full transition-colors duration-300 ease-in-out ${
             localEnabled 
-              ? 'bg-[hsl(var(--success)_/_0.3)]' 
-              : 'bg-[hsl(var(--destructive)_/_0.2)]'
+              ? 'bg-[hsl(var(--success))]' 
+              : 'bg-[hsl(var(--muted-foreground))]'
           } ${isLoading ? 'opacity-70' : ''}`}
         ></div>
         <div 
@@ -75,18 +75,14 @@ export function StateToggle({ enabled, disabled = false, onChange, idPrefix, siz
         >
           {isLoading ? (
             <div className="h-2 w-2 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent"></div>
-          ) : (
-            <span className={`text-xs font-bold ${localEnabled ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--destructive))]'}`}>
-              {localEnabled ? 'ON' : 'OFF'}
-            </span>
-          )}
+          ) : null}
         </div>
       </label>
       
-      {/* Subtle animation effect when enabled */}
+      {/* Subtle glow effect when enabled */}
       {localEnabled && (
         <div className="absolute inset-0 rounded-full pointer-events-none">
-          <div className="absolute inset-0 rounded-full bg-[hsl(var(--success)_/_0.1)] animate-pulse rounded-full opacity-0 animate-[pulse_2s_ease-in-out_infinite]"></div>
+          <div className="absolute inset-0 rounded-full bg-[hsl(var(--success)_/_0.3)] opacity-0 animate-[pulse_2s_ease-in-out_infinite]"></div>
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, Rule } from '../lib/api';
 import { StatusRadio } from './StatusRadio';
-import { StateToggle } from './StateToggle';
+import { EntityStateSwitch } from './StateToggle';
 
 interface RuleDetailsProps {
   ruleId: number;
@@ -68,7 +68,7 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
               </span>
               {canEdit && onToggleEnabled && (
                 <span style={{ marginLeft: '20px' }}>
-                  <StateToggle
+                  <EntityStateSwitch
                     idPrefix={`rule-${rule.id}`}
                     enabled={rule.enabled}
                     disabled={toggling}
@@ -87,21 +87,6 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
           </div>
         </div>
 
-        {canEdit && onToggleEnabled && (
-          <div>
-            <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Статус</h4>
-            <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-              <StatusRadio
-                idPrefix="rule"
-                enabled={rule.enabled}
-                disabled={toggling}
-                onChange={(nextEnabled) => {
-                  if (nextEnabled !== rule.enabled) onToggleEnabled(rule);
-                }}
-              />
-            </div>
-          </div>
-        )}
 
         <div>
           <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие</h4>
