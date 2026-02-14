@@ -254,7 +254,8 @@ export function Bots() {
     try {
       setTogglingBotId(bot.id);
       const updated = await api.updateBot(bot.id, { enabled: nextEnabled });
-      setBots((prev) => prev.map((b) => (b.id === bot.id ? updated : b)));
+      const mergedUpdated = { ...bot, ...updated, id: bot.id };
+      setBots((prev) => prev.map((b) => (b.id === bot.id ? mergedUpdated : b)));
       setMessage({
         text: nextEnabled ? 'Бот включен' : 'Бот выключен',
         type: 'success',

@@ -268,7 +268,8 @@ export function Integrations() {
     try {
       setTogglingIntegrationId(integration.id);
       const updated = await api.updateIntegration(integration.id, { enabled: nextEnabled });
-      setIntegrations((prev) => prev.map((item) => (item.id === integration.id ? updated : item)));
+      const mergedUpdated = { ...integration, ...updated, id: integration.id };
+      setIntegrations((prev) => prev.map((item) => (item.id === integration.id ? mergedUpdated : item)));
       setMessage({
         text: nextEnabled ? 'Интеграция включена' : 'Интеграция выключена',
         type: 'success',

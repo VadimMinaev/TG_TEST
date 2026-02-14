@@ -189,7 +189,8 @@ export function Rules() {
     try {
       setTogglingRuleId(rule.id);
       const updated = await api.updateRule(rule.id, { enabled: nextEnabled });
-      setRules((prev) => prev.map((r) => (r.id === rule.id ? updated : r)));
+      const mergedUpdated = { ...rule, ...updated, id: rule.id };
+      setRules((prev) => prev.map((r) => (r.id === rule.id ? mergedUpdated : r)));
       setMessage({
         text: nextEnabled ? 'Webhook включен' : 'Webhook выключен',
         type: 'success',

@@ -6,9 +6,17 @@ export interface EntityStateSwitchProps {
   onChange: (nextEnabled: boolean) => void;
   idPrefix: string;
   size?: 'sm' | 'md' | 'lg';
+  showStateText?: boolean;
 }
 
-export function EntityStateSwitch({ enabled, disabled = false, onChange, idPrefix, size = 'md' }: EntityStateSwitchProps) {
+export function EntityStateSwitch({
+  enabled,
+  disabled = false,
+  onChange,
+  idPrefix,
+  size = 'md',
+  showStateText = true,
+}: EntityStateSwitchProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [localEnabled, setLocalEnabled] = useState(enabled);
 
@@ -54,41 +62,50 @@ export function EntityStateSwitch({ enabled, disabled = false, onChange, idPrefi
   };
 
   return (
-    <div className="relative inline-block">
-      <button
-        type="button"
-        id={`${idPrefix}-state-toggle`}
-        role="switch"
-        aria-checked={localEnabled}
-        aria-disabled={disabled || isLoading}
-        disabled={disabled || isLoading}
-        onClick={handleChange}
-        className={`relative inline-flex items-center justify-center rounded-md p-1 ${hitAreaClasses[size]} ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
-      >
-        <div 
-          className={`relative ${sizeClasses[size]} rounded-full transition-colors duration-300 ease-in-out ${
-            localEnabled 
-              ? 'bg-[hsl(var(--success))]' 
-              : 'bg-[hsl(var(--muted-foreground))]'
-          } ${isLoading ? 'opacity-70' : ''}`}
+    <div className={`inline-flex items-center gap-2.5 ${disabled ? 'opacity-60' : ''}`}>
+      <div className="relative inline-block">
+        <button
+          type="button"
+          id={`${idPrefix}-state-toggle`}
+          role="switch"
+          aria-checked={localEnabled}
+          aria-disabled={disabled || isLoading}
+          disabled={disabled || isLoading}
+          onClick={handleChange}
+          className={`relative inline-flex items-center justify-center rounded-md p-1 ${hitAreaClasses[size]} ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <div
-            className={`absolute top-0.5 left-0.5 transform transition-transform duration-300 ease-in-out ${
-              localEnabled ? 'translate-x-full' : 'translate-x-0'
-            } ${thumbSizeClasses[size]} rounded-full bg-white shadow-md flex items-center justify-center`}
+          <div 
+            className={`relative ${sizeClasses[size]} rounded-full border border-[hsl(var(--border)_/_0.7)] transition-colors duration-300 ease-in-out ${
+              localEnabled 
+                ? 'bg-[hsl(var(--success))]' 
+                : 'bg-[hsl(var(--muted-foreground))]'
+            } ${isLoading ? 'opacity-70' : ''}`}
           >
-            {isLoading ? (
-              <div className="h-2 w-2 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent"></div>
-            ) : null}
+            <div
+              className={`absolute top-0.5 left-0.5 transform transition-transform duration-300 ease-in-out ${
+                localEnabled ? 'translate-x-full' : 'translate-x-0'
+              } ${thumbSizeClasses[size]} rounded-full bg-white shadow-md flex items-center justify-center`}
+            >
+              {isLoading ? (
+                <div className="h-2 w-2 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent"></div>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </button>
-      
-      {/* Subtle glow effect when enabled */}
-      {localEnabled && (
-        <div className="absolute inset-0 rounded-full pointer-events-none">
-          <div className="absolute inset-0 rounded-full bg-[hsl(var(--success)_/_0.3)] opacity-0 animate-[pulse_2s_ease-in-out_infinite]"></div>
-        </div>
+        </button>
+        
+        {localEnabled && (
+          <div className="absolute inset-0 rounded-full pointer-events-none">
+            <div className="absolute inset-0 rounded-full bg-[hsl(var(--success)_/_0.3)] opacity-0 animate-[pulse_2s_ease-in-out_infinite]"></div>
+          </div>
+        )}
+      </div>
+      {showStateText && (
+        <label
+          htmlFor={`${idPrefix}-state-toggle`}
+          className={`cursor-pointer text-sm font-semibold ${localEnabled ? 'text-[hsl(var(--success))]' : 'text-[hsl(var(--muted-foreground))]'}`}
+        >
+          {localEnabled ? 'Включено' : 'Выключено'}
+        </label>
       )}
     </div>
   );

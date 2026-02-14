@@ -209,7 +209,8 @@ export function Polling() {
     try {
       setTogglingPollId(poll.id);
       const updated = await api.updatePoll(poll.id, { enabled: nextEnabled });
-      setPolls((prev) => prev.map((p) => (p.id === poll.id ? updated : p)));
+      const mergedUpdated = { ...poll, ...updated, id: poll.id };
+      setPolls((prev) => prev.map((p) => (p.id === poll.id ? mergedUpdated : p)));
       setMessage({
         text: nextEnabled ? 'Пуллинг включен' : 'Пуллинг выключен',
         type: 'success',
