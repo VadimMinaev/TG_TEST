@@ -2,12 +2,18 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, Info } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '../components/ui/tooltip';
 
 const DEFAULT_FORM = {
   name: '',
@@ -128,15 +134,16 @@ export function Polling() {
     event.preventDefault();
     setMessage(null);
 
-    // Basic validation - name and URL are always required
-    if (!form.name || !form.url) {
-      setMessage({ text: 'Укажите название и URL', type: 'error' });
+    // Basic validation - name, URL and chatId are always required
+    if (!form.name || !form.url || !form.chatId) {
+      setMessage({ text: 'Укажите название, URL и Chat ID', type: 'error' });
       return;
     }
 
-    // If Telegram notification is enabled, validate chatId and botToken
-    if ((!!form.chatId || !!form.botToken) && (!form.chatId || !form.botToken)) {
-      setMessage({ text: 'Для Telegram уведомления укажите Chat ID и Bot Token', type: 'error' });
+    // If Telegram notification is enabled (both chatId and botToken are present), validate them
+    // If only one of them is present, it's an error
+    if (!!form.chatId !== !!form.botToken) {
+      setMessage({ text: 'Для Telegram уведомления укажите и Chat ID, и Bot Token', type: 'error' });
       return;
     }
 
@@ -457,7 +464,26 @@ export function Polling() {
               <form className="entity-edit-form" onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Уникальное имя для идентификации пуллинга в списке.</p>
+                            <p>Рекомендуется использовать понятные названия, например: «Проверка статуса заказа» или «Мониторинг сервера».</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    </label>
                   <input
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                     value={form.name}
@@ -466,7 +492,26 @@ export function Polling() {
                   />
                 </div>
                 <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Адрес API, который будет опрашиваться по заданному интервалу.</p>
+                            <p>Поддерживаются HTTP и HTTPS протоколы.</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    </label>
                   <input
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                     value={form.url}
@@ -478,16 +523,29 @@ export function Polling() {
 
                 <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
-                  <input
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                    value={form.chatId}
-                    onChange={(e) => setForm({ ...form, chatId: e.target.value })}
-                    placeholder="-1001234567890"
-                  />
-                </div>
-                <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>HTTP метод для запроса к API.</p>
+                            <p><strong>GET:</strong> для получения данных</p>
+                            <p><strong>POST:</strong> для отправки данных</p>
+                            <p><strong>PUT/PATCH:</strong> для обновления данных</p>
+                            <p><strong>DELETE:</strong> для удаления данных</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    </label>
                   <select
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                     value={form.method}
@@ -500,11 +558,64 @@ export function Polling() {
                     <option value="DELETE">DELETE</option>
                   </select>
                 </div>
+                <div>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Числовой идентификатор чата/канала в Telegram.</p>
+                            <p><strong>Как получить:</strong></p>
+                            <ul className="list-disc list-inside">
+                              <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
+                              <li>Или перешлите сообщение боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
+                            </ul>
+                            <p><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    </label>
+                  <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    value={form.chatId}
+                    onChange={(e) => setForm({ ...form, chatId: e.target.value })}
+                    placeholder="-1001234567890"
+                  />
+                </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Интервал между запросами к API в секундах.</p>
+                            <p><strong>Минимальное значение:</strong> 5 секунд</p>
+                            <p>Большее значение экономит ресурсы, меньшее - обеспечивает более частое обновление данных.</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    </label>
                   <input
                     type="number"
                     min={5}
@@ -514,7 +625,27 @@ export function Polling() {
                   />
                 </div>
                 <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Время ожидания ответа от API в секундах.</p>
+                            <p><strong>Минимальное значение:</strong> 3 секунды</p>
+                            <p>Если API не отвечает в течение этого времени, запрос считается неудачным.</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    </label>
                   <input
                     type="number"
                     min={3}
@@ -526,7 +657,30 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-left">
+                        <div className="space-y-2">
+                          <p>Заголовки HTTP запроса в формате JSON.</p>
+                          <p>Используются для авторизации и передачи метаданных.</p>
+                          <p><strong>Пример:</strong></p>
+                          <pre className="bg-[hsl(var(--muted))] p-2 rounded text-xs overflow-x-auto">
+                            {"{\n  \"Authorization\": \"Bearer your_token_here\",\n  \"Content-Type\": \"application/json\"\n}"}
+                          </pre>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  </label>
                   <textarea
                     rows={3}
                     style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
@@ -540,7 +694,30 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-left">
+                        <div className="space-y-2">
+                          <p>Тело HTTP запроса в формате JSON.</p>
+                          <p>Используется для передачи данных в POST/PUT/PATCH запросах.</p>
+                          <p><strong>Пример:</strong></p>
+                          <pre className="bg-[hsl(var(--muted))] p-2 rounded text-xs overflow-x-auto">
+                            {"{\n  \"query\": \"status\",\n  \"filters\": {\n    \"active\": true\n  }\n}"}
+                          </pre>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  </label>
                   <textarea
                     rows={3}
                     style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
@@ -551,7 +728,34 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условия (JSON)</label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условия (JSON)
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                        >
+                          <Info className="h-4 w-4" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-xs text-left">
+                        <div className="space-y-2">
+                          <p>Условия для проверки ответа API в формате JSON.</p>
+                          <p>Пуллинг сработает, когда условия будут выполнены.</p>
+                          <p><strong>Поля:</strong></p>
+                          <ul className="list-disc list-inside text-xs">
+                            <li><code>logic</code> — логический оператор (AND/OR)</li>
+                            <li><code>conditions</code> — массив условий проверки</li>
+                            <li><code>path</code> — путь к значению в ответе</li>
+                            <li><code>op</code> — оператор сравнения (==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists)</li>
+                            <li><code>value</code> — значение для сравнения</li>
+                          </ul>
+                        </div>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  </label>
                   <textarea
                     rows={4}
                     style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
@@ -570,7 +774,7 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
                     Шаблон сообщения (опционально)
                     <TemplateHelp context="poll" />
                   </label>
@@ -599,6 +803,24 @@ export function Polling() {
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     Только при изменении
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Отправлять уведомление только при изменении данных.</p>
+                            <p>Если включено, уведомление будет отправлено только при изменении значения в ответе API.</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </label>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
                     <input
@@ -608,6 +830,24 @@ export function Polling() {
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     Продолжать после совпадения
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Продолжать выполнение пуллинга после срабатывания.</p>
+                            <p>Если выключено, пуллинг остановится после первого совпадения.</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </label>
                 </div>
 
@@ -616,12 +856,12 @@ export function Polling() {
                     <input
                       type="checkbox"
                       id="sendToTelegram"
-                      checked={!!form.chatId && !!form.botToken}
+                      checked={!!form.botToken}
                       onChange={(e) => {
                         if (!e.target.checked) {
-                          setForm({ ...form, chatId: '', botToken: '' });
+                          setForm({ ...form, botToken: '' });
                         } else {
-                          setForm({ ...form, chatId: form.chatId || '', botToken: form.botToken || '' });
+                          setForm({ ...form, botToken: form.botToken || '' });
                         }
                       }}
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
@@ -629,13 +869,51 @@ export function Polling() {
                     <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
                       📱 Telegram уведомление
                     </label>
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Включить отправку уведомлений в Telegram.</p>
+                            <p>Для работы уведомлений укажите Bot Token. Chat ID берется из основных настроек.</p>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                   </div>
 
-                  {(!!form.chatId || !!form.botToken) && (
-                    <div style={{ paddingLeft: '30px', opacity: (!!form.chatId && !!form.botToken) ? 1 : 0.5 }}>
+                  {!!form.botToken && (
+                    <div style={{ paddingLeft: '30px', opacity: 1 }}>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                                  aria-label="Показать подсказку"
+                                >
+                                  <Info className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs text-left">
+                                <div className="space-y-2">
+                                  <p>Числовой идентификатор чата/канала в Telegram (берется из основных настроек).</p>
+                                  <p>Используется для отправки уведомлений при срабатывании пуллинга.</p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          </label>
                           <input
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.chatId}
@@ -644,7 +922,31 @@ export function Polling() {
                           />
                         </div>
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token</label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                                >
+                                  <Info className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs text-left">
+                                <div className="space-y-2">
+                                  <p>Токен Telegram бота для отправки сообщений.</p>
+                                  <p><strong>Как получить:</strong></p>
+                                  <ul className="list-disc list-inside">
+                                    <li>Создайте бота через <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
+                                    <li>Скопируйте токен из сообщения</li>
+                                  </ul>
+                                  <p>Формат: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABCdefGHIjklMNOpqrSTUvwxYZ</code></p>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                          </label>
                           <input
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.botToken}
@@ -654,7 +956,7 @@ export function Polling() {
                         </div>
                       </div>
                       <div style={{ marginTop: '16px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
                           Шаблон сообщения
                           <TemplateHelp context="poll" />
                         </label>

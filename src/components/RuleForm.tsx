@@ -25,10 +25,9 @@ function InfoTooltip({ children }: { children: React.ReactNode }) {
               event.stopPropagation();
               setOpen((prev) => !prev);
             }}
-            className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
-            aria-label="Показать подсказку"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
           >
-            <Info className="h-3 w-3" />
+            <Info className="h-4 w-4" />
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" align="start" className="max-w-xs text-left" onPointerDownOutside={() => setOpen(false)}>
@@ -135,7 +134,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       )}
 
       <div>
-        <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
           Название Webhook
           <InfoTooltip>
             Уникальное имя для идентификации Webhook в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
@@ -153,7 +152,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
           Условие (JavaScript выражение)
           <InfoTooltip>
             <div className="space-y-2">
@@ -183,7 +182,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
           ID Telegram чата
           <InfoTooltip>
             <div className="space-y-2">
@@ -209,7 +208,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
           Токен Telegram бота
           <InfoTooltip>
             <div className="space-y-2">
@@ -234,7 +233,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
           Шаблон сообщения
           <TemplateHelp context="rule" />
         </label>
