@@ -185,6 +185,18 @@ export function Users() {
               <Plus className="h-4 w-4" />
             </button>
           )}
+          {canManageUsers && selectedUser && selectedUser.id !== user?.userId && mode === 'view' && (
+            <>
+              <button
+                onClick={() => handleDeleteUser(selectedUser.id)}
+                className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+                title="Удалить пользователя"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
+            </>
+          )}
         </div>
       </div>
 
@@ -393,39 +405,59 @@ export function Users() {
                 </div>
               </form>
             ) : selectedUser ? (
-              <div className="space-y-3">
-                <h3 className="text-base font-semibold">Просмотр пользователя</h3>
+              <div className="space-y-4">
                 <div>
-                  <strong>Логин:</strong> <span className="font-medium">{selectedUser.username}</span>
-                </div>
-                <div>
-                  <strong>ID:</strong>{' '}
-                  <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1 text-xs">#{selectedUser.id}</code>
-                </div>
-                <div>
-                  <strong>Роль:</strong>{' '}
-                  {selectedUser.role === 'auditor' ? 'Аудитор' : 'Администратор'}
-                </div>
-                {selectedUser.account_name && (
-                  <div>
-                    <strong>Аккаунт:</strong> {selectedUser.account_name}
+                  <h3 className="mb-2 text-base font-semibold">Просмотр пользователя</h3>
+                  <div className="flex items-center gap-2">
+                    <div className="rounded-full bg-[hsl(var(--muted)_/_0.3)] p-2">
+                      <UserRound className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <div className="font-medium">{selectedUser.username}</div>
+                      <div className="text-xs text-[hsl(var(--muted-foreground))]">ID: #{selectedUser.id}</div>
+                    </div>
                   </div>
-                )}
-                <div>
-                  <strong>Создан:</strong>{' '}
-                  {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString('ru-RU') : '—'}
                 </div>
-                {canManageUsers && selectedUser.id !== user?.userId && (
-                  <div className="pt-2">
-                    <button
-                      onClick={() => handleDeleteUser(selectedUser.id)}
-                      className="inline-flex items-center gap-2 rounded border border-[hsl(var(--destructive)_/_0.4)] px-3 py-2 text-sm text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Удалить пользователя
-                    </button>
+                
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                    <div className="mb-2 text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">Основная информация</div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-[hsl(var(--muted-foreground))]">Логин:</span>
+                        <span className="font-medium">{selectedUser.username}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[hsl(var(--muted-foreground))]">ID:</span>
+                        <code className="rounded bg-[hsl(var(--muted)_/_0.3)] px-2 py-1 text-xs">#{selectedUser.id}</code>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-[hsl(var(--muted-foreground))]">Роль:</span>
+                        <span
+                          className={`rounded px-2 py-1 text-xs ${
+                            selectedUser.role === 'auditor'
+                              ? 'bg-[hsl(var(--muted)_/_0.4)] text-[hsl(var(--muted-foreground))]'
+                              : 'bg-[hsl(var(--primary)_/_0.15)] text-[hsl(var(--primary))]'
+                          }`}
+                        >
+                          {selectedUser.role === 'auditor' ? 'Аудитор' : 'Администратор'}
+                        </span>
+                      </div>
+                      {selectedUser.account_name && (
+                        <div className="flex justify-between">
+                          <span className="text-[hsl(var(--muted-foreground))]">Аккаунт:</span>
+                          <span className="font-medium">{selectedUser.account_name}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-[hsl(var(--muted-foreground))]">Создан:</span>
+                        <span className="text-xs">
+                          {selectedUser.created_at ? new Date(selectedUser.created_at).toLocaleString('ru-RU') : '—'}
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                )}
+                </div>
               </div>
             ) : (
               <p className="py-16 text-center text-[hsl(var(--muted-foreground))]">
