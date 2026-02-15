@@ -878,7 +878,7 @@ export function Polling() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                                  className="ml-1.5 flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                                   aria-label="Показать подсказку"
                                 >
                                   <Info className="h-4 w-4" />
