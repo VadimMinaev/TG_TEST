@@ -3,6 +3,7 @@ import { api, Account, AccountCloneOptions } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { useToast } from '../components/ToastNotification';
 
 type CloneIncludeState = {
   rules: boolean;
@@ -28,7 +29,7 @@ export function Accounts() {
   const [newName, setNewName] = useState('');
   const [cloneSourceAccountId, setCloneSourceAccountId] = useState<number | ''>('');
   const [cloneInclude, setCloneInclude] = useState<CloneIncludeState>(EMPTY_INCLUDE);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const { addToast } = useToast();
 
   const selectedAccount = useMemo(
     () => accounts.find((a) => a.id === selectedAccountId) || null,
@@ -53,12 +54,6 @@ export function Accounts() {
     });
   }, [accounts, searchQuery]);
 
-  useEffect(() => {
-    if (message) {
-      const t = setTimeout(() => setMessage(null), 4000);
-      return () => clearTimeout(t);
-    }
-  }, [message]);
 
   useEffect(() => {
     if (user?.isVadmin) loadAccounts();
@@ -73,7 +68,7 @@ export function Accounts() {
         setSelectedAccountId(data[0].id);
       }
     } catch (error: any) {
-      setMessage({ text: error?.message || 'Ошибка загрузки аккаунтов', type: 'error' });
+      addToast(error?.message || 'Ошибка загрузки аккаунтов', 'error');
     } finally {
       setLoading(false);
     }
@@ -88,7 +83,7 @@ export function Accounts() {
   const handleStartCreate = () => {
     setCreating(true);
     setSelectedAccountId(null);
-    setMessage(null);
+    // Clear message is no longer needed with toast system
   };
 
   const handleCancelCreate = () => {
@@ -98,15 +93,15 @@ export function Accounts() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
+    // Clear message is no longer needed with toast system
     const name = newName.trim();
     if (!name) {
-      setMessage({ text: 'Введите название аккаунта', type: 'error' });
+      addToast('Введите название аккаунта', 'error');
       return;
     }
 
     if (duplicateNameExists) {
-      setMessage({ text: 'Такое название уже используется', type: 'error' });
+      addToast('Такое название уже используется', 'error');
       return;
     }
 
@@ -119,7 +114,7 @@ export function Accounts() {
           include: cloneInclude,
         };
       } else {
-        setMessage({ text: 'Выберите хотя бы одну сущность для копирования', type: 'error' });
+        addToast('Выберите хотя бы одну сущность для копирования', 'error');
         return;
       }
     }
@@ -132,34 +127,31 @@ export function Accounts() {
       const copiedTotal = cloned
         ? (cloned.rules || 0) + (cloned.polls || 0) + (cloned.integrations || 0) + (cloned.bots || 0)
         : 0;
-      setMessage({
-        text: copiedTotal > 0 ? `Аккаунт создан, скопировано сущностей: ${copiedTotal}` : 'Аккаунт создан',
-        type: 'success',
-      });
+      addToast(copiedTotal > 0 ? `Аккаунт создан, скопировано сущностей: ${copiedTotal}` : 'Аккаунт создан', 'success');
       setCreating(false);
       resetCreateForm();
       await loadAccounts();
       if (created?.id) setSelectedAccountId(created.id);
     } catch (error: any) {
-      setMessage({ text: error?.message || 'Ошибка создания аккаунта', type: 'error' });
+      addToast(error?.message || 'Ошибка создания аккаунта', 'error');
     }
   };
 
   const handleDeleteAccount = async () => {
     if (!selectedAccount) return;
     if (mainAccountId != null && selectedAccount.id === mainAccountId) {
-      setMessage({ text: 'Нельзя удалить главный аккаунт', type: 'error' });
+      addToast('Нельзя удалить главный аккаунт', 'error');
       return;
     }
     if (!confirm(`Удалить аккаунт "${selectedAccount.name}"? Данные будут перенесены в главный аккаунт.`)) return;
 
     try {
       await api.deleteAccount(selectedAccount.id);
-      setMessage({ text: 'Аккаунт удален', type: 'success' });
+      addToast('Аккаунт удален', 'success');
       await loadAccounts();
       setSelectedAccountId(mainAccountId);
     } catch (error: any) {
-      setMessage({ text: error?.message || 'Ошибка удаления аккаунта', type: 'error' });
+      addToast(error?.message || 'Ошибка удаления аккаунта', 'error');
     }
   };
 
@@ -223,17 +215,6 @@ export function Accounts() {
         </div>
       </div>
 
-      {message && (
-        <div
-          className={`mx-4 mt-4 rounded border p-3 text-sm ${
-            message.type === 'success'
-              ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-              : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       <div className="split-layout p-6">
         <div className="split-left">

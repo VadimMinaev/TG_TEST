@@ -8,6 +8,7 @@ import { Breadcrumb } from '../components/Breadcrumb';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
+import { useToast } from '../components/ToastNotification';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -71,19 +72,12 @@ export function Bots() {
   const [selectedBotId, setSelectedBotId] = useState<number | null>(null);
   const [editingBotId, setEditingBotId] = useState<number | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const { addToast } = useToast();
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [togglingBotId, setTogglingBotId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // Auto-dismiss messages
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
 
   const selectedBot = useMemo(
     () => bots.find((b) => b.id === selectedBotId) || null,
@@ -96,7 +90,7 @@ export function Bots() {
       const data = await api.getBots();
       setBots(data);
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось загрузить ботов', type: 'error' });
+      addToast(error.message || 'Не удалось загрузить ботов', 'error');
     } finally {
       setLoading(false);
     }
@@ -145,30 +139,30 @@ export function Bots() {
 
   const handleSaveBot = async (event: React.FormEvent) => {
     event.preventDefault();
-    setMessage(null);
+    // Clear message is no longer needed with toast system
 
     if (!form.name || !form.chatId) {
-      setMessage({ text: 'Укажите название и Chat ID', type: 'error' });
+      addToast('Укажите название и Chat ID', 'error');
       return;
     }
 
     if (form.messageType === 'poll' && !form.pollQuestion) {
-      setMessage({ text: 'Укажите вопрос для голосования', type: 'error' });
+      addToast('Укажите вопрос для голосования', 'error');
       return;
     }
 
     if (form.messageType === 'text' && !form.messageText) {
-      setMessage({ text: 'Укажите текст сообщения', type: 'error' });
+      addToast('Укажите текст сообщения', 'error');
       return;
     }
 
     if (form.scheduleType === 'recurring' && form.scheduleDays.length === 0) {
-      setMessage({ text: 'Выберите хотя бы один день недели', type: 'error' });
+      addToast('Выберите хотя бы один день недели', 'error');
       return;
     }
 
     if (form.scheduleType === 'once' && !form.scheduleDate) {
-      setMessage({ text: 'Укажите дату запуска', type: 'error' });
+      addToast('Укажите дату запуска', 'error');
       return;
     }
 
@@ -177,11 +171,11 @@ export function Bots() {
       try {
         const opts = JSON.parse(form.pollOptions);
         if (!Array.isArray(opts) || opts.length < 2) {
-          setMessage({ text: 'Нужно минимум 2 варианта ответа', type: 'error' });
+          addToast('Нужно минимум 2 варианта ответа', 'error');
           return;
         }
       } catch {
-        setMessage({ text: 'Некорректный JSON для вариантов ответа', type: 'error' });
+        addToast('Некорректный JSON для вариантов ответа', 'error');
         return;
       }
     }
@@ -196,17 +190,17 @@ export function Bots() {
         const updated = await api.updateBot(editingBotId, payload);
         setEditingBotId(null);
         setSelectedBotId(updated.id);
-        setMessage({ text: 'Бот обновлён', type: 'success' });
+        addToast('Бот обновлён', 'success');
         await loadBots();
       } else {
         const created = await api.createBot(payload);
         setEditingBotId(null);
         setSelectedBotId(created.id);
-        setMessage({ text: 'Бот создан', type: 'success' });
+        addToast('Бот создан', 'success');
         await loadBots();
       }
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось сохранить бота', type: 'error' });
+      addToast(error.message || 'Не удалось сохранить бота', 'error');
     }
   };
 
@@ -220,9 +214,9 @@ export function Bots() {
       const created = await api.createBot(copyPayload);
       setBots((prev) => [created, ...prev]);
       setSelectedBotId(created.id);
-      setMessage({ text: 'Бот продублирован', type: 'success' });
+      addToast('Бот продублирован', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось дублировать бота', type: 'error' });
+      addToast(error.message || 'Не удалось дублировать бота', 'error');
     }
   };
 
@@ -235,18 +229,18 @@ export function Bots() {
         setSelectedBotId(null);
         setEditingBotId(null);
       }
-      setMessage({ text: 'Бот удалён', type: 'success' });
+      addToast('Бот удалён', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось удалить бота', type: 'error' });
+      addToast(error.message || 'Не удалось удалить бота', 'error');
     }
   };
 
   const handleRunBot = async (bot: Bot) => {
     try {
       await api.runBot(bot.id);
-      setMessage({ text: 'Бот запущен вручную', type: 'success' });
+      addToast('Бот запущен вручную', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось запустить бота', type: 'error' });
+      addToast(error.message || 'Не удалось запустить бота', 'error');
     }
   };
 
@@ -257,12 +251,9 @@ export function Bots() {
       const updated = await api.updateBot(bot.id, { enabled: nextEnabled });
       const mergedUpdated = { ...bot, ...updated, id: bot.id };
       setBots((prev) => prev.map((b) => (b.id === bot.id ? mergedUpdated : b)));
-      setMessage({
-        text: nextEnabled ? 'Бот включен' : 'Бот выключен',
-        type: 'success',
-      });
+      addToast(nextEnabled ? 'Бот включен' : 'Бот выключен', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось обновить статус бота', type: 'error' });
+      addToast(error.message || 'Не удалось обновить статус бота', 'error');
     } finally {
       setTogglingBotId(null);
     }
@@ -365,9 +356,9 @@ export function Bots() {
           : lastError
             ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
             : `Импортировано: ${created}, пропущено: ${failed}`;
-      setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
+      addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ошибка импорта ботов', type: 'error' });
+      addToast(error.message || 'Ошибка импорта ботов', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -465,19 +456,6 @@ export function Bots() {
         </div>
       </div>
 
-      {message && (
-        <div
-          className={`mx-6 mt-4 animate-fade-in rounded border p-3 text-sm ${
-            message.type === 'success'
-              ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-              : message.type === 'error'
-              ? 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-              : 'border-[hsl(var(--info)_/_0.3)] bg-[hsl(var(--info)_/_0.1)] text-[hsl(var(--info))]'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       <div className="split-layout p-6">
         <div className="split-left">
@@ -1067,7 +1045,7 @@ export function Bots() {
         loading={loading}
         exportFileName="bots-export.json"
         exportType="bots"
-        onExportSuccess={(count) => setMessage({ text: `Экспортировано ботов: ${count}`, type: 'success' })}
+        onExportSuccess={(count) => addToast(`Экспортировано ботов: ${count}`, 'success')}
       />
     </div>
   );

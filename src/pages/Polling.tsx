@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../components/ui/tooltip';
+import { useToast } from '../components/ToastNotification';
 
 const DEFAULT_FORM = {
   name: '',
@@ -58,19 +59,13 @@ export function Polling() {
   const [selectedPollId, setSelectedPollId] = useState<number | null>(null);
   const [editingPollId, setEditingPollId] = useState<number | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const { addToast } = useToast();
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [togglingPollId, setTogglingPollId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
 
   const selectedPoll = useMemo(
     () => polls.find((poll) => poll.id === selectedPollId) || null,
@@ -83,7 +78,7 @@ export function Polling() {
       const data = await api.getPolls();
       setPolls(data);
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось загрузить пуллинг', type: 'error' });
+      addToast(error.message || 'Не удалось загрузить пуллинг', 'error');
     } finally {
       setLoading(false);
     }
@@ -132,18 +127,18 @@ export function Polling() {
 
   const handleSavePoll = async (event: React.FormEvent) => {
     event.preventDefault();
-    setMessage(null);
+    // Clear message is no longer needed with toast system
 
     // Basic validation - name, URL and chatId are always required
     if (!form.name || !form.url || !form.chatId) {
-      setMessage({ text: 'Укажите название, URL и Chat ID', type: 'error' });
+      addToast('Укажите название, URL и Chat ID', 'error');
       return;
     }
 
     // If Telegram notification is enabled (both chatId and botToken are present), validate them
     // If only one of them is present, it's an error
     if (!!form.chatId !== !!form.botToken) {
-      setMessage({ text: 'Для Telegram уведомления укажите и Chat ID, и Bot Token', type: 'error' });
+      addToast('Для Telegram уведомления укажите и Chat ID, и Bot Token', 'error');
       return;
     }
 
@@ -163,19 +158,19 @@ export function Polling() {
         const updated = await api.updatePoll(editingPollId, payload);
         setEditingPollId(null);
         setSelectedPollId(updated.id);
-        setMessage({ text: 'Пуллинг обновлён', type: 'success' });
+        addToast('Пуллинг обновлён', 'success');
         // Перезагружаем список для синхронизации
         await loadPolls();
       } else {
         const created = await api.createPoll(payload);
         setEditingPollId(null);
         setSelectedPollId(created.id);
-        setMessage({ text: 'Пуллинг создан', type: 'success' });
+        addToast('Пуллинг создан', 'success');
         // Перезагружаем список для синхронизации
         await loadPolls();
       }
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось сохранить пуллинг', type: 'error' });
+      addToast(error.message || 'Не удалось сохранить пуллинг', 'error');
     }
   };
 
@@ -189,9 +184,9 @@ export function Polling() {
       const created = await api.createPoll(copyPayload);
       setPolls((prev) => [created, ...prev]);
       setSelectedPollId(created.id);
-      setMessage({ text: 'Пуллинг продублирован', type: 'success' });
+      addToast('Пуллинг продублирован', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось дублировать пуллинг', type: 'error' });
+      addToast(error.message || 'Не удалось дублировать пуллинг', 'error');
     }
   };
 
@@ -204,18 +199,18 @@ export function Polling() {
         setSelectedPollId(null);
         setEditingPollId(null);
       }
-      setMessage({ text: 'Пуллинг удалён', type: 'success' });
+      addToast('Пуллинг удалён', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось удалить пуллинг', type: 'error' });
+      addToast(error.message || 'Не удалось удалить пуллинг', 'error');
     }
   };
 
   const handleRunPoll = async (poll: Poll) => {
     try {
       await api.runPoll(poll.id);
-      setMessage({ text: 'Запуск выполнен', type: 'success' });
+      addToast('Запуск выполнен', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось запустить пуллинг', type: 'error' });
+      addToast(error.message || 'Не удалось запустить пуллинг', 'error');
     }
   };
 
@@ -226,12 +221,9 @@ export function Polling() {
       const updated = await api.updatePoll(poll.id, { enabled: nextEnabled });
       const mergedUpdated = { ...poll, ...updated, id: poll.id };
       setPolls((prev) => prev.map((p) => (p.id === poll.id ? mergedUpdated : p)));
-      setMessage({
-        text: nextEnabled ? 'Пуллинг включен' : 'Пуллинг выключен',
-        type: 'success',
-      });
+      addToast(nextEnabled ? 'Пуллинг включен' : 'Пуллинг выключен', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось обновить статус пуллинга', type: 'error' });
+      addToast(error.message || 'Не удалось обновить статус пуллинга', 'error');
     } finally {
       setTogglingPollId(null);
     }
@@ -292,9 +284,9 @@ export function Polling() {
           : lastError
             ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
             : `Импортировано: ${created}, пропущено: ${failed}`;
-      setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
+      addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ошибка импорта пуллингов', type: 'error' });
+      addToast(error.message || 'Ошибка импорта пуллингов', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -392,19 +384,6 @@ export function Polling() {
         </div>
       </div>
 
-      {message && (
-        <div
-          className={`mx-6 mt-4 animate-fade-in rounded border p-3 text-sm ${
-            message.type === 'success'
-              ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-              : message.type === 'error'
-              ? 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-              : 'border-[hsl(var(--info)_/_0.3)] bg-[hsl(var(--info)_/_0.1)] text-[hsl(var(--info))]'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       <div className="split-layout p-6">
         <div className="split-left">
@@ -1111,7 +1090,7 @@ export function Polling() {
         loading={loading}
         exportFileName="polls-export.json"
         exportType="polls"
-        onExportSuccess={(count) => setMessage({ text: `Экспортировано пуллингов: ${count}`, type: 'success' })}
+        onExportSuccess={(count) => addToast(`Экспортировано пуллингов: ${count}`, 'success')}
       />
     </div>
   );

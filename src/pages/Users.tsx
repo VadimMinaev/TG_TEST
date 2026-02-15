@@ -4,6 +4,7 @@ import { api, User, Account } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Eye, Plus, Search, Trash2, UserRound } from 'lucide-react';
 import { Breadcrumb } from '../components/Breadcrumb';
+import { useToast } from '../components/ToastNotification';
 
 type Mode = 'view' | 'create' | 'profile';
 
@@ -16,7 +17,7 @@ export function Users() {
   const [mode, setMode] = useState<Mode>('view');
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+  const { addToast } = useToast();
 
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -41,12 +42,6 @@ export function Users() {
     [users, selectedUserId]
   );
 
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
 
   useEffect(() => {
     if (mode === 'create' && !user?.isVadmin && user?.accountId != null) {
@@ -76,7 +71,7 @@ export function Users() {
       setUsers(data);
       if (data.length > 0 && selectedUserId == null) setSelectedUserId(data[0].id);
     } catch (error: any) {
-      setMessage({ text: error?.message || 'Ошибка загрузки пользователей', type: 'error' });
+      addToast(error?.message || 'Ошибка загрузки пользователей', 'error');
     } finally {
       setLoading(false);
     }
@@ -84,22 +79,22 @@ export function Users() {
 
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
+    // Clear message is no longer needed with toast system
     const accountId = user?.isVadmin ? newAccountId : (user?.accountId ?? null);
     if (accountId === '' || accountId == null) {
-      setMessage({ text: 'Выберите аккаунт', type: 'error' });
+      addToast('Выберите аккаунт', 'error');
       return;
     }
     try {
       const created = await api.createUser(newUsername, newPassword, Number(accountId), newRole);
-      setMessage({ text: 'Пользователь создан', type: 'success' });
+      addToast('Пользователь создан', 'success');
       setNewUsername('');
       setNewPassword('');
       setMode('view');
       await loadUsers();
       if (created?.id) setSelectedUserId(created.id);
     } catch (error: any) {
-      setMessage({ text: error?.message || 'Ошибка создания пользователя', type: 'error' });
+      addToast(error?.message || 'Ошибка создания пользователя', 'error');
     }
   };
 
@@ -107,17 +102,17 @@ export function Users() {
     if (!confirm('Удалить этого пользователя?')) return;
     try {
       await api.deleteUser(id);
-      setMessage({ text: 'Пользователь удален', type: 'success' });
+      addToast('Пользователь удален', 'success');
       if (selectedUserId === id) setSelectedUserId(null);
       await loadUsers();
     } catch (error: any) {
-      setMessage({ text: error?.message || 'Ошибка удаления пользователя', type: 'error' });
+      addToast(error?.message || 'Ошибка удаления пользователя', 'error');
     }
   };
 
   const handleUpdateMe = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
+    // Clear message is no longer needed with toast system
     const payload: { username?: string; password?: string; oldPassword?: string } = {};
     if (profileUsername.trim()) payload.username = profileUsername.trim();
     if (profilePassword) {
@@ -125,18 +120,18 @@ export function Users() {
       payload.oldPassword = profileOldPassword;
     }
     if (Object.keys(payload).length === 0) {
-      setMessage({ text: 'Введите новый логин и/или пароль', type: 'error' });
+      addToast('Введите новый логин и/или пароль', 'error');
       return;
     }
     try {
       await api.updateMe(payload);
-      setMessage({ text: 'Профиль обновлен', type: 'success' });
+      addToast('Профиль обновлен', 'success');
       setProfileUsername('');
       setProfilePassword('');
       setProfileOldPassword('');
       setMode('view');
     } catch (error: any) {
-      setMessage({ text: error?.message || 'Ошибка обновления профиля', type: 'error' });
+      addToast(error?.message || 'Ошибка обновления профиля', 'error');
     }
   };
 
@@ -200,17 +195,6 @@ export function Users() {
         </div>
       </div>
 
-      {message && (
-        <div
-          className={`mx-4 mt-4 rounded border p-3 text-sm ${
-            message.type === 'success'
-              ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-              : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       <div className="split-layout p-6">
         <div className="split-left">

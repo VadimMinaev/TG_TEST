@@ -14,6 +14,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '../components/ui/tooltip';
+import { useToast } from '../components/ToastNotification';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -50,7 +51,7 @@ export function Integrations() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
   const [selectedSourceId, setSelectedSourceId] = useState<string>('');
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const { addToast } = useToast();
   const [running, setRunning] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -58,12 +59,6 @@ export function Integrations() {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
 
   const selectedIntegration = useMemo(
     () => integrations.find((i) => i.id === selectedId) || null,
@@ -82,7 +77,7 @@ export function Integrations() {
       setRules(rulesData);
       setPolls(pollsData);
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось загрузить данные', type: 'error' });
+      addToast(error.message || 'Не удалось загрузить данные', 'error');
     } finally {
       setLoading(false);
     }
@@ -189,10 +184,10 @@ export function Integrations() {
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
+    // Clear message is no longer needed with toast system
 
     if (!form.name) {
-      setMessage({ text: 'Укажите название', type: 'error' });
+      addToast('Укажите название', 'error');
       return;
     }
 
@@ -207,19 +202,19 @@ export function Integrations() {
         const updated = await api.updateIntegration(editingId, dataToSave);
         setEditingId(null);
         setSelectedId(updated.id);
-        setMessage({ text: 'Интеграция обновлена', type: 'success' });
+        addToast('Интеграция обновлена', 'success');
         // Перезагружаем список для синхронизации
         await loadIntegrations();
       } else {
         const created = await api.createIntegration(dataToSave);
         setEditingId(null);
         setSelectedId(created.id);
-        setMessage({ text: 'Интеграция создана', type: 'success' });
+        addToast('Интеграция создана', 'success');
         // Перезагружаем список для синхронизации
         await loadIntegrations();
       }
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ошибка сохранения', type: 'error' });
+      addToast(error.message || 'Ошибка сохранения', 'error');
     }
   };
 
@@ -232,9 +227,9 @@ export function Integrations() {
         setSelectedId(null);
         setEditingId(null);
       }
-      setMessage({ text: 'Интеграция удалена', type: 'success' });
+      addToast('Интеграция удалена', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+      addToast(error.message, 'error');
     }
   };
 
@@ -248,9 +243,9 @@ export function Integrations() {
       });
       setIntegrations((prev) => [created, ...prev]);
       setSelectedId(created.id);
-      setMessage({ text: 'Интеграция дублирована', type: 'success' });
+      addToast('Интеграция дублирована', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+      addToast(error.message, 'error');
     }
   };
 
@@ -259,12 +254,12 @@ export function Integrations() {
     try {
       const result = await api.runIntegration(id);
       if (result.status === 'success') {
-        setMessage({ text: 'Интеграция выполнена успешно', type: 'success' });
+        addToast('Интеграция выполнена успешно', 'success');
       } else {
-        setMessage({ text: `Ошибка: ${result.errorMessage || 'Неизвестная ошибка'}`, type: 'error' });
+        addToast(`Ошибка: ${result.errorMessage || 'Неизвестная ошибка'}`, 'error');
       }
     } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+      addToast(error.message, 'error');
     } finally {
       setRunning(false);
     }
@@ -277,12 +272,9 @@ export function Integrations() {
       const updated = await api.updateIntegration(integration.id, { enabled: nextEnabled });
       const mergedUpdated = { ...integration, ...updated, id: integration.id };
       setIntegrations((prev) => prev.map((item) => (item.id === integration.id ? mergedUpdated : item)));
-      setMessage({
-        text: nextEnabled ? 'Интеграция включена' : 'Интеграция выключена',
-        type: 'success',
-      });
+      addToast(nextEnabled ? 'Интеграция включена' : 'Интеграция выключена', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось обновить статус интеграции', type: 'error' });
+      addToast(error.message || 'Не удалось обновить статус интеграции', 'error');
     } finally {
       setTogglingIntegrationId(null);
     }
@@ -351,9 +343,9 @@ export function Integrations() {
           : lastError
             ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
             : `Импортировано: ${created}, пропущено: ${failed}`;
-      setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
+      addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ошибка импорта интеграций', type: 'error' });
+      addToast(error.message || 'Ошибка импорта интеграций', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -452,19 +444,6 @@ export function Integrations() {
         </div>
       </div>
 
-      {message && (
-        <div
-          className={`mx-6 mt-4 animate-fade-in rounded border p-3 text-sm ${
-            message.type === 'success'
-              ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-              : message.type === 'error'
-              ? 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-              : 'border-[hsl(var(--info)_/_0.3)] bg-[hsl(var(--info)_/_0.1)] text-[hsl(var(--info))]'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       <div className="split-layout p-6">
         <div className="split-left">
@@ -1019,7 +998,7 @@ export function Integrations() {
         loading={loading}
         exportFileName="integrations-export.json"
         exportType="integrations"
-        onExportSuccess={(count) => setMessage({ text: `Экспортировано интеграций: ${count}`, type: 'success' })}
+        onExportSuccess={(count) => addToast(`Экспортировано интеграций: ${count}`, 'success')}
       />
     </div>
   );

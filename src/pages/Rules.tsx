@@ -9,6 +9,7 @@ import { RuleForm } from '../components/RuleForm';
 import { ExportModal } from '../components/ExportModal';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
+import { useToast } from '../components/ToastNotification';
 import {
   Tooltip,
   TooltipContent,
@@ -25,17 +26,11 @@ export function Rules() {
   const [selectedRuleId, setSelectedRuleId] = useState<number | null>(null);
   const [editingRuleId, setEditingRuleId] = useState<number | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [message, setMessage] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const { addToast } = useToast();
   const [importing, setImporting] = useState(false);
   const [togglingRuleId, setTogglingRuleId] = useState<number | null>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
-  useEffect(() => {
-    if (message) {
-      const timer = setTimeout(() => setMessage(null), 4000);
-      return () => clearTimeout(timer);
-    }
-  }, [message]);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +89,7 @@ export function Rules() {
       const data = await api.getRules();
       setRules(data);
     } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+      addToast(error.message, 'error');
     } finally {
       setLoading(false);
     }
@@ -134,14 +129,14 @@ export function Rules() {
 
     try {
       await api.deleteRule(id);
-      setMessage({ text: 'Webhook удалён', type: 'success' });
+      addToast('Webhook удалён', 'success');
       setRules(rules.filter((r) => r.id !== id));
       if (selectedRuleId === id) {
         setSelectedRuleId(null);
         setEditingRuleId(null);
       }
     } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+      addToast(error.message, 'error');
     }
   };
 
@@ -156,11 +151,11 @@ export function Rules() {
       delete (duplicate as any).id;
       
       const created = await api.createRule(duplicate);
-      setMessage({ text: 'Webhook дублирован', type: 'success' });
+      addToast('Webhook дублирован', 'success');
       setRules([...rules, created]);
       setSelectedRuleId(created.id);
     } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+      addToast(error.message, 'error');
     }
   };
 
@@ -168,19 +163,19 @@ export function Rules() {
     try {
       if (editingRuleId && editingRuleId !== -1) {
         const updated = await api.updateRule(editingRuleId, rule);
-        setMessage({ text: 'Webhook обновлён', type: 'success' });
+        addToast('Webhook обновлён', 'success');
         setRules(rules.map((r) => (r.id === editingRuleId ? updated : r)));
         setSelectedRuleId(updated.id);
         setEditingRuleId(null);
       } else {
         const created = await api.createRule(rule);
-        setMessage({ text: 'Webhook создан', type: 'success' });
+        addToast('Webhook создан', 'success');
         setRules([...rules, created]);
         setSelectedRuleId(created.id);
         setEditingRuleId(null);
       }
     } catch (error: any) {
-      setMessage({ text: error.message, type: 'error' });
+      addToast(error.message, 'error');
       throw error;
     }
   };
@@ -192,12 +187,9 @@ export function Rules() {
       const updated = await api.updateRule(rule.id, { enabled: nextEnabled });
       const mergedUpdated = { ...rule, ...updated, id: rule.id };
       setRules((prev) => prev.map((r) => (r.id === rule.id ? mergedUpdated : r)));
-      setMessage({
-        text: nextEnabled ? 'Webhook включен' : 'Webhook выключен',
-        type: 'success',
-      });
+      addToast(nextEnabled ? 'Webhook включен' : 'Webhook выключен', 'success');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Не удалось обновить статус Webhook', type: 'error' });
+      addToast(error.message || 'Не удалось обновить статус Webhook', 'error');
     } finally {
       setTogglingRuleId(null);
     }
@@ -252,9 +244,9 @@ export function Rules() {
           : lastError
             ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
             : `Импортировано: ${created}, пропущено: ${failed}`;
-      setMessage({ text: messageText, type: failed === 0 ? 'success' : 'info' });
+      addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      setMessage({ text: error.message || 'Ошибка импорта Webhook', type: 'error' });
+      addToast(error.message || 'Ошибка импорта Webhook', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -390,19 +382,6 @@ export function Rules() {
         </div>
       </div>
 
-      {message && (
-        <div
-          className={`mx-4 mt-4 animate-fade-in rounded border p-3 text-sm ${
-            message.type === 'success'
-              ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-              : message.type === 'error'
-              ? 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-              : 'border-[hsl(var(--info)_/_0.3)] bg-[hsl(var(--info)_/_0.1)] text-[hsl(var(--info))]'
-          }`}
-        >
-          {message.text}
-        </div>
-      )}
 
       <div className="split-layout p-6">
         <div className="split-left">
@@ -472,7 +451,7 @@ export function Rules() {
         loading={loading}
         exportFileName={`rules-${new Date().toISOString().slice(0, 10)}.json`}
         exportType="rules"
-        onExportSuccess={(count) => setMessage({ text: `Экспортировано Webhook: ${count}`, type: 'success' })}
+        onExportSuccess={(count) => addToast(`Экспортировано Webhook: ${count}`, 'success')}
       />
     </div>
   );
