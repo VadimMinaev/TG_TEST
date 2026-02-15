@@ -470,7 +470,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -498,7 +498,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -529,7 +529,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -565,7 +565,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -601,7 +601,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -631,7 +631,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -663,7 +663,7 @@ export function Polling() {
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                         >
                           <Info className="h-4 w-4" />
                         </button>
@@ -700,7 +700,7 @@ export function Polling() {
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                         >
                           <Info className="h-4 w-4" />
                         </button>
@@ -734,7 +734,7 @@ export function Polling() {
                       <TooltipTrigger asChild>
                         <button
                           type="button"
-                          className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                         >
                           <Info className="h-4 w-4" />
                         </button>
@@ -776,6 +776,28 @@ export function Polling() {
                 <div>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
                     Шаблон сообщения (опционально)
+                    <TooltipProvider delayDuration={200}>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            type="button"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                          >
+                            <Info className="h-4 w-4" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent side="top" className="max-w-xs text-left">
+                          <div className="space-y-2">
+                            <p>Шаблон сообщения для отправки в Telegram.</p>
+                            <p>Используйте <code className="bg-[hsl(var(--muted))] px-1 rounded">${'{'}...{'}'}</code> для вставки данных из ответа API.</p>
+                            <p><strong>Пример:</strong></p>
+                            <pre className="bg-[hsl(var(--muted))] p-2 rounded text-xs overflow-x-auto">
+                              {"${payload.name} — ${payload.status}\nID: ${payload.id}"}
+                            </pre>
+                          </div>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <TemplateHelp context="poll" />
                   </label>
                   <textarea
@@ -808,7 +830,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -835,7 +857,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -874,7 +896,7 @@ export function Polling() {
                         <TooltipTrigger asChild>
                           <button
                             type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                           >
                             <Info className="h-4 w-4" />
                           </button>
@@ -928,7 +950,7 @@ export function Polling() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                                  className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                                 >
                                   <Info className="h-4 w-4" />
                                 </button>
@@ -958,6 +980,28 @@ export function Polling() {
                       <div style={{ marginTop: '16px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
                           Шаблон сообщения
+                          <TooltipProvider delayDuration={200}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                                >
+                                  <Info className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="max-w-xs text-left">
+                                <div className="space-y-2">
+                                  <p>Шаблон сообщения для отправки в Telegram.</p>
+                                  <p>Используйте <code className="bg-[hsl(var(--muted))] px-1 rounded">${'{'}...{'}'}</code> для вставки данных из ответа API.</p>
+                                  <p><strong>Пример:</strong></p>
+                                  <pre className="bg-[hsl(var(--muted))] p-2 rounded text-xs overflow-x-auto">
+                                    {"${payload.name} — ${payload.status}\nID: ${payload.id}"}
+                                  </pre>
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                           <TemplateHelp context="poll" />
                         </label>
                         <textarea
@@ -1018,18 +1062,6 @@ export function Polling() {
                       >
                         {selectedPoll.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
-                      {canEdit && (
-                        <span style={{ marginLeft: '20px' }}>
-                          <EntityStateSwitch
-                            idPrefix={`poll-${selectedPoll.id}`}
-                            enabled={selectedPoll.enabled}
-                            disabled={togglingPollId === selectedPoll.id}
-                            onChange={(nextEnabled) => {
-                              if (nextEnabled !== selectedPoll.enabled) handleTogglePollEnabled(selectedPoll);
-                            }}
-                          />
-                        </span>
-                      )}
                     </div>
                   </div>
                 </div>

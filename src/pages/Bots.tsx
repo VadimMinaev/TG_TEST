@@ -935,18 +935,6 @@ export function Bots() {
                       >
                         {selectedBot.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
-                      {canEdit && (
-                        <span style={{ marginLeft: '20px' }}>
-                          <EntityStateSwitch
-                            idPrefix={`bot-${selectedBot.id}`}
-                            enabled={selectedBot.enabled}
-                            disabled={togglingBotId === selectedBot.id}
-                            onChange={(nextEnabled) => {
-                              if (nextEnabled !== selectedBot.enabled) handleToggleBotEnabled(selectedBot);
-                            }}
-                          />
-                        </span>
-                      )}
                     </div>
                     <div style={{ marginBottom: '12px' }}>
                       <strong>Тип:</strong>{' '}

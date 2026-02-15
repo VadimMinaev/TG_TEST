@@ -273,7 +273,7 @@ export function Rules() {
               <TooltipTrigger asChild>
                 <button
                   type="button"
-                  className="flex h-6 w-6 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
                 >
                   <Info className="h-4 w-4" />
                 </button>
