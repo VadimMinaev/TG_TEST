@@ -7,6 +7,7 @@ import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
+import { ToolbarToggle } from '../components/ToolbarToggle';
 
 const DEFAULT_FORM = {
   name: '',
@@ -323,6 +324,14 @@ export function Polling() {
               >
                 <Trash2 className="h-4 w-4" />
               </button>
+              <ToolbarToggle
+                enabled={polls.find(p => p.id === selectedPollId)?.enabled ?? false}
+                onChange={() => {
+                  const poll = polls.find(p => p.id === selectedPollId);
+                  if (poll) handleTogglePollEnabled(poll);
+                }}
+                title={polls.find(p => p.id === selectedPollId)?.enabled ? 'Выключить пуллинг' : 'Включить пуллинг'}
+              />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
           )}

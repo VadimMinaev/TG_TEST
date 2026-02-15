@@ -8,6 +8,7 @@ import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
 import { ExportModal } from '../components/ExportModal';
 import { EntityStateSwitch } from '../components/StateToggle';
+import { ToolbarToggle } from '../components/ToolbarToggle';
 import {
   Tooltip,
   TooltipContent,
@@ -332,6 +333,14 @@ export function Rules() {
               >
                 <Trash2 className="h-4 w-4" />
               </button>
+              <ToolbarToggle
+                enabled={rules.find(r => r.id === selectedRuleId)?.enabled ?? false}
+                onChange={() => {
+                  const rule = rules.find(r => r.id === selectedRuleId);
+                  if (rule) handleToggleRuleEnabled(rule);
+                }}
+                title={rules.find(r => r.id === selectedRuleId)?.enabled ? 'Выключить Webhook' : 'Включить Webhook'}
+              />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
           )}

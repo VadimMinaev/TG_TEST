@@ -7,6 +7,7 @@ import { ExportModal } from '../components/ExportModal';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
+import { ToolbarToggle } from '../components/ToolbarToggle';
 
 const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
@@ -422,6 +423,14 @@ export function Bots() {
               >
                 <Trash2 className="h-4 w-4" />
               </button>
+              <ToolbarToggle
+                enabled={bots.find(b => b.id === selectedBotId)?.enabled ?? false}
+                onChange={() => {
+                  const bot = bots.find(b => b.id === selectedBotId);
+                  if (bot) handleToggleBotEnabled(bot);
+                }}
+                title={bots.find(b => b.id === selectedBotId)?.enabled ? 'Выключить бота' : 'Включить бота'}
+              />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
           )}

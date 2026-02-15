@@ -7,6 +7,7 @@ import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
+import { ToolbarToggle } from '../components/ToolbarToggle';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -391,6 +392,14 @@ export function Integrations() {
               >
                 <Trash2 className="h-4 w-4" />
               </button>
+              <ToolbarToggle
+                enabled={integrations.find(i => i.id === selectedId)?.enabled ?? false}
+                onChange={() => {
+                  const integration = integrations.find(i => i.id === selectedId);
+                  if (integration) handleToggleIntegrationEnabled(integration);
+                }}
+                title={integrations.find(i => i.id === selectedId)?.enabled ? 'Выключить интеграцию' : 'Включить интеграцию'}
+              />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
           )}
