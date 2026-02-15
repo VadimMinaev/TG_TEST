@@ -180,8 +180,8 @@ export function Rules() {
     }
   };
 
-  const handleToggleRuleEnabled = async (rule: Rule) => {
-    const nextEnabled = !rule.enabled;
+  const handleToggleRuleEnabled = async (rule: Rule, forcedNextEnabled?: boolean) => {
+    const nextEnabled = typeof forcedNextEnabled === 'boolean' ? forcedNextEnabled : !rule.enabled;
     try {
       setTogglingRuleId(rule.id);
       const updated = await api.updateRule(rule.id, { enabled: nextEnabled });
@@ -327,9 +327,14 @@ export function Rules() {
               </button>
               <ToolbarToggle
                 enabled={rules.find(r => r.id === selectedRuleId)?.enabled ?? false}
-                onChange={() => {
+                disabled={togglingRuleId === selectedRuleId}
+                onChange={(nextEnabled) => {
                   const rule = rules.find(r => r.id === selectedRuleId);
-                  if (rule) handleToggleRuleEnabled(rule);
+                  if (rule) {
+                    void handleToggleRuleEnabled(rule, nextEnabled);
+                  } else {
+                    addToast('Не удалось определить выбранный Webhook', 'error');
+                  }
                 }}
                 title={rules.find(r => r.id === selectedRuleId)?.enabled ? 'Выключить Webhook' : 'Включить Webhook'}
               />
