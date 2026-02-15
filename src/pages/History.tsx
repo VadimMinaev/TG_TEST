@@ -61,20 +61,20 @@ export function History() {
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
           <button
             onClick={loadLogs}
-            className="flex items-center gap-2 rounded border border-[hsl(var(--border))] bg-[hsl(var(--secondary))] px-3 py-2 text-sm transition-all hover:bg-[hsl(var(--accent))]"
+            className="icon-button"
+            title="Обновить"
           >
             <RefreshCw className="h-4 w-4" />
-            Обновить
           </button>
           <button
             onClick={handleClearLogs}
-            className="flex items-center gap-2 rounded bg-[hsl(var(--destructive))] px-3 py-2 text-sm text-[hsl(var(--destructive-foreground))] transition-all hover:bg-[hsl(var(--destructive)_/_0.9)]"
+            className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+            title="Очистить"
           >
             <Trash2 className="h-4 w-4" />
-            Очистить
           </button>
         </div>
       </div>

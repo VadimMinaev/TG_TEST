@@ -78,10 +78,10 @@ export function Queue() {
           </select>
           <button
             onClick={loadQueue}
-            className="flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-3 py-2 text-sm text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
+            className="icon-button"
+            title="Обновить"
           >
             <RefreshCw className="h-4 w-4" />
-            Обновить
           </button>
         </div>
       </div>

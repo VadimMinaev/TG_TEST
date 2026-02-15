@@ -289,169 +289,130 @@ export function Accounts() {
         <div className="split-right">
           <div className="panel">
             {creating ? (
-              <form onSubmit={handleCreate} className="users-form space-y-5">
-                <h3 className="text-xl font-semibold">Создать аккаунт</h3>
-                <div className="users-field">
-                  <label className="mb-2 block text-sm font-semibold">Название *</label>
-                  <input
-                    type="text"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="Название аккаунта"
-                    className="users-input"
-                    required
-                  />
-                  {duplicateNameExists && (
-                    <p className="mt-1 text-xs text-[hsl(var(--destructive))]">Такое название уже используется</p>
-                  )}
-                </div>
-
-                <div className="users-field">
-                  <label className="mb-2 block text-sm font-semibold">Наполнение нового аккаунта</label>
-                  <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
-                    <div className="mb-3 text-xs text-[hsl(var(--muted-foreground))]">
-                      Можно выбрать источник и скопировать нужные сущности сразу при создании.
-                    </div>
-                    <label className="mb-2 block text-sm font-medium">Источник</label>
-                    <select
-                      value={cloneSourceAccountId}
-                      onChange={(e) => {
-                        const value = e.target.value ? Number(e.target.value) : '';
-                        setCloneSourceAccountId(value);
-                      }}
-                      className="users-input mb-3"
-                    >
-                      <option value="">Не копировать сущности</option>
-                      {accounts.map((a) => (
-                        <option key={a.id} value={a.id}>
-                          {a.name} (#{a.id})
-                        </option>
-                      ))}
-                    </select>
-
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                      {[
-                        { key: 'rules', label: 'Webhook' },
-                        { key: 'polls', label: 'Пуллинги' },
-                        { key: 'integrations', label: 'Интеграции' },
-                        { key: 'bots', label: 'Боты' },
-                      ].map((item) => (
-                        <label
-                          key={item.key}
-                          className={`flex items-center gap-2 rounded border border-[hsl(var(--input))] px-3 py-2 text-sm ${
-                            cloneSourceAccountId === '' ? 'opacity-50' : ''
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={cloneInclude[item.key as keyof CloneIncludeState]}
-                            onChange={(e) =>
-                              setCloneInclude((prev) => ({
-                                ...prev,
-                                [item.key]: e.target.checked,
-                              }))
-                            }
-                            disabled={cloneSourceAccountId === ''}
-                            className="mr-2"
-                          />
-                          <span>{item.label}</span>
-                        </label>
-                      ))}
-                    </div>
+              <form onSubmit={handleCreate} className="entity-edit-form" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h3 className="mb-4 text-lg font-semibold">Создать аккаунт</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название *</label>
+                    <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      placeholder="Название аккаунта"
+                      required
+                    />
+                    {duplicateNameExists && (
+                      <p className="mt-1 text-xs text-[hsl(var(--destructive))]">Такое название уже используется</p>
+                    )}
                   </div>
-                </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Наполнение нового аккаунта</label>
+                    <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
+                      <div className="mb-3 text-xs text-[hsl(var(--muted-foreground))]">
+                        Можно выбрать источник и скопировать нужные сущности сразу при создании.
+                      </div>
+                      <label className="mb-2 block text-sm font-medium">Источник</label>
+                      <select
+                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                        value={cloneSourceAccountId}
+                        onChange={(e) => {
+                          const value = e.target.value ? Number(e.target.value) : '';
+                          setCloneSourceAccountId(value);
+                        }}
+                      >
+                        <option value="">Не копировать сущности</option>
+                        {accounts.map((a) => (
+                          <option key={a.id} value={a.id}>
+                            {a.name} (#{a.id})
+                          </option>
+                        ))}
+                      </select>
 
-                <div className="users-preview-block">
-                  <div className="mb-3 flex items-center justify-between">
-                    <strong className="text-base">Предварительный просмотр</strong>
-                    <span className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4">
-                        <rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect>
-                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                      </svg>
-                      Аккаунт
-                    </span>
-                  </div>
-                  <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
-                    <div className="text-base font-semibold">{newName || 'Новый аккаунт'}</div>
-                    <div className="text-sm text-[hsl(var(--muted-foreground))]">
-                      {cloneSourceAccountId ? 'С копированием сущностей' : 'Без копирования сущностей'}
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        {[
+                          { key: 'rules', label: 'Webhook' },
+                          { key: 'polls', label: 'Пуллинги' },
+                          { key: 'integrations', label: 'Интеграции' },
+                          { key: 'bots', label: 'Боты' },
+                        ].map((item) => (
+                          <label
+                            key={item.key}
+                            className={`flex items-center gap-2 rounded border border-[hsl(var(--input))] px-3 py-2 text-sm ${
+                              cloneSourceAccountId === '' ? 'opacity-50' : ''
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={cloneInclude[item.key as keyof CloneIncludeState]}
+                              onChange={(e) =>
+                                setCloneInclude((prev) => ({
+                                  ...prev,
+                                  [item.key]: e.target.checked,
+                                }))
+                              }
+                              disabled={cloneSourceAccountId === ''}
+                              className="mr-2"
+                            />
+                            <span>{item.label}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-2 flex gap-3">
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                   <button
                     type="submit"
                     disabled={duplicateNameExists}
-                    className="users-btn users-btn-primary"
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: duplicateNameExists ? 0.5 : 1 }}
                   >
                     Создать аккаунт
                   </button>
                   <button
                     type="button"
                     onClick={handleCancelCreate}
-                    className="users-btn users-btn-secondary"
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
                     Отмена
                   </button>
                 </div>
               </form>
             ) : selectedAccount ? (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="mb-2 text-base font-semibold">Просмотр аккаунта</h3>
-                  <div className="flex items-center gap-2">
-                    <div className="rounded-full bg-[hsl(var(--muted)_/_0.3)] p-2">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
-                        <rect width="20" height="14" x="2" y="7" rx="2" ry="2"></rect>
-                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                      </svg>
-                    </div>
-                    <div>
-                      <div className="font-medium">{selectedAccount.name}</div>
-                      <div className="text-xs text-[hsl(var(--muted-foreground))]">ID: #{selectedAccount.id}</div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                    <div className="mb-2 text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">Основная информация</div>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-[hsl(var(--muted-foreground))]">Название:</span>
-                        <span className="font-medium">{selectedAccount.name}</span>
+              <div>
+                <div className="space-y-4">
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация об аккаунте</h4>
+                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                      <div style={{ marginBottom: '12px' }}>
+                        <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">#{selectedAccount.id}</code>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-[hsl(var(--muted-foreground))]">ID:</span>
-                        <code className="rounded bg-[hsl(var(--muted)_/_0.3)] px-2 py-1 text-xs">#{selectedAccount.id}</code>
+                      <div style={{ marginBottom: '12px' }}>
+                        <strong>Название:</strong> {selectedAccount.name}
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-[hsl(var(--muted-foreground))]">Slug:</span>
-                        <code className="rounded bg-[hsl(var(--muted)_/_0.3)] px-2 py-1 text-xs">
+                      <div style={{ marginBottom: '12px' }}>
+                        <strong>Slug:</strong>{' '}
+                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
                           {selectedAccount.slug || `account_${selectedAccount.id}`}
                         </code>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-[hsl(var(--muted-foreground))]">Тип:</span>
-                        <span className="font-medium">
+                      <div>
+                        <strong>Тип:</strong>{' '}
+                        <span style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)] text-xs">
                           {mainAccountId != null && selectedAccount.id === mainAccountId ? 'Главный' : 'Обычный'}
                         </span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-[hsl(var(--muted-foreground))]">Создан:</span>
-                        <span className="text-xs">
-                          {selectedAccount.created_at ? new Date(selectedAccount.created_at).toLocaleString('ru-RU') : '—'}
-                        </span>
+                      <div style={{ marginTop: '12px' }}>
+                        <strong>Создан:</strong>{' '}
+                        {selectedAccount.created_at ? new Date(selectedAccount.created_at).toLocaleString('ru-RU') : '—'}
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
-                    <div className="mb-2 text-xs font-medium uppercase text-[hsl(var(--muted-foreground))]">Webhook URL</div>
-                    <div className="text-sm">
-                      <code className="break-all rounded bg-[hsl(var(--muted)_/_0.3)] px-2 py-1 text-xs">
+
+                  <div>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Webhook URL</h4>
+                    <div style={{ padding: '16px' }} className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
+                      <code className="block whitespace-pre-wrap break-words text-sm">
                         {`${typeof window !== 'undefined' ? window.location.origin : ''}/webhook/${
                           selectedAccount.slug || `account_${selectedAccount.id}`
                         }`}

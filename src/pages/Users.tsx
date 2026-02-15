@@ -273,38 +273,39 @@ export function Users() {
         <div className="split-right">
           <div className="panel users-entity-panel">
             {mode === 'create' && canManageUsers ? (
-              <form onSubmit={handleCreateUser} className="users-form space-y-5">
-                <h3 className="text-xl font-semibold">Создать пользователя</h3>
-                <div className="users-field">
-                  <label className="mb-2 block text-sm font-semibold">Логин *</label>
-                  <input
-                    type="text"
-                    value={newUsername}
-                    onChange={(e) => setNewUsername(e.target.value)}
-                    placeholder="username"
-                    required
-                    className="users-input"
-                  />
-                </div>
-                <div className="users-field">
-                  <label className="mb-2 block text-sm font-semibold">Пароль *</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Введите пароль"
-                    required
-                    className="users-input"
-                  />
+              <form onSubmit={handleCreateUser} className="entity-edit-form" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <h3 className="mb-4 text-lg font-semibold">Создать пользователя</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Логин *</label>
+                    <input
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={newUsername}
+                      onChange={(e) => setNewUsername(e.target.value)}
+                      placeholder="username"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Пароль *</label>
+                    <input
+                      type="password"
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="Введите пароль"
+                      required
+                    />
+                  </div>
                 </div>
                 {isVadmin && (
-                  <div className="users-field">
-                    <label className="mb-2 block text-sm font-semibold">Аккаунт *</label>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Аккаунт *</label>
                     <select
+                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                       value={newAccountId}
                       onChange={(e) => setNewAccountId(e.target.value ? Number(e.target.value) : '')}
                       required
-                      className="users-input"
                     >
                       <option value="">— выберите —</option>
                       {accounts.map((a) => (
@@ -315,43 +316,28 @@ export function Users() {
                     </select>
                   </div>
                 )}
-                <div className="users-field">
-                  <label className="mb-2 block text-sm font-semibold">Роль</label>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Роль</label>
                   <select
+                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                     value={newRole}
                     onChange={(e) => setNewRole(e.target.value as 'administrator' | 'auditor')}
-                    className="users-input"
                   >
                     <option value="administrator">Администратор</option>
                     <option value="auditor">Аудитор</option>
                   </select>
                 </div>
-                <div className="users-preview-block">
-                  <div className="mb-3 flex items-center justify-between">
-                    <strong className="text-base">Предварительный просмотр</strong>
-                    <span className="inline-flex items-center gap-2 rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] px-3 py-2 text-sm">
-                      <Eye className="h-4 w-4" />
-                      Показать
-                    </span>
-                  </div>
-                  <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
-                    <div className="text-base font-semibold">{newUsername || 'Новый пользователь'}</div>
-                    <div className="text-sm text-[hsl(var(--muted-foreground))]">
-                      {newRole === 'auditor' ? 'Аудитор' : 'Администратор'}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-2 flex gap-3">
+                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                   <button
                     type="submit"
-                    className="users-btn users-btn-primary"
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
                     Сохранить пользователя
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode('view')}
-                    className="users-btn users-btn-secondary"
+                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
                     Отмена
                   </button>
