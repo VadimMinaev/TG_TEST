@@ -25,7 +25,7 @@ export function ReminderSettingsPage() {
       setLoading(true);
       // Пока загружаем только маску токена
       const response = await fetch('/api/reminders/settings', {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
       });
       if (response.ok) {
         const data = await response.json();
@@ -60,7 +60,7 @@ export function ReminderSettingsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`
         },
         body: JSON.stringify({ botToken: settings.botToken })
       });
@@ -92,7 +92,7 @@ export function ReminderSettingsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`
+          Authorization: `Bearer ${localStorage.getItem('authToken')}`
         },
         body: JSON.stringify({})
       });
@@ -123,7 +123,7 @@ export function ReminderSettingsPage() {
       setSaving(true);
       const response = await fetch('/api/reminders/settings/webhook', {
         method: 'DELETE',
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+        headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
       });
 
       if (response.ok) {
