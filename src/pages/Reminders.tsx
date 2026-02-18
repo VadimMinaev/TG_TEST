@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { useToast } from '../components/ToastNotification';
 import { useAuth } from '../lib/auth-context';
-import { Clock, Plus, Trash2, Repeat, Calendar } from 'lucide-react';
+import { Clock, Plus, Trash2, Repeat, Calendar, Settings } from 'lucide-react';
 
 interface Reminder {
   id: number;
@@ -61,13 +62,22 @@ export function Reminders() {
 
   return (
     <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-          Напоминания Telegram
-        </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-          Управление напоминаниями через Telegram-бота
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+            Напоминания Telegram
+          </h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Управление напоминаниями через Telegram-бота
+          </p>
+        </div>
+        <Link
+          to="/reminders/settings"
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
+        >
+          <Settings className="w-4 h-4" />
+          Настройки бота
+        </Link>
       </div>
 
       {/* Info Block */}

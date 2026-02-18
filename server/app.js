@@ -3390,6 +3390,7 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
 }
 
 async function handleStartCommand(chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
     const message = `👋 Привет, ${telegramUser.first_name || 'пользователь'}!
 
 Я бот-напоминаний. Вот что я умею:
@@ -3405,11 +3406,12 @@ async function handleStartCommand(chatId, telegramUser) {
 • /remind 2025-02-20 14:00 Совещание
 • /remind every 1h Принять лекарство`;
 
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+    await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
 
 async function handleHelpCommand(chatId) {
+    const botToken = await getReminderBotToken();
     const message = `📖 Справка по боту напоминаний
 
 Создание напоминаний:
@@ -3436,18 +3438,19 @@ async function handleHelpCommand(chatId) {
 • /myreminders — показать все напоминания
 • /delete <номер> — удалить напоминание по номеру`;
 
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+    await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
 
 async function handleRemindCommand(args, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
     const parsed = parseReminderCommand(args);
-    
+
     if (parsed.error) {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ ${parsed.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ ${parsed.error}`);
         return { ok: true };
     }
-    
+
     const result = await createReminder(
         telegramUser.id,
         parsed.message,
@@ -3455,71 +3458,74 @@ async function handleRemindCommand(args, chatId, telegramUser) {
         parsed.repeatType,
         parsed.repeatConfig
     );
-    
+
     if (result.success) {
         const runAtDate = new Date(parsed.runAt);
         const dateStr = formatReminderDate(runAtDate);
-        const repeatInfo = parsed.repeatType === 'interval' 
+        const repeatInfo = parsed.repeatType === 'interval'
             ? ` (повтор каждые ${Math.round(parsed.repeatConfig.interval_seconds / 60)} мин)`
             : parsed.repeatType === 'cron' ? ' (по расписанию)' : '';
-        
+
         await sendTelegramMessage(
-            TELEGRAM_BOT_TOKEN, 
-            chatId, 
+            botToken,
+            chatId,
             `✅ Напоминание создано!\n\n⏰ ${dateStr}${repeatInfo}\n📝 ${parsed.message}`
         );
     } else {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Ошибка: ${result.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ Ошибка: ${result.error}`);
     }
-    
+
     return { ok: true };
 }
 
 async function handleMyRemindersCommand(chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
     const reminders = await getUserReminders(telegramUser.id, true);
     const message = formatReminderList(reminders);
-    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+    await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
 
 async function handleDeleteCommand(args, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    
     if (args.length === 0) {
         // Show reminders with numbers for deletion
         const reminders = await getUserReminders(telegramUser.id, true);
         if (reminders.length === 0) {
-            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '📭 У вас нет напоминаний для удаления');
+            await sendTelegramMessage(botToken, chatId, '📭 У вас нет напоминаний для удаления');
             return { ok: true };
         }
-        
+
         const message = ['📋 Выберите напоминание для удаления (отправьте номер):'].concat(
             reminders.map((r, i) => `${i + 1}. ⏰ ${formatReminderDate(new Date(r.run_at))} — ${r.message}`)
         ).join('\n');
-        
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+
+        await sendTelegramMessage(botToken, chatId, message);
         return { ok: true };
     }
-    
+
     const reminderNum = parseInt(args[0], 10);
     if (isNaN(reminderNum) || reminderNum < 1) {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '❌ Укажите номер напоминания');
+        await sendTelegramMessage(botToken, chatId, '❌ Укажите номер напоминания');
         return { ok: true };
     }
-    
+
     const reminders = await getUserReminders(telegramUser.id, true);
     if (reminderNum > reminders.length) {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '❌ Напоминание с таким номером не найдено');
+        await sendTelegramMessage(botToken, chatId, '❌ Напоминание с таким номером не найдено');
         return { ok: true };
     }
-    
+
     const reminder = reminders[reminderNum - 1];
     const result = await deactivateReminder(reminder.id, telegramUser.id);
-    
+
     if (result.success) {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `✅ Напоминание "${reminder.message}" удалено`);
+        await sendTelegramMessage(botToken, chatId, `✅ Напоминание "${reminder.message}" удалено`);
     } else {
-        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '❌ Ошибка при удалении напоминания');
+        await sendTelegramMessage(botToken, chatId, '❌ Ошибка при удалении напоминания');
     }
-    
+
     return { ok: true };
 }
 
@@ -3527,6 +3533,21 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
     // Handle inline button callbacks if needed
     // For now, just acknowledge
     return { ok: true };
+}
+
+// Получить токен бота напоминаний (из settings или глобальный)
+async function getReminderBotToken() {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT value FROM settings WHERE key = $1', ['reminder_bot_token']);
+            if (result.rows.length > 0 && result.rows[0].value && result.rows[0].value !== 'YOUR_TOKEN') {
+                return result.rows[0].value;
+            }
+        } catch (e) {
+            console.error('[Reminder] Error getting bot token:', e);
+        }
+    }
+    return TELEGRAM_BOT_TOKEN;
 }
 
 async function sendTelegramMessage(botToken, chatId, text) {
@@ -3572,11 +3593,12 @@ async function processDueReminders() {
 
 async function sendDueReminder(reminder) {
     try {
+        const botToken = await getReminderBotToken();
         const messageText = `⏰ Напоминание\n\n📝 ${reminder.message}`;
-        
+
         // Send via message queue
         const queueResult = await addMessageToQueue(
-            TELEGRAM_BOT_TOKEN,
+            botToken,
             reminder.telegram_id,
             messageText,
             1, // high priority
@@ -4504,6 +4526,178 @@ app.delete('/api/integrations/history/all', auth, blockAuditorWrite, async (req,
         res.status(500).json({ error: 'Failed to clear history' });
     }
 });
+
+// ============ REMINDER SETTINGS API ============
+
+// Получить настройки напоминаний (маска токена)
+app.get('/api/reminders/settings', auth, async (req, res) => {
+    try {
+        let botToken = TELEGRAM_BOT_TOKEN;
+        let botUsername = '';
+        
+        // Проверяем, есть ли отдельный токен для напоминаний в settings
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const result = await db.query('SELECT value FROM settings WHERE key = $1', ['reminder_bot_token']);
+            if (result.rows.length > 0 && result.rows[0].value) {
+                botToken = result.rows[0].value;
+            }
+        }
+        
+        // Получаем username бота
+        if (botToken && botToken !== 'YOUR_TOKEN') {
+            try {
+                const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
+                if (response.data.ok) {
+                    botUsername = response.data.result.username;
+                }
+            } catch (e) {
+                console.error('[Reminder Settings] Error getting bot info:', e.message);
+            }
+        }
+        
+        // Проверяем webhook
+        let webhookUrl = '';
+        let webhookSet = false;
+        if (botToken && botToken !== 'YOUR_TOKEN') {
+            try {
+                const response = await axios.get(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+                if (response.data.ok && response.data.result.url) {
+                    webhookUrl = response.data.result.url;
+                    webhookSet = webhookUrl.includes('/api/telegram/webhook');
+                }
+            } catch (e) {
+                console.error('[Reminder Settings] Error getting webhook info:', e.message);
+            }
+        }
+        
+        res.json({
+            botToken: botToken && botToken !== 'YOUR_TOKEN' ? botToken.substring(0, 10) + '...' : '',
+            botUsername,
+            webhookUrl,
+            webhookSet
+        });
+    } catch (error) {
+        console.error('[Reminder Settings] Error:', error);
+        res.status(500).json({ error: 'Failed to load settings' });
+    }
+});
+
+// Сохранить токен бота напоминаний
+app.post('/api/reminders/settings/token', auth, async (req, res) => {
+    const { botToken } = req.body;
+    
+    if (!botToken || botToken === 'YOUR_TOKEN') {
+        return res.status(400).json({ error: 'Invalid bot token' });
+    }
+    
+    // Проверяем токен
+    try {
+        const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
+        if (!response.data.ok) {
+            return res.status(400).json({ error: 'Invalid bot token' });
+        }
+    } catch (e) {
+        return res.status(400).json({ error: 'Invalid bot token' });
+    }
+    
+    // Сохраняем в БД
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            await db.query(
+                'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
+                ['reminder_bot_token', botToken]
+            );
+            console.log('[Reminder] Bot token saved to database');
+        } catch (err) {
+            console.error('[Reminder] Error saving bot token:', err);
+            return res.status(500).json({ error: 'Failed to save token' });
+        }
+    }
+    
+    // Получаем username
+    let botUsername = '';
+    try {
+        const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
+        botUsername = response.data.result.username;
+    } catch (e) {}
+    
+    res.json({ ok: true, botUsername });
+});
+
+// Установить webhook для напоминаний
+app.post('/api/reminders/settings/webhook', auth, async (req, res) => {
+    let botToken = TELEGRAM_BOT_TOKEN;
+    
+    // Проверяем, есть ли отдельный токен для напоминаний
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT value FROM settings WHERE key = $1', ['reminder_bot_token']);
+            if (result.rows.length > 0 && result.rows[0].value && result.rows[0].value !== 'YOUR_TOKEN') {
+                botToken = result.rows[0].value;
+            }
+        } catch (err) {
+            console.error('[Reminder] Error getting bot token:', err);
+        }
+    }
+    
+    if (!botToken || botToken === 'YOUR_TOKEN') {
+        return res.status(400).json({ error: 'Bot token not configured' });
+    }
+    
+    // Определяем домен
+    let domain = req.headers.host || 'localhost:3000';
+    const protocol = req.headers['x-forwarded-proto'] || (isProduction ? 'https' : 'http');
+    const webhookUrl = `${protocol}://${domain}/api/telegram/webhook`;
+    
+    try {
+        const response = await axios.post(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+            url: webhookUrl
+        });
+        
+        if (response.data.ok) {
+            res.json({ ok: true, webhookUrl });
+        } else {
+            res.status(400).json({ error: response.data.description || 'Failed to set webhook' });
+        }
+    } catch (error) {
+        console.error('[Reminder] Error setting webhook:', error);
+        res.status(400).json({ error: error.response?.data?.description || error.message });
+    }
+});
+
+// Удалить webhook
+app.delete('/api/reminders/settings/webhook', auth, async (req, res) => {
+    let botToken = TELEGRAM_BOT_TOKEN;
+    
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT value FROM settings WHERE key = $1', ['reminder_bot_token']);
+            if (result.rows.length > 0 && result.rows[0].value && result.rows[0].value !== 'YOUR_TOKEN') {
+                botToken = result.rows[0].value;
+            }
+        } catch (err) {
+            console.error('[Reminder] Error getting bot token:', err);
+        }
+    }
+    
+    if (!botToken || botToken === 'YOUR_TOKEN') {
+        return res.status(400).json({ error: 'Bot token not configured' });
+    }
+    
+    try {
+        const response = await axios.get(`https://api.telegram.org/bot${botToken}/deleteWebhook`);
+        if (response.data.ok) {
+            res.json({ ok: true });
+        } else {
+            res.status(400).json({ error: response.data.description || 'Failed to delete webhook' });
+        }
+    } catch (error) {
+        console.error('[Reminder] Error deleting webhook:', error);
+        res.status(400).json({ error: error.response?.data?.description || error.message });
+    }
+});
+
+// ============ REMINDER SETTINGS API ============
 
 // SPA fallback - only in production
 // In development, Vite dev server handles all frontend routes
