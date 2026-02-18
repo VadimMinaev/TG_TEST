@@ -169,6 +169,7 @@ export function Dashboard() {
       { path: '/integration-history', label: 'Ист. интегр.', icon: <ScrollText className="h-4 w-4" /> },
       { path: '/bots', label: 'Боты', icon: <Bot className="h-4 w-4" /> },
       { path: '/bot-history', label: 'Ист. ботов', icon: <ScrollText className="h-4 w-4" /> },
+      { path: '/reminders', label: 'Напоминания', icon: <Clock className="h-4 w-4" /> },
     ];
 
     if (user?.isVadmin) {

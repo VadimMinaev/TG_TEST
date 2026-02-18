@@ -105,6 +105,9 @@ let botsCache = [];
 let botSchedulerInterval = null;
 let dbConnected = false;
 
+// Reminder Engine globals
+let reminderDispatcherInterval = null;
+
 async function ensureUniqueAccountNames(client) {
     const result = await client.query('SELECT id, name FROM accounts ORDER BY id');
     const usedNames = new Set();
@@ -281,6 +284,59 @@ if (process.env.DATABASE_URL) {
             await client.query(`ALTER TABLE integration_runs ADD COLUMN IF NOT EXISTS account_id INTEGER`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_integration_runs_integration_id ON integration_runs(integration_id, created_at)`);
 
+            // ========== REMINDER ENGINE TABLES ==========
+            // Пользователи Telegram
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS telegram_users (
+                    id BIGSERIAL PRIMARY KEY,
+                    telegram_id BIGINT UNIQUE NOT NULL,
+                    username VARCHAR(255),
+                    first_name VARCHAR(255),
+                    last_name VARCHAR(255),
+                    language_code VARCHAR(10) DEFAULT 'ru',
+                    is_bot BOOLEAN DEFAULT false,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_telegram_id ON telegram_users(telegram_id)`);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_username ON telegram_users(username) WHERE username IS NOT NULL`);
+
+            // Напоминания
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS telegram_reminders (
+                    id BIGSERIAL PRIMARY KEY,
+                    telegram_user_id BIGINT NOT NULL REFERENCES telegram_users(id) ON DELETE CASCADE,
+                    message TEXT NOT NULL,
+                    run_at TIMESTAMP NOT NULL,
+                    repeat_type VARCHAR(20) DEFAULT 'none',  -- none, interval, cron
+                    repeat_config JSONB,  -- { interval_seconds: N } или { cron: "* * * * *" }
+                    is_active BOOLEAN DEFAULT true,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    next_run_at TIMESTAMP
+                )
+            `);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_reminders_user_id ON telegram_reminders(telegram_user_id)`);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_reminders_next_run_at ON telegram_reminders(next_run_at) WHERE is_active = true`);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_reminders_run_at ON telegram_reminders(run_at)`);
+
+            // Логи отправки напоминаний
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS reminder_logs (
+                    id BIGSERIAL PRIMARY KEY,
+                    reminder_id BIGINT NOT NULL REFERENCES telegram_reminders(id) ON DELETE CASCADE,
+                    telegram_user_id BIGINT NOT NULL REFERENCES telegram_users(id) ON DELETE CASCADE,
+                    status VARCHAR(20) NOT NULL,  -- sent, failed, skipped
+                    message_text TEXT,
+                    error_message TEXT,
+                    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_reminder_logs_reminder_id ON reminder_logs(reminder_id)`);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_reminder_logs_user_id ON reminder_logs(telegram_user_id)`);
+            await client.query(`CREATE INDEX IF NOT EXISTS idx_reminder_logs_sent_at ON reminder_logs(sent_at)`);
+
             // Загружаем глобальный токен из БД
             try {
                 const result = await client.query('SELECT value FROM settings WHERE key = $1', ['global_bot_token']);
@@ -330,6 +386,7 @@ if (process.env.DATABASE_URL) {
             startMessageQueueWorker();
             startPollWorkers();
             startBotScheduler();
+            startReminderDispatcher();
             startIntegrationWorkers().catch(err => console.error('Failed to start integration workers:', err));
         } catch (err) {
             console.error('DB init error:', err);
@@ -2956,6 +3013,688 @@ app.post('/api/bots/:id/run', auth, blockAuditorWrite, async (req, res) => {
         res.json({ status: 'ok' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to run bot' });
+    }
+});
+
+// ============ REMINDER ENGINE ============
+
+// ----- Telegram Users Service -----
+async function getOrCreateTelegramUser(telegramUser) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return null;
+    }
+    try {
+        // Try to find existing user
+        const existing = await db.query(
+            'SELECT * FROM telegram_users WHERE telegram_id = $1',
+            [telegramUser.id]
+        );
+        if (existing.rows.length > 0) {
+            // Update user info if changed
+            const user = existing.rows[0];
+            const needsUpdate = user.username !== telegramUser.username ||
+                user.first_name !== telegramUser.first_name ||
+                user.last_name !== telegramUser.last_name;
+            if (needsUpdate) {
+                await db.query(
+                    `UPDATE telegram_users SET 
+                        username = $1, first_name = $2, last_name = $3, updated_at = CURRENT_TIMESTAMP 
+                    WHERE telegram_id = $4`,
+                    [telegramUser.username, telegramUser.first_name, telegramUser.last_name, telegramUser.id]
+                );
+            }
+            return user;
+        }
+        // Create new user
+        const result = await db.query(
+            `INSERT INTO telegram_users (telegram_id, username, first_name, last_name, language_code, is_bot)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [
+                telegramUser.id,
+                telegramUser.username || null,
+                telegramUser.first_name || null,
+                telegramUser.last_name || null,
+                telegramUser.language_code || 'ru',
+                telegramUser.is_bot || false
+            ]
+        );
+        console.log(`[Reminder] New Telegram user created: ${telegramUser.id} (@${telegramUser.username || 'no_username'})`);
+        return result.rows[0];
+    } catch (err) {
+        console.error('[Reminder] Error in getOrCreateTelegramUser:', err);
+        return null;
+    }
+}
+
+async function getTelegramUserById(telegramId) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return null;
+    try {
+        const result = await db.query('SELECT * FROM telegram_users WHERE telegram_id = $1', [telegramId]);
+        return result.rows[0] || null;
+    } catch (err) {
+        console.error('[Reminder] Error getting Telegram user:', err);
+        return null;
+    }
+}
+
+// ----- Reminder Service -----
+async function createReminder(telegramUserId, message, runAt, repeatType = 'none', repeatConfig = null) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return { success: false, error: 'Database not available' };
+    }
+    try {
+        const nextRunAt = runAt;
+        const result = await db.query(
+            `INSERT INTO telegram_reminders (telegram_user_id, message, run_at, repeat_type, repeat_config, next_run_at)
+             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            [telegramUserId, message, runAt, repeatType, repeatConfig ? JSON.stringify(repeatConfig) : null, nextRunAt]
+        );
+        console.log(`[Reminder] Created reminder ${result.rows[0].id} for user ${telegramUserId} at ${runAt}`);
+        return { success: true, reminder: result.rows[0] };
+    } catch (err) {
+        console.error('[Reminder] Error creating reminder:', err);
+        return { success: false, error: err.message };
+    }
+}
+
+async function getUserReminders(telegramUserId, activeOnly = true) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return [];
+    try {
+        const query = activeOnly
+            ? 'SELECT * FROM telegram_reminders WHERE telegram_user_id = $1 AND is_active = true ORDER BY run_at ASC'
+            : 'SELECT * FROM telegram_reminders WHERE telegram_user_id = $1 ORDER BY created_at DESC';
+        const result = await db.query(query, [telegramUserId]);
+        return result.rows;
+    } catch (err) {
+        console.error('[Reminder] Error getting reminders:', err);
+        return [];
+    }
+}
+
+async function deleteReminder(reminderId, telegramUserId) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return { success: false, error: 'Database not available' };
+    }
+    try {
+        const result = await db.query(
+            'DELETE FROM telegram_reminders WHERE id = $1 AND telegram_user_id = $2 RETURNING *',
+            [reminderId, telegramUserId]
+        );
+        if (result.rows.length > 0) {
+            console.log(`[Reminder] Deleted reminder ${reminderId}`);
+            return { success: true };
+        }
+        return { success: false, error: 'Reminder not found' };
+    } catch (err) {
+        console.error('[Reminder] Error deleting reminder:', err);
+        return { success: false, error: err.message };
+    }
+}
+
+async function deactivateReminder(reminderId, telegramUserId) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return { success: false, error: 'Database not available' };
+    }
+    try {
+        const result = await db.query(
+            `UPDATE telegram_reminders SET is_active = false, updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $1 AND telegram_user_id = $2 RETURNING *`,
+            [reminderId, telegramUserId]
+        );
+        if (result.rows.length > 0) {
+            return { success: true };
+        }
+        return { success: false, error: 'Reminder not found' };
+    } catch (err) {
+        console.error('[Reminder] Error deactivating reminder:', err);
+        return { success: false, error: err.message };
+    }
+}
+
+async function logReminderSend(reminderId, telegramUserId, status, messageText, errorMessage = null) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return;
+    try {
+        await db.query(
+            `INSERT INTO reminder_logs (reminder_id, telegram_user_id, status, message_text, error_message)
+             VALUES ($1, $2, $3, $4, $5)`,
+            [reminderId, telegramUserId, status, messageText, errorMessage]
+        );
+        // Cleanup old logs
+        await db.query(
+            `DELETE FROM reminder_logs WHERE id NOT IN (
+                SELECT id FROM reminder_logs ORDER BY sent_at DESC LIMIT 500
+            )`
+        );
+    } catch (err) {
+        console.error('[Reminder] Error logging reminder send:', err);
+    }
+}
+
+// ----- Command Parser -----
+function parseReminderCommand(args) {
+    // Supported formats:
+    // /remind 10m Купить молоко
+    // /remind 1h Встреча
+    // /remind 1d Позвонить
+    // /remind 2025-02-20 14:00 Совещание
+    // /remind every 1h Принять лекарство
+    // /remind cron 0 9 * * * Утренняя зарядка
+    
+    if (!args || args.length === 0) {
+        return { error: 'Укажите время и текст. Пример: /remind 10m Купить молоко' };
+    }
+    
+    const result = {
+        message: null,
+        runAt: null,
+        repeatType: 'none',
+        repeatConfig: null,
+        error: null
+    };
+    
+    const firstArg = args[0].toLowerCase();
+    
+    // Check for repeat types
+    if (firstArg === 'every' && args.length >= 2) {
+        result.repeatType = 'interval';
+        const interval = parseInterval(args[1]);
+        if (!interval) {
+            return { error: 'Неверный формат интервала. Пример: 10m, 1h, 1d' };
+        }
+        result.repeatConfig = { interval_seconds: interval };
+        result.runAt = new Date(Date.now() + interval * 1000);
+        result.message = args.slice(2).join(' ') || 'Напоминание';
+        return result;
+    }
+    
+    if (firstArg === 'cron' && args.length >= 6) {
+        result.repeatType = 'cron';
+        const cronExpr = args.slice(1, 6).join(' ');
+        result.repeatConfig = { cron: cronExpr };
+        result.message = args.slice(6).join(' ') || 'Напоминание';
+        // For cron, calculate next run
+        const nextRun = parseCronNextRun(cronExpr);
+        result.runAt = nextRun || new Date(Date.now() + 60000);
+        return result;
+    }
+    
+    // Check for date format: YYYY-MM-DD HH:MM
+    const dateMatch = args[0].match(/^(\d{4}-\d{2}-\d{2})$/);
+    if (dateMatch && args.length >= 2) {
+        const timeMatch = args[1].match(/^(\d{1,2}:\d{2})$/);
+        if (timeMatch) {
+            const dateTime = new Date(`${args[0]}T${args[1]}:00`);
+            if (isNaN(dateTime.getTime())) {
+                return { error: 'Неверная дата или время' };
+            }
+            result.runAt = dateTime;
+            result.message = args.slice(2).join(' ') || 'Напоминание';
+            return result;
+        }
+    }
+    
+    // Check for relative time: 10m, 1h, 1d
+    const interval = parseInterval(args[0]);
+    if (interval) {
+        result.runAt = new Date(Date.now() + interval * 1000);
+        result.message = args.slice(1).join(' ') || 'Напоминание';
+        return result;
+    }
+    
+    return { error: 'Неверный формат. Примеры:\n/remind 10m Купить молоко\n/remind 1h Встреча\n/remind 2025-02-20 14:00 Совещание\n/remind every 1h Принять лекарство' };
+}
+
+function parseInterval(str) {
+    // Parse: 10m, 1h, 1d, 1w
+    const match = str.match(/^(\d+)([mhdw])$/i);
+    if (!match) return null;
+    
+    const value = parseInt(match[1], 10);
+    const unit = match[2].toLowerCase();
+    
+    switch (unit) {
+        case 'm': return value * 60;
+        case 'h': return value * 3600;
+        case 'd': return value * 86400;
+        case 'w': return value * 604800;
+        default: return null;
+    }
+}
+
+function parseCronNextRun(cronExpr) {
+    // Simplified cron parser for: minute hour day month weekday
+    // Returns next run Date or null
+    try {
+        const parts = cronExpr.split(/\s+/);
+        if (parts.length !== 5) return null;
+        
+        const [minute, hour, day, month, weekday] = parts.map(p => p === '*' ? null : parseInt(p, 10));
+        const now = new Date();
+        const next = new Date(now);
+        next.setMinutes(0, 0, 0);
+        next.setHours(next.getHours() + 1);
+        
+        // Simple implementation: find next matching time within 7 days
+        for (let i = 0; i < 7 * 24 * 60; i++) {
+            next.setMinutes(next.getMinutes() + 1);
+            
+            if (minute !== null && next.getMinutes() !== minute) continue;
+            if (hour !== null && next.getHours() !== hour) continue;
+            if (day !== null && next.getDate() !== day) continue;
+            if (month !== null && (next.getMonth() + 1) !== month) continue;
+            if (weekday !== null && next.getDay() !== weekday) continue;
+            
+            return next;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+function formatReminderDate(date) {
+    return date.toLocaleString('ru-RU', {
+        day: '2-digit', month: '2-digit', year: '2-digit',
+        hour: '2-digit', minute: '2-digit'
+    });
+}
+
+function formatReminderList(reminders) {
+    if (!reminders || reminders.length === 0) {
+        return '📭 У вас нет активных напоминаний';
+    }
+    
+    const lines = ['📋 Ваши напоминания:'];
+    reminders.forEach((r, i) => {
+        const runAt = new Date(r.run_at);
+        const dateStr = formatReminderDate(runAt);
+        const repeatInfo = r.repeat_type === 'interval' 
+            ? ` (каждые ${Math.round(r.repeat_config?.interval_seconds / 60)} мин)`
+            : r.repeat_type === 'cron' ? ' (по расписанию)' : '';
+        lines.push(`${i + 1}. ⏰ ${dateStr}${repeatInfo}\n   📝 ${r.message}`);
+    });
+    
+    return lines.join('\n');
+}
+
+// ----- Telegram Webhook Handler -----
+async function handleTelegramUpdate(update) {
+    try {
+        // Extract user info
+        const user = update.message?.from || update.callback_query?.from;
+        if (!user) {
+            console.log('[Telegram] Update without user, skipping');
+            return { ok: true };
+        }
+        
+        // Auto-create or get user
+        const telegramUser = await getOrCreateTelegramUser(user);
+        if (!telegramUser) {
+            console.error('[Telegram] Failed to create/get user');
+            return { ok: false, error: 'Failed to create user' };
+        }
+        
+        // Handle message
+        if (update.message && update.message.text) {
+            const text = update.message.text;
+            const chatId = update.message.chat.id;
+            
+            // Check if it's a command
+            if (text.startsWith('/')) {
+                return await handleTelegramCommand(text, chatId, telegramUser);
+            }
+            
+            // Handle non-command messages (could be part of conversation)
+            return { ok: true };
+        }
+        
+        // Handle callback query (inline buttons)
+        if (update.callback_query) {
+            return await handleCallbackQuery(update.callback_query, telegramUser);
+        }
+        
+        return { ok: true };
+    } catch (err) {
+        console.error('[Telegram] Error handling update:', err);
+        return { ok: false, error: err.message };
+    }
+}
+
+async function handleTelegramCommand(text, chatId, telegramUser) {
+    const parts = text.trim().split(/\s+/);
+    const command = parts[0].toLowerCase();
+    const args = parts.slice(1);
+    
+    console.log(`[Telegram] Command: ${command} from user ${telegramUser.telegram_id}`);
+    
+    switch (command) {
+        case '/start':
+            return await handleStartCommand(chatId, telegramUser);
+        
+        case '/help':
+            return await handleHelpCommand(chatId);
+        
+        case '/remind':
+            return await handleRemindCommand(args, chatId, telegramUser);
+        
+        case '/myreminders':
+        case '/reminders':
+            return await handleMyRemindersCommand(chatId, telegramUser);
+        
+        case '/delete':
+            return await handleDeleteCommand(args, chatId, telegramUser);
+        
+        default:
+            return { ok: true }; // Unknown command, ignore
+    }
+}
+
+async function handleStartCommand(chatId, telegramUser) {
+    const message = `👋 Привет, ${telegramUser.first_name || 'пользователь'}!
+
+Я бот-напоминаний. Вот что я умею:
+
+⏰ /remind — создать напоминание
+📋 /myreminders — мои напоминания
+❌ /delete — удалить напоминание
+❓ /help — справка
+
+Примеры использования /remind:
+• /remind 10m Купить молоко
+• /remind 1h Встреча с клиентом
+• /remind 2025-02-20 14:00 Совещание
+• /remind every 1h Принять лекарство`;
+
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+    return { ok: true };
+}
+
+async function handleHelpCommand(chatId) {
+    const message = `📖 Справка по боту напоминаний
+
+Создание напоминаний:
+
+1️⃣ Простое напоминание (через N минут/часов/дней):
+   /remind 10m Текст напоминания
+   /remind 1h Текст напоминания
+   /remind 1d Текст напоминания
+
+2️⃣ Напоминание на конкретную дату:
+   /remind 2025-02-20 14:00 Текст напоминания
+
+3️⃣ Повторяющееся напоминание:
+   /remind every 1h Текст напоминания
+   /remind every 1d Текст напоминания
+
+Обозначения времени:
+• m — минуты
+• h — часы
+• d — дни
+• w — недели
+
+Управление:
+• /myreminders — показать все напоминания
+• /delete <номер> — удалить напоминание по номеру`;
+
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+    return { ok: true };
+}
+
+async function handleRemindCommand(args, chatId, telegramUser) {
+    const parsed = parseReminderCommand(args);
+    
+    if (parsed.error) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ ${parsed.error}`);
+        return { ok: true };
+    }
+    
+    const result = await createReminder(
+        telegramUser.id,
+        parsed.message,
+        parsed.runAt,
+        parsed.repeatType,
+        parsed.repeatConfig
+    );
+    
+    if (result.success) {
+        const runAtDate = new Date(parsed.runAt);
+        const dateStr = formatReminderDate(runAtDate);
+        const repeatInfo = parsed.repeatType === 'interval' 
+            ? ` (повтор каждые ${Math.round(parsed.repeatConfig.interval_seconds / 60)} мин)`
+            : parsed.repeatType === 'cron' ? ' (по расписанию)' : '';
+        
+        await sendTelegramMessage(
+            TELEGRAM_BOT_TOKEN, 
+            chatId, 
+            `✅ Напоминание создано!\n\n⏰ ${dateStr}${repeatInfo}\n📝 ${parsed.message}`
+        );
+    } else {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `❌ Ошибка: ${result.error}`);
+    }
+    
+    return { ok: true };
+}
+
+async function handleMyRemindersCommand(chatId, telegramUser) {
+    const reminders = await getUserReminders(telegramUser.id, true);
+    const message = formatReminderList(reminders);
+    await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+    return { ok: true };
+}
+
+async function handleDeleteCommand(args, chatId, telegramUser) {
+    if (args.length === 0) {
+        // Show reminders with numbers for deletion
+        const reminders = await getUserReminders(telegramUser.id, true);
+        if (reminders.length === 0) {
+            await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '📭 У вас нет напоминаний для удаления');
+            return { ok: true };
+        }
+        
+        const message = ['📋 Выберите напоминание для удаления (отправьте номер):'].concat(
+            reminders.map((r, i) => `${i + 1}. ⏰ ${formatReminderDate(new Date(r.run_at))} — ${r.message}`)
+        ).join('\n');
+        
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, message);
+        return { ok: true };
+    }
+    
+    const reminderNum = parseInt(args[0], 10);
+    if (isNaN(reminderNum) || reminderNum < 1) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '❌ Укажите номер напоминания');
+        return { ok: true };
+    }
+    
+    const reminders = await getUserReminders(telegramUser.id, true);
+    if (reminderNum > reminders.length) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '❌ Напоминание с таким номером не найдено');
+        return { ok: true };
+    }
+    
+    const reminder = reminders[reminderNum - 1];
+    const result = await deactivateReminder(reminder.id, telegramUser.id);
+    
+    if (result.success) {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, `✅ Напоминание "${reminder.message}" удалено`);
+    } else {
+        await sendTelegramMessage(TELEGRAM_BOT_TOKEN, chatId, '❌ Ошибка при удалении напоминания');
+    }
+    
+    return { ok: true };
+}
+
+async function handleCallbackQuery(callbackQuery, telegramUser) {
+    // Handle inline button callbacks if needed
+    // For now, just acknowledge
+    return { ok: true };
+}
+
+async function sendTelegramMessage(botToken, chatId, text) {
+    try {
+        const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            chat_id: chatId,
+            text: text,
+            parse_mode: 'HTML'
+        });
+        return { success: true, response: response.data };
+    } catch (error) {
+        const errDetail = error.response?.data || error.message;
+        console.error('[Telegram] Send message error:', errDetail);
+        return { success: false, error: errDetail };
+    }
+}
+
+// ----- Reminder Dispatcher Worker -----
+async function processDueReminders() {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return;
+    
+    try {
+        const now = new Date();
+        
+        // Get all due reminders
+        const result = await db.query(
+            `SELECT r.*, u.telegram_id, u.username 
+             FROM telegram_reminders r
+             JOIN telegram_users u ON r.telegram_user_id = u.id
+             WHERE r.is_active = true 
+               AND r.next_run_at <= $1
+             ORDER BY r.next_run_at ASC`,
+            [now]
+        );
+        
+        for (const reminder of result.rows) {
+            await sendDueReminder(reminder);
+        }
+    } catch (err) {
+        console.error('[Reminder Dispatcher] Error processing due reminders:', err);
+    }
+}
+
+async function sendDueReminder(reminder) {
+    try {
+        const messageText = `⏰ Напоминание\n\n📝 ${reminder.message}`;
+        
+        // Send via message queue
+        const queueResult = await addMessageToQueue(
+            TELEGRAM_BOT_TOKEN,
+            reminder.telegram_id,
+            messageText,
+            1, // high priority
+            null,
+            null
+        );
+        
+        const sent = queueResult && (queueResult.queued || queueResult.success);
+        
+        // Log the send
+        await logReminderSend(
+            reminder.id,
+            reminder.telegram_user_id,
+            sent ? 'sent' : 'failed',
+            messageText,
+            sent ? null : JSON.stringify(queueResult)
+        );
+        
+        if (sent) {
+            // Handle repeat
+            if (reminder.repeat_type === 'interval' && reminder.repeat_config?.interval_seconds) {
+                const nextRun = new Date(Date.now() + reminder.repeat_config.interval_seconds * 1000);
+                await db.query(
+                    `UPDATE telegram_reminders SET next_run_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+                    [nextRun, reminder.id]
+                );
+            } else if (reminder.repeat_type === 'cron' && reminder.repeat_config?.cron) {
+                const nextRun = parseCronNextRun(reminder.repeat_config.cron);
+                if (nextRun) {
+                    await db.query(
+                        `UPDATE telegram_reminders SET next_run_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+                        [nextRun, reminder.id]
+                    );
+                } else {
+                    // Invalid cron, deactivate
+                    await db.query(
+                        `UPDATE telegram_reminders SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                        [reminder.id]
+                    );
+                }
+            } else {
+                // One-time reminder, deactivate
+                await db.query(
+                    `UPDATE telegram_reminders SET is_active = false, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
+                    [reminder.id]
+                );
+            }
+            
+            console.log(`[Reminder] Sent reminder ${reminder.id} to user ${reminder.telegram_id}`);
+        } else {
+            console.error(`[Reminder] Failed to send reminder ${reminder.id}:`, queueResult);
+        }
+    } catch (err) {
+        console.error('[Reminder] Error sending due reminder:', err);
+        await logReminderSend(reminder.id, reminder.telegram_user_id, 'failed', reminder.message, err.message);
+    }
+}
+
+function startReminderDispatcher() {
+    if (reminderDispatcherInterval) clearInterval(reminderDispatcherInterval);
+    
+    // Check every 30 seconds for due reminders
+    reminderDispatcherInterval = setInterval(() => {
+        processDueReminders().catch(err => console.error('[Reminder Dispatcher] Error:', err));
+    }, 30000);
+    
+    console.log('[Reminder] Dispatcher started (checking every 30s)');
+}
+
+function stopReminderDispatcher() {
+    if (reminderDispatcherInterval) {
+        clearInterval(reminderDispatcherInterval);
+        reminderDispatcherInterval = null;
+        console.log('[Reminder] Dispatcher stopped');
+    }
+}
+
+// API endpoint for Telegram webhook
+app.post('/api/telegram/webhook', async (req, res) => {
+    const update = req.body;
+    
+    // Log incoming update
+    if (update.message) {
+        const chatId = update.message.chat?.id;
+        const text = update.message.text;
+        const from = update.message.from;
+        console.log(`[Telegram Webhook] Message from ${from?.username || from?.id}: ${text} (chat: ${chatId})`);
+    } else if (update.callback_query) {
+        console.log(`[Telegram Webhook] Callback query from ${update.callback_query.from?.id}`);
+    }
+    
+    // Process the update
+    const result = await handleTelegramUpdate(update);
+    
+    if (result.ok) {
+        res.json({ ok: true });
+    } else {
+        res.status(400).json({ ok: false, error: result.error });
+    }
+});
+
+// API endpoints for reminder management (web interface)
+app.get('/api/reminders', auth, async (req, res) => {
+    // Get reminders for the authenticated user's Telegram account
+    // This requires linking web user to Telegram user
+    const accountId = getAccountId(req);
+    
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return res.json({ reminders: [], error: 'Database not available' });
+    }
+    
+    try {
+        // Find Telegram users linked to this account (by username match or custom linking)
+        // For now, return empty - Telegram reminders are managed via bot
+        res.json({ reminders: [] });
+    } catch (err) {
+        console.error('[API] Error getting reminders:', err);
+        res.status(500).json({ error: 'Failed to get reminders' });
     }
 });
 

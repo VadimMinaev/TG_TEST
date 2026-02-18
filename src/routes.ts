@@ -14,6 +14,7 @@ import { Users } from './pages/Users';
 import { Bots } from './pages/Bots';
 import { BotHistory } from './pages/BotHistory';
 import { Accounts } from './pages/Accounts';
+import { Reminders } from './pages/Reminders';
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
           { path: 'bot-history', Component: BotHistory },
           { path: 'accounts', Component: Accounts },
           { path: 'users', Component: Users },
+          { path: 'reminders', Component: Reminders },
         ],
       },
     ],
