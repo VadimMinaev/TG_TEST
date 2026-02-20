@@ -150,6 +150,16 @@ export interface Reminder {
   updated_at?: string;
 }
 
+export interface ReminderLog {
+  id: number;
+  reminder_id: number;
+  telegram_user_id: number;
+  status: 'sent' | 'failed' | 'skipped' | string;
+  message_text?: string;
+  error_message?: string;
+  sent_at?: string;
+}
+
 export interface IntegrationRun {
   id: number;
   integration_id: number;
@@ -538,6 +548,12 @@ export const api = {
       const error = await res.json().catch(() => ({}));
       throw new Error(error.error || 'Failed to delete reminder');
     }
+  },
+
+  getReminderHistory: async (id: number): Promise<ReminderLog[]> => {
+    const res = await fetch(`${API_BASE}/reminders/${id}/history`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch reminder history');
+    return res.json();
   },
 
   // Accounts (vadmin only)

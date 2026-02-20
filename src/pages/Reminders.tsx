@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { api, Reminder } from '../lib/api';
+import { api, Reminder, ReminderLog } from '../lib/api';
 import { useToast } from '../components/ToastNotification';
 import { useAuth } from '../lib/auth-context';
 import { Breadcrumb } from '../components/Breadcrumb';
@@ -90,6 +90,8 @@ export function Reminders() {
     cronExpression: '',
     isActive: true,
   });
+  const [history, setHistory] = useState<ReminderLog[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   const selectedReminder = useMemo(
     () => reminders.find((r) => r.id === selectedReminderId) || null,
@@ -118,6 +120,25 @@ export function Reminders() {
   useEffect(() => {
     loadReminders();
   }, []);
+
+  useEffect(() => {
+    const loadHistory = async () => {
+      if (!selectedReminderId) {
+        setHistory([]);
+        return;
+      }
+      try {
+        setHistoryLoading(true);
+        const data = await api.getReminderHistory(selectedReminderId);
+        setHistory(data);
+      } catch {
+        setHistory([]);
+      } finally {
+        setHistoryLoading(false);
+      }
+    };
+    loadHistory();
+  }, [selectedReminderId]);
 
   const handleEditReminder = (reminder: Reminder) => {
     setSelectedReminderId(reminder.id);
@@ -482,6 +503,29 @@ export function Reminders() {
                   </div>
                 </div>
               </div>
+
+              <div>
+                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">История отправок</h4>
+                <div className="space-y-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-sm">
+                  {historyLoading ? (
+                    <div className="text-[hsl(var(--muted-foreground))]">Загрузка...</div>
+                  ) : history.length === 0 ? (
+                    <div className="text-[hsl(var(--muted-foreground))]">Нет записей</div>
+                  ) : (
+                    history.map((h) => (
+                      <div key={h.id} className="rounded border border-[hsl(var(--border))] p-2">
+                        <div>
+                          <strong>{h.status === 'sent' ? '✅ sent' : '❌ failed'}</strong>{' '}
+                          {formatDateTime(h.sent_at)}
+                        </div>
+                        {h.error_message && (
+                          <div className="text-[hsl(var(--destructive))]">Ошибка: {h.error_message}</div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">
@@ -494,4 +538,3 @@ export function Reminders() {
     </div>
   );
 }
-
