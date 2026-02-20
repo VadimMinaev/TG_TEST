@@ -301,17 +301,13 @@ export function Operations() {
           </div>
         </div>
         <div className="card-body">
-          <div className="flex flex-wrap gap-2">
+          <div className="operations-tabbar">
             {TAB_ITEMS.map((tab) => (
               <button
                 key={tab.key}
                 type="button"
                 onClick={() => setTab(tab.key)}
-                className={`rounded-lg border px-3 py-2 text-sm transition ${
-                  activeTab === tab.key
-                    ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)_/_0.15)] text-[hsl(var(--foreground))]'
-                    : 'border-[hsl(var(--border))] bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--accent))]'
-                }`}
+                className={`operations-tab-btn ${activeTab === tab.key ? 'operations-tab-btn-active' : ''}`}
               >
                 {tab.label}
               </button>
