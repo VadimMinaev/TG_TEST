@@ -426,7 +426,6 @@ body {
 .split-left {
   width: 420px;
   flex-shrink: 0;
-  border-right: 1px solid hsl(var(--border));
   padding-right: 24px;
   display: flex;
   flex-direction: column;
@@ -449,6 +448,28 @@ body {
 .split-right > .panel {
   flex: 1;
   min-height: 0;
+}
+
+@media (min-width: 901px) {
+  .split-layout {
+    gap: 0;
+  }
+
+  .split-left {
+    padding-right: 0;
+  }
+
+  .split-left > .panel {
+    border-right: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .split-right > .panel {
+    border-left: none;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
 }
 
 .entity-list-scroll {
