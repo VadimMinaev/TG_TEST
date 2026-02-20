@@ -3666,13 +3666,12 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
 
     // 3) "<message> завтра в 10[:30]" / "tomorrow at 10[:30]"
     {
-        const m = text.match(/^(.*)\s+(сегодня|today|завтра|tomorrow|послезавтра|day after tomorrow)(?:\s+(?:в|at)\s+(\d{1,2})(?::(\d{2}))?)?$/i);
+        const m = text.match(/^(.*)\s+(сегодня|today|завтра|tomorrow|послезавтра|day after tomorrow)(?:\s+(?:в|at|ы)\s+([0-9:]{1,5}))?$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const dayWord = String(m[2] || '').toLowerCase();
-            const hour = m[3] != null ? parseInt(m[3], 10) : 9;
-            const minute = m[4] != null ? parseInt(m[4], 10) : 0;
-            if (!message || !isValidHourMinute(hour, minute)) {
+            const parsedTime = m[3] != null ? parseFlexibleTimeToken(m[3]) : { hour: 9, minute: 0 };
+            if (!message || !parsedTime || !isValidHourMinute(parsedTime.hour, parsedTime.minute)) {
                 return { error: 'Неверное время. Используйте часы 0-23 и минуты 0-59' };
             }
 
@@ -3686,8 +3685,8 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
                 localDay.getUTCFullYear(),
                 localDay.getUTCMonth() + 1,
                 localDay.getUTCDate(),
-                hour,
-                minute,
+                parsedTime.hour,
+                parsedTime.minute,
                 timeZone
             );
 
@@ -3697,8 +3696,8 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
                     nextLocalDay.getUTCFullYear(),
                     nextLocalDay.getUTCMonth() + 1,
                     nextLocalDay.getUTCDate(),
-                    hour,
-                    minute,
+                    parsedTime.hour,
+                    parsedTime.minute,
                     timeZone
                 );
             }
