@@ -3562,7 +3562,7 @@ function parseExplicitDateTimeReminder(text, timeZone = 'UTC') {
     const normalized = String(text || '').trim();
     if (!normalized) return null;
 
-    // Date first: "20 фев 2026 в 11:57 Созвон с Антохой"
+    // Date first: "20 фев 2026 в 11:57 Встреча с командой"
     // Also supports separators and typo "ы" instead of "в".
     let m = normalized.match(
         /^(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})\s*(?:в|at|ы)?\s*([0-9:]{1,5})\s+(.+)$/i
@@ -3571,7 +3571,7 @@ function parseExplicitDateTimeReminder(text, timeZone = 'UTC') {
         return buildExplicitDateReminder(m[5], m[1], m[2], m[3], m[4], timeZone);
     }
 
-    // Message first: "Созвон с Антохой 20 02 26 ы 1145"
+    // Message first: "Встреча с командой 20 02 26 ы 1145"
     m = normalized.match(
         /^(.+?)\s+(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})\s*(?:в|at|ы)?\s*([0-9:]{1,5})$/i
     );
@@ -3604,8 +3604,8 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
     }
 
     // 0) Explicit date/time in RU/EN month formats:
-    // "20 фев 2026 в 11:57 Созвон с Антохой"
-    // "Созвон с Антохой 20 02 26 ы 1145"
+    // "20 фев 2026 в 11:57 Встреча с командой"
+    // "Встреча с командой 20 02 26 ы 1145"
     const explicitDateTime = parseExplicitDateTimeReminder(text, timeZone);
     if (explicitDateTime) {
         return explicitDateTime;
@@ -3759,18 +3759,17 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
 
     // 4) "<message> в понедельник в 10" / "<message> on monday at 10"
     {
-        const m = text.match(/^(.*)\s+(?:в|on)\s+(понедельник|вторник|среда|среду|четверг|пятница|пятницу|суббота|субботу|воскресенье|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:в|at)\s+(\d{1,2})(?::(\d{2}))?)?$/i);
+        const m = text.match(/^(.*)\s+(?:в|on)\s+(понедельник|вторник|среда|среду|четверг|пятница|пятницу|суббота|субботу|воскресенье|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:в|at|ы)?\s*([0-9:]{1,5}))?$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const weekdayWord = String(m[2] || '').toLowerCase();
-            const hour = m[3] != null ? parseInt(m[3], 10) : 9;
-            const minute = m[4] != null ? parseInt(m[4], 10) : 0;
+            const parsedTime = m[3] != null ? parseFlexibleTimeToken(m[3]) : { hour: 9, minute: 0 };
             const weekday = parseWeekday(weekdayWord);
-            if (!message || weekday == null || !isValidHourMinute(hour, minute)) {
+            if (!message || weekday == null || !parsedTime || !isValidHourMinute(parsedTime.hour, parsedTime.minute)) {
                 return { error: 'Неверный формат дня недели или времени' };
             }
 
-            const runAt = nextWeekdayAt(weekday, hour, minute, timeZone);
+            const runAt = nextWeekdayAt(weekday, parsedTime.hour, parsedTime.minute, timeZone);
             return {
                 message,
                 runAt,
@@ -3982,8 +3981,8 @@ function parseCronNextRun(cronExpr) {
 function runReminderParserSelfTests() {
     const cases = [
         { text: 'Позвонить завтра в 10', tz: 'Europe/Moscow' },
-        { text: '20 фев 2026 в 11:57 Созвон с Антохой', tz: 'Europe/Moscow' },
-        { text: 'Созвон с Антохой 20 02 26 ы 1145', tz: 'Europe/Moscow' },
+        { text: '20 фев 2026 в 11:57 Встреча с командой', tz: 'Europe/Moscow' },
+        { text: 'Встреча с командой 20 02 26 ы 1145', tz: 'Europe/Moscow' },
         { text: 'check report in half an hour', tz: 'America/New_York' },
         { text: 'drink water every 2 hours', tz: 'Asia/Almaty' },
         { text: 'review roadmap on weekdays at 9', tz: 'Europe/Berlin' },
@@ -4139,9 +4138,6 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
         case '/settings':
             return await handleSettingsCommand(args, chatId, telegramUser);
         
-        case '/web':
-            return await handleWebCommand(chatId);
-        
         case '/cancel':
             return await handleCancelCommand(chatId, telegramUser);
         
@@ -4202,7 +4198,6 @@ America/New_York
 • Язык можно изменить: /settings language ru|en
 • Часовой пояс можно настроить: /settings timezone Europe/Moscow
 • Я покажу список ваших напоминаний по команде /list
-• Для web-управления используйте команду /web
 
 Полная справка и список команд: /help`;
 
@@ -4214,19 +4209,23 @@ async function handleHelpCommand(chatId) {
     const botToken = await getReminderBotToken();
     const message = `📖 Справка по напоминаниям
 
-Я могу помочь вам создавать и управлять вашими напоминаниями, которые потом я буду присылать вам через Telegram в указанное вами время.
+Я помогу создавать и получать напоминания в Telegram.
 
-Вот список моих основных возможностей:
+Как добавить напоминание:
+• Пошагово: /add (текст → время → подтверждение)
+• Одной строкой: /remind ...
 
-• По умолчанию я понимаю русский и английский, но в настройках (/settings) можно включить дополнительные языки
-• Вы можете создавать напоминания в форматах: "/remind 20m ...", "/remind 2026-02-20 10:00 ...", "/remind every 10m ..."
-• Поддерживается естественный формат: "позвонить завтра в 10", "call mom tomorrow at 10"
-• /add работает как пошаговый мастер: текст → время → подтверждение
-• /list поддерживает фильтры: "/list today", "/list week", "/list all q=созвон"
-• Язык: /settings language ru|en
-• Также у меня есть веб-интерфейс. Чтобы войти, используйте /web
-• Вы можете деактивировать напоминание командой /delete
-• Вы можете просматривать текущие напоминания через /list
+Поддерживаемые варианты времени:
+• Интервал: "через 20 минут", "10m", "1h"
+• Дата/время: "2026-02-21 10:00", "20 фев 2026 в 11:57", "20 02 26 в 1145"
+• Естественно: "завтра в 10", "в понедельник 1200", "через полчаса"
+• Повтор: "каждые 10 минут", "по будням в 9", "/remind cron 0 9 * * 1-5 ..."
+
+Управление:
+• /list — список напоминаний (фильтры: today, week, all, q=..., page=...)
+• /delete — деактивировать напоминание
+• /settings — язык, часовой пояс, тихий режим
+• /cancel — отменить текущий шаг
 
 А вот полный список моих команд:
 
@@ -4236,7 +4235,6 @@ async function handleHelpCommand(chatId) {
 /list - показать список напоминаний
 /formats - показать список поддерживаемых форматов даты и времени
 /settings - настройки (язык и часовой пояс)
-/web - ссылка на веб-интерфейс
 /cancel - отменить текущую операцию`;
 
     await sendTelegramMessage(botToken, chatId, message);
@@ -4251,7 +4249,7 @@ async function handleAddCommand(args, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            'Шаг 1/2: введите текст напоминания.\n\nПример:\nСозвон с Антохой\n\nДля отмены: /cancel'
+            'Шаг 1/2: введите текст напоминания.\n\nПример:\nВстреча с командой\n\nДля отмены: /cancel'
         );
         return { ok: true };
     }
@@ -4267,15 +4265,18 @@ async function handleFormatsCommand(chatId) {
 /remind 10m Текст
 /remind 2h Текст
 /remind 1d Текст
+/remind через 20 минут Текст
 /remind 1w Текст
 
 2) Конкретная дата и время:
 /remind 2026-02-20 14:00 Текст
-/add -> 20 фев 2026 в 11:57 Созвон с Антохой
-/add -> Созвон с Антохой 20 02 26 в 1145
+/add -> 20 фев 2026 в 11:57 Встреча с командой
+/add -> Встреча с командой 20 02 26 в 1145
+/add -> в понедельник 1200
 
 3) Повтор:
 /remind every 10m Текст
+/remind каждые 10 минут Текст
 /remind every 1d Текст
 /remind cron 0 9 * * * Текст
 /remind Проверить задачи по будням в 9`;
@@ -4401,7 +4402,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
 Тихий режим (не присылать в эти часы):
 /settings quiet 23 7
 
-Веб-интерфейс: /web`;
+`;
     await sendTelegramMessage(botToken, chatId, message, {
         reply_markup: {
             inline_keyboard: [
@@ -4415,13 +4416,6 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
             ]
         }
     });
-    return { ok: true };
-}
-
-async function handleWebCommand(chatId) {
-    const botToken = await getReminderBotToken();
-    const message = '🌐 Веб-интерфейс напоминаний: откройте панель проекта и перейдите в раздел /reminders';
-    await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
 
@@ -4633,7 +4627,7 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            `Шаг 2/2: укажите дату/время.\n\nПримеры:\nзавтра в 10\n20 фев 2026 в 11:57\n20 02 26 в 1145`,
+            `Шаг 2/2: укажите дату/время.\n\nПримеры:\nзавтра в 10\nв понедельник 1200\n20 фев 2026 в 11:57\n20 02 26 в 1145`,
             {
                 reply_markup: {
                     inline_keyboard: [
@@ -4666,7 +4660,7 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            `❌ ${parsed.error}${smartHints}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить\nПозвонить маме | 2026-02-21 10:00\nПозвонить в офис завтра в 10\nCall mom tomorrow at 10\n\nДля отмены: /cancel`
+            `❌ ${parsed.error}${smartHints}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nCall team tomorrow at 10\n\nДля отмены: /cancel`
         );
         return { ok: true };
     }
@@ -4682,7 +4676,7 @@ async function handleRemindCommand(args, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            'Введите напоминание и время одним сообщением.\n\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить\nПозвонить маме | 2026-02-21 10:00\nПозвонить в офис завтра в 10\nCall mom tomorrow at 10\n\nДля отмены: /cancel'
+            'Введите напоминание и время одним сообщением.\n\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nCall team tomorrow at 10\n\nДля отмены: /cancel'
         );
         return { ok: true };
     }
