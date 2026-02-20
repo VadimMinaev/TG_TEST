@@ -4017,17 +4017,19 @@ function formatReminderList(reminders, timeZone = 'UTC') {
     reminders.forEach((r, i) => {
         const runAt = new Date(r.run_at);
         const dateStr = formatReminderDate(runAt, timeZone);
+        const isPast = runAt.getTime() < Date.now();
         const repeatInfo = r.repeat_type === 'interval'
             ? ` • 🔁 каждые ${Math.max(1, Math.round((r.repeat_config?.interval_seconds || 0) / 60))} мин`
             : r.repeat_type === 'cron'
                 ? ` • 🔁 ${r.repeat_config?.cron || 'по расписанию'}`
                 : '';
         const activeInfo = r.is_active ? '' : ' • ⏸️';
+        const pastInfo = isPast ? ' • ⚠️ просрочено' : '';
         const message = String(r.message || '').trim();
         const shortMessage = message.length > 90 ? `${message.slice(0, 90).trimEnd()}...` : message;
 
-        lines.push(`#${i + 1} 📝 ${shortMessage}`);
-        lines.push(`⏰ ${dateStr}${repeatInfo}${activeInfo}`);
+        lines.push(`#${i + 1} ${isPast ? '🔴' : '📝'} ${shortMessage}`);
+        lines.push(`⏰ ${dateStr}${pastInfo}${repeatInfo}${activeInfo}`);
         if (i < reminders.length - 1) {
             lines.push('────────────────');
             lines.push('');
