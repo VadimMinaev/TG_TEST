@@ -179,8 +179,13 @@ export function Polling() {
     // Clear message is no longer needed with toast system
 
     // Basic validation - name, URL and chatId are always required
-    if (!form.name || !form.url || !form.chatId) {
-      addToast('Укажите название, URL и Chat ID', 'error');
+    if (!form.name || !form.url) {
+      addToast('Укажите название и URL', 'error');
+      return;
+    }
+
+    if (form.sendToTelegram && !form.chatId) {
+      addToast('Укажите Chat ID в блоке Telegram notifications', 'error');
       return;
     }
 
@@ -276,7 +281,7 @@ export function Polling() {
     const name = String(raw.name ?? '').trim();
     const url = String(raw.url ?? '').trim();
     const chatId = String(raw.chatId ?? '').trim();
-    const drafted = !name || !url || !chatId;
+    const drafted = !name || !url;
     return {
       payload: {
         name: name || `Черновик пуллинга ${index + 1}`,
@@ -510,7 +515,6 @@ export function Polling() {
                 {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
               <form className="entity-edit-form" onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название
                     <TooltipProvider delayDuration={200}>
@@ -567,9 +571,7 @@ export function Polling() {
                     placeholder="https://api.example.com/status"
                   />
                 </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод
                     <TooltipProvider delayDuration={200}>
@@ -605,40 +607,6 @@ export function Polling() {
                     <option value="PATCH">PATCH</option>
                     <option value="DELETE">DELETE</option>
                   </select>
-                </div>
-                <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID
-                    <TooltipProvider delayDuration={200}>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            type="button"
-                            className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
-                          >
-                            <Info className="h-4 w-4" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent side="top" className="max-w-xs text-left">
-                          <div className="space-y-2">
-                            <p>Числовой идентификатор чата/канала в Telegram.</p>
-                            <p><strong>Как получить:</strong></p>
-                            <ul className="list-disc list-inside">
-                              <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
-                              <li>Или перешлите сообщение боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
-                            </ul>
-                            <p><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
-                          </div>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    </label>
-                  <input
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                    value={form.chatId}
-                    onChange={(e) => setForm({ ...form, chatId: e.target.value })}
-                    placeholder="-1001234567890"
-                  />
-                </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -931,7 +899,7 @@ export function Polling() {
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
                             <p>Enable Telegram notifications for this polling task.</p>
-                            <p>Chat ID is taken from the main field above.</p>
+                            <p>Set Chat ID and optional Bot Token for delivery.</p>
                             <p>Bot Token is optional: empty means account token will be used.</p>
                           </div>
                         </TooltipContent>
@@ -941,7 +909,17 @@ export function Polling() {
 
                   {form.sendToTelegram && (
                     <div style={{ paddingLeft: '30px', opacity: 1 }}>
-                      <div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
+                          <input
+                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            value={form.chatId}
+                            onChange={(e) => setForm({ ...form, chatId: e.target.value })}
+                            placeholder="-1001234567890"
+                          />
+                        </div>
+                        <div>
                         <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (optional)</label>
                         <input
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
@@ -949,6 +927,7 @@ export function Polling() {
                           onChange={(e) => setForm({ ...form, botToken: e.target.value })}
                           placeholder="Empty = account token"
                         />
+                        </div>
                       </div>
                       <div style={{ marginTop: '16px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>

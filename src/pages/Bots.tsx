@@ -381,7 +381,7 @@ export function Bots() {
     <div className="card">
       <div className="card-header">
         <div className="flex flex-col gap-2">
-          <h2 className="text-xl font-semibold">?? ????</h2>
+          <h2 className="text-xl font-semibold">Bots</h2>
         </div>
         <div className="flex items-center gap-2">
           {canEdit && selectedBot && !editingBotId && (

@@ -2144,8 +2144,12 @@ app.post('/api/polls', auth, blockAuditorWrite, async (req, res) => {
             authorId: authorId ?? 'vadmin'
         });
 
-        if (!newPoll.name || !newPoll.url || !newPoll.chatId) {
-            return res.status(400).json({ error: 'name, url and chatId are required' });
+        if (!newPoll.name || !newPoll.url) {
+            return res.status(400).json({ error: 'name and url are required' });
+        }
+
+        if (newPoll.sendToTelegram !== false && !newPoll.chatId) {
+            return res.status(400).json({ error: 'chatId is required when Telegram notifications are enabled' });
         }
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {

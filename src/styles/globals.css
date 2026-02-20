@@ -371,6 +371,7 @@ body {
   background: hsl(var(--card) / 0.9);
   box-shadow: 0 18px 32px -24px hsl(var(--foreground) / 0.2);
   backdrop-filter: blur(8px);
+  overflow: hidden;
 }
 
 .card-header {
@@ -389,6 +390,8 @@ body {
   z-index: 15;
   background: hsl(var(--card) / 0.96);
   backdrop-filter: blur(10px);
+  border-top-left-radius: inherit;
+  border-top-right-radius: inherit;
 }
 
 .queue-stats-sticky {
