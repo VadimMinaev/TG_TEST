@@ -161,14 +161,10 @@ export function Dashboard() {
     const baseItems = [
       { path: '/', label: 'Главная', icon: <Activity className="h-4 w-4" /> },
       { path: '/rules', label: 'Webhook', icon: <MessageSquare className="h-4 w-4" /> },
-      { path: '/history', label: 'История', icon: <Clock className="h-4 w-4" /> },
-      { path: '/queue', label: 'Очередь', icon: <Mail className="h-4 w-4" /> },
+      { path: '/operations', label: 'Операции', icon: <ScrollText className="h-4 w-4" /> },
       { path: '/polling', label: 'Пуллинг', icon: <Repeat2 className="h-4 w-4" /> },
-      { path: '/polling-history', label: 'Ист. пуллинга', icon: <Clock className="h-4 w-4" /> },
       { path: '/integrations', label: 'Интеграции', icon: <LinkIcon className="h-4 w-4" /> },
-      { path: '/integration-history', label: 'Ист. интегр.', icon: <ScrollText className="h-4 w-4" /> },
       { path: '/bots', label: 'Боты', icon: <Bot className="h-4 w-4" /> },
-      { path: '/bot-history', label: 'Ист. ботов', icon: <ScrollText className="h-4 w-4" /> },
       { path: '/reminders', label: 'Напоминания', icon: <Clock className="h-4 w-4" /> },
     ];
 

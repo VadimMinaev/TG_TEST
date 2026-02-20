@@ -1,18 +1,14 @@
-import { createBrowserRouter } from 'react-router';
+import { createBrowserRouter, redirect } from 'react-router';
 import { Root } from './pages/Root';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
+import { Operations } from './pages/Operations';
 import { Rules } from './pages/Rules';
 import { Testing } from './pages/Testing';
-import { History } from './pages/History';
-import { Queue } from './pages/Queue';
 import { Polling } from './pages/Polling';
-import { PollingHistory } from './pages/PollingHistory';
 import { Integrations } from './pages/Integrations';
-import { IntegrationHistory } from './pages/IntegrationHistory';
 import { Users } from './pages/Users';
 import { Bots } from './pages/Bots';
-import { BotHistory } from './pages/BotHistory';
 import { Accounts } from './pages/Accounts';
 import { Reminders } from './pages/Reminders';
 import { ReminderSettingsPage } from './pages/ReminderSettings';
@@ -30,14 +26,15 @@ export const router = createBrowserRouter([
           { index: true, Component: Rules },
           { path: 'rules', Component: Rules },
           { path: 'testing', Component: Testing },
-          { path: 'history', Component: History },
-          { path: 'queue', Component: Queue },
+          { path: 'operations', Component: Operations },
+          { path: 'history', loader: () => redirect('/operations?tab=history') },
+          { path: 'queue', loader: () => redirect('/operations?tab=queue') },
           { path: 'polling', Component: Polling },
-          { path: 'polling-history', Component: PollingHistory },
+          { path: 'polling-history', loader: () => redirect('/operations?tab=polling-history') },
           { path: 'integrations', Component: Integrations },
-          { path: 'integration-history', Component: IntegrationHistory },
+          { path: 'integration-history', loader: () => redirect('/operations?tab=integration-history') },
           { path: 'bots', Component: Bots },
-          { path: 'bot-history', Component: BotHistory },
+          { path: 'bot-history', loader: () => redirect('/operations?tab=bot-history') },
           { path: 'accounts', Component: Accounts },
           { path: 'users', Component: Users },
           { path: 'reminders', Component: Reminders },
