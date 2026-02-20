@@ -283,8 +283,8 @@ export const api = {
   },
 
   // Queue
-  getQueueHistory: async (page = 1, status?: string) => {
-    let url = `${API_BASE}/message-queue/history?page=${page}&limit=50`;
+  getQueueHistory: async (page = 1, status?: string, limit = 50) => {
+    let url = `${API_BASE}/message-queue/history?page=${page}&limit=${limit}`;
     if (status) url += `&status=${encodeURIComponent(status)}`;
     const res = await fetch(url, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch queue');

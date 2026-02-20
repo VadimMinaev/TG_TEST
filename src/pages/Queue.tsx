@@ -6,19 +6,22 @@ import { Breadcrumb } from '../components/Breadcrumb';
 export function Queue() {
   const [messages, setMessages] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
+  const [pagination, setPagination] = useState<{ page: number; totalPages: number; total: number; limit: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('');
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     loadQueue();
     loadStats();
-  }, [filter]);
+  }, [filter, page]);
 
   const loadQueue = async () => {
     try {
       setLoading(true);
-      const data = await api.getQueueHistory(1, filter);
+      const data = await api.getQueueHistory(page, filter);
       setMessages(data.messages || []);
+      setPagination(data.pagination || null);
     } catch (error) {
       console.error(error);
     } finally {
@@ -67,7 +70,10 @@ export function Queue() {
         <div className="flex items-center gap-2">
           <select
             value={filter}
-            onChange={(e) => setFilter(e.target.value)}
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setPage(1);
+            }}
             className="rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
           >
             <option value="">Все статусы</option>
@@ -152,6 +158,31 @@ export function Queue() {
                 ))}
               </tbody>
             </table>
+            {pagination && pagination.totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-xs text-[hsl(var(--muted-foreground))]">
+                  Страница {pagination.page} из {pagination.totalPages} · всего {pagination.total}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    className="rounded border border-[hsl(var(--border))] px-3 py-1.5 text-xs disabled:opacity-50"
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={pagination.page <= 1}
+                  >
+                    Назад
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-[hsl(var(--border))] px-3 py-1.5 text-xs disabled:opacity-50"
+                    onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
+                    disabled={pagination.page >= pagination.totalPages}
+                  >
+                    Вперед
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
