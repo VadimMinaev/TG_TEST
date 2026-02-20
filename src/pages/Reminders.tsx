@@ -337,8 +337,9 @@ export function Reminders() {
         </div>
 
         <div className="split-right">
+          <div className={`panel ${editingReminderId !== null && selectedReminder ? 'entity-edit-panel' : ''}`}>
           {editingReminderId !== null && selectedReminder ? (
-            <div className="panel">
+            <>
               <h3 className="mb-4 text-lg font-semibold">Редактирование напоминания</h3>
               <form onSubmit={handleSaveReminder} className="flex flex-col gap-5">
                 <div>
@@ -428,7 +429,7 @@ export function Reminders() {
                   </button>
                 </div>
               </form>
-            </div>
+            </>
           ) : selectedReminder ? (
             <div className="entity-view">
               <div>
@@ -533,6 +534,7 @@ export function Reminders() {
               <p>Выберите напоминание слева для просмотра и редактирования</p>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>

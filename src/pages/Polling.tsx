@@ -457,8 +457,9 @@ export function Polling() {
         </div>
 
         <div className="split-right">
+          <div className={`panel ${editingPollId !== null ? 'entity-edit-panel' : ''}`}>
           {editingPollId !== null ? (
-            <div className="panel entity-edit-panel">
+            <>
               <h3 className="mb-4 text-lg font-semibold">
                 {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
@@ -994,7 +995,7 @@ export function Polling() {
                   </button>
                 </div>
               </form>
-            </div>
+            </>
           ) : selectedPoll ? (
             <div>
               <div className="entity-view">
@@ -1099,6 +1100,7 @@ export function Polling() {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
 

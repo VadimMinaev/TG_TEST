@@ -529,8 +529,9 @@ export function Bots() {
         </div>
 
         <div className="split-right">
+          <div className={`panel ${editingBotId !== null ? 'entity-edit-panel' : ''}`}>
           {editingBotId !== null ? (
-            <div className="panel">
+            <>
               <h3 className="mb-4 text-lg font-semibold">
                 {editingBotId === -1 ? 'Создание бота' : 'Редактирование бота'}
               </h3>
@@ -905,7 +906,7 @@ export function Bots() {
                   </button>
                 </div>
               </form>
-            </div>
+            </>
           ) : selectedBot ? (
             <div>
               <div className="entity-view">
@@ -1052,6 +1053,7 @@ export function Bots() {
               </button>
             </div>
           )}
+          </div>
         </div>
       </div>
 
