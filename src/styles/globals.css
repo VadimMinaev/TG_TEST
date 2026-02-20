@@ -395,7 +395,7 @@ body {
 
 .queue-stats-sticky {
   position: sticky;
-  top: 166px;
+  top: 74px;
   z-index: 14;
   background: hsl(var(--card) / 0.96);
   backdrop-filter: blur(10px);
@@ -758,7 +758,7 @@ body {
   }
 
   .queue-stats-sticky {
-    top: 132px;
+    top: 50px;
   }
   
   .card-body {
