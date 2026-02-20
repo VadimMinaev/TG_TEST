@@ -1831,7 +1831,7 @@ app.get('/api/bot-token', auth, (req, res) => {
 
 app.get('/api/account-bot-token', auth, async (req, res) => {
     try {
-        const accountId = getAccountId(req);
+        const accountId = getAccountIdForCreate(req);
         if (accountId == null) return res.status(400).json({ error: 'Account required' });
 
         if (!(process.env.DATABASE_URL && db && typeof db.query === 'function')) {
@@ -1850,7 +1850,7 @@ app.get('/api/account-bot-token', auth, async (req, res) => {
 
 app.post('/api/account-bot-token', auth, blockAuditorWrite, async (req, res) => {
     try {
-        const accountId = getAccountId(req);
+        const accountId = getAccountIdForCreate(req);
         if (accountId == null) return res.status(400).json({ error: 'Account required' });
         if (!(process.env.DATABASE_URL && db && typeof db.query === 'function')) {
             return res.status(400).json({ error: 'Database is required' });
