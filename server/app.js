@@ -4015,15 +4015,29 @@ function formatReminderList(reminders, timeZone = 'UTC') {
         return '📭 У вас нет активных напоминаний';
     }
     
-    const lines = ['📋 Ваши напоминания:'];
+    const lines = [`📋 Напоминания (${reminders.length})`, ''];
     reminders.forEach((r, i) => {
         const runAt = new Date(r.run_at);
         const dateStr = formatReminderDate(runAt, timeZone);
-        const repeatInfo = r.repeat_type === 'interval' 
-            ? ` (каждые ${Math.round(r.repeat_config?.interval_seconds / 60)} мин)`
-            : r.repeat_type === 'cron' ? ' (по расписанию)' : '';
-        lines.push(`${i + 1}. ⏰ ${dateStr}${repeatInfo}\n   📝 ${r.message}`);
+        const repeatInfo = r.repeat_type === 'interval'
+            ? ` • 🔁 каждые ${Math.max(1, Math.round((r.repeat_config?.interval_seconds || 0) / 60))} мин`
+            : r.repeat_type === 'cron'
+                ? ` • 🔁 ${r.repeat_config?.cron || 'по расписанию'}`
+                : '';
+        const activeInfo = r.is_active ? '' : ' • ⏸️';
+        const message = String(r.message || '').trim();
+        const shortMessage = message.length > 90 ? `${message.slice(0, 90).trimEnd()}...` : message;
+
+        lines.push(`#${i + 1} 📝 ${shortMessage}`);
+        lines.push(`⏰ ${dateStr}${repeatInfo}${activeInfo}`);
+        if (i < reminders.length - 1) {
+            lines.push('────────────────');
+            lines.push('');
+        }
     });
+
+    lines.push('');
+    lines.push('Удалить: /delete <номер>');
     
     return lines.join('\n');
 }
