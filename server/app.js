@@ -4429,7 +4429,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
             return { ok: true };
         }
 
-        await sendTelegramMessage(botToken, chatId, `✅ Язык обновлен: ${normalizedLanguage}`);
+        await sendReminderQuickActions(botToken, chatId, `Language updated: ${normalizedLanguage}`);
         return { ok: true };
     }
 
@@ -4462,7 +4462,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
         telegramUser.timezone = value;
         telegramUser.timezone_is_set = true;
         pendingTimezoneInput.delete(telegramUser.id);
-        await sendTelegramMessage(botToken, chatId, `✅ Часовой пояс обновлен: ${value}`);
+        await sendReminderQuickActions(botToken, chatId, `Timezone updated: ${value}`);
         return { ok: true };
     }
 
@@ -4569,7 +4569,7 @@ async function handlePendingLanguageInput(text, chatId, telegramUser) {
         return { ok: true };
     }
 
-    await sendTelegramMessage(botToken, chatId, `✅ Язык сохранен: ${normalizedLanguage}`);
+    await sendReminderQuickActions(botToken, chatId, `Language saved: ${normalizedLanguage}`);
     return { ok: true };
 }
 
@@ -4594,7 +4594,7 @@ async function handlePendingTimezoneInput(text, chatId, telegramUser) {
     telegramUser.timezone = candidate;
     telegramUser.timezone_is_set = true;
     pendingTimezoneInput.delete(telegramUser.id);
-    await sendTelegramMessage(botToken, chatId, `✅ Часовой пояс сохранен: ${candidate}\nТеперь можно создавать напоминания через /remind или /add`);
+    await sendReminderQuickActions(botToken, chatId, `Timezone saved: ${candidate}`);
     return { ok: true };
 }
 
@@ -4879,6 +4879,16 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
     const chatId = callbackQuery.message?.chat?.id;
     const data = callbackQuery.data || '';
 
+    if (data.startsWith('action:')) {
+        const action = data.split(':')[1];
+        if (action === 'add') await handleAddCommand([], chatId, telegramUser);
+        if (action === 'list') await handleMyRemindersCommand([], chatId, telegramUser);
+        if (action === 'settings') await handleSettingsCommand([], chatId, telegramUser);
+        if (action === 'help') await handleHelpCommand(chatId);
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id);
+        return { ok: true };
+    }
+
     if (data.startsWith('setlang:')) {
         const langValue = data.split(':')[1];
         const normalizedLanguage = normalizeLanguageInput(langValue);
@@ -4897,6 +4907,8 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         if (!isTimezoneSelectedForUser(telegramUser)) {
             pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
             await sendTimeZoneSelectionPrompt(botToken, chatId, '✅ Язык сохранен. Теперь выберите часовой пояс.');
+        } else {
+            await sendReminderQuickActions(botToken, chatId, 'Language saved. Choose an action:');
         }
         await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Язык сохранен');
         return { ok: true };
@@ -4974,7 +4986,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         telegramUser.timezone = tzValue;
         telegramUser.timezone_is_set = true;
         pendingTimezoneInput.delete(telegramUser.id);
-        await sendTelegramMessage(botToken, chatId, `✅ Часовой пояс сохранен: ${tzValue}`);
+        await sendReminderQuickActions(botToken, chatId, `Timezone saved: ${tzValue}`);
         await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Timezone сохранен');
         return { ok: true };
     }
@@ -5194,6 +5206,24 @@ async function sendQuietHoursSelectionPrompt(botToken, chatId, text) {
                 [
                     { text: '🌙 00:00-06:00', callback_data: 'setquiet:0:6' },
                     { text: '🔔 Выкл', callback_data: 'setquiet:0:0' }
+                ]
+            ]
+        }
+    });
+}
+
+
+async function sendReminderQuickActions(botToken, chatId, text = 'Choose an action:') {
+    return await sendTelegramMessage(botToken, chatId, text, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: 'Create', callback_data: 'action:add' },
+                    { text: 'My reminders', callback_data: 'action:list' }
+                ],
+                [
+                    { text: 'Settings', callback_data: 'action:settings' },
+                    { text: 'Help', callback_data: 'action:help' }
                 ]
             ]
         }
