@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Rule } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
@@ -30,12 +30,12 @@ export function Rules() {
   const [importing, setImporting] = useState(false);
   const [togglingRuleId, setTogglingRuleId] = useState<number | null>(null);
 
-  // Автоматически скрывать уведомление через 4 секунды
+  // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё СЃРєСЂС‹РІР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ С‡РµСЂРµР· 4 СЃРµРєСѓРЅРґС‹
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [webhookUrlCopied, setWebhookUrlCopied] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // Проверяем параметры create и select в URL
+  // РџСЂРѕРІРµСЂСЏРµРј РїР°СЂР°РјРµС‚СЂС‹ create Рё select РІ URL
   useEffect(() => {
     const createParam = searchParams.get('create');
     const selectParam = searchParams.get('select');
@@ -54,7 +54,7 @@ export function Rules() {
     }
   }, [searchParams, setSearchParams]);
 
-  // Формируем полный URL вебхука
+  // Р¤РѕСЂРјРёСЂСѓРµРј РїРѕР»РЅС‹Р№ URL РІРµР±С…СѓРєР°
   const webhookUrl = typeof window !== 'undefined'
     ? (user?.accountSlug
         ? `${window.location.origin}/webhook/${user.accountSlug}`
@@ -67,7 +67,7 @@ export function Rules() {
       setWebhookUrlCopied(true);
       setTimeout(() => setWebhookUrlCopied(false), 2000);
     } catch {
-      // Fallback для старых браузеров
+      // Fallback РґР»СЏ СЃС‚Р°СЂС‹С… Р±СЂР°СѓР·РµСЂРѕРІ
       const textArea = document.createElement('textarea');
       textArea.value = webhookUrl;
       document.body.appendChild(textArea);
@@ -125,11 +125,11 @@ export function Rules() {
   };
 
   const handleDeleteRule = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить этот Webhook?')) return;
+    if (!confirm('Р’С‹ СѓРІРµСЂРµРЅС‹, С‡С‚Рѕ С…РѕС‚РёС‚Рµ СѓРґР°Р»РёС‚СЊ СЌС‚РѕС‚ Webhook?')) return;
 
     try {
       await api.deleteRule(id);
-      addToast('Webhook удалён', 'success');
+      addToast('Webhook СѓРґР°Р»С‘РЅ', 'success');
       setRules(rules.filter((r) => r.id !== id));
       if (selectedRuleId === id) {
         setSelectedRuleId(null);
@@ -145,13 +145,13 @@ export function Rules() {
       const original = await api.getRule(id);
       const duplicate = {
         ...original,
-        name: `${original.name} (копия)`,
+        name: `${original.name} (РєРѕРїРёСЏ)`,
         enabled: false,
       };
       delete (duplicate as any).id;
       
       const created = await api.createRule(duplicate);
-      addToast('Webhook дублирован', 'success');
+      addToast('Webhook РґСѓР±Р»РёСЂРѕРІР°РЅ', 'success');
       setRules([...rules, created]);
       setSelectedRuleId(created.id);
     } catch (error: any) {
@@ -163,13 +163,13 @@ export function Rules() {
     try {
       if (editingRuleId && editingRuleId !== -1) {
         const updated = await api.updateRule(editingRuleId, rule);
-        addToast('Webhook обновлён', 'success');
+        addToast('Webhook РѕР±РЅРѕРІР»С‘РЅ', 'success');
         setRules(rules.map((r) => (r.id === editingRuleId ? updated : r)));
         setSelectedRuleId(updated.id);
         setEditingRuleId(null);
       } else {
         const created = await api.createRule(rule);
-        addToast('Webhook создан', 'success');
+        addToast('Webhook СЃРѕР·РґР°РЅ', 'success');
         setRules([...rules, created]);
         setSelectedRuleId(created.id);
         setEditingRuleId(null);
@@ -187,27 +187,33 @@ export function Rules() {
       const updated = await api.updateRule(rule.id, { enabled: nextEnabled });
       const mergedUpdated = { ...rule, ...updated, id: rule.id };
       setRules((prev) => prev.map((r) => (r.id === rule.id ? mergedUpdated : r)));
-      addToast(nextEnabled ? 'Webhook включен' : 'Webhook выключен', 'success');
+      addToast(nextEnabled ? 'Webhook РІРєР»СЋС‡РµРЅ' : 'Webhook РІС‹РєР»СЋС‡РµРЅ', 'success');
     } catch (error: any) {
-      addToast(error.message || 'Не удалось обновить статус Webhook', 'error');
+      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Webhook', 'error');
     } finally {
       setTogglingRuleId(null);
     }
   };
 
-  const normalizeImportedRule = (raw: any): Partial<Rule> => {
+  const normalizeImportedRule = (raw: any, index: number): { payload: Partial<Rule>; drafted: boolean } => {
     const chatIds = Array.isArray(raw.chatIds) ? raw.chatIds : raw.chatId;
-    const chatId = Array.isArray(chatIds) ? chatIds.join(',') : chatIds;
+    const chatIdRaw = Array.isArray(chatIds) ? chatIds.join(',') : chatIds;
+    const name = String(raw.name ?? '').trim();
+    const condition = String(raw.condition ?? '').trim();
+    const chatId = chatIdRaw != null ? String(chatIdRaw).trim() : '';
+    const drafted = !name || !condition || !chatId;
     return {
-      name: String(raw.name ?? '').trim(),
-      condition: String(raw.condition ?? '').trim(),
-      chatId: chatId != null ? String(chatId).trim() : '',
-      botToken: raw.botToken ? String(raw.botToken).trim() : undefined,
-      messageTemplate: raw.messageTemplate ? String(raw.messageTemplate) : undefined,
-      enabled: raw.enabled ?? true,
+      payload: {
+        name: name || `Черновик webhook ${index + 1}`,
+        condition: condition || 'true',
+        chatId: chatId || '0',
+        botToken: raw.botToken ? String(raw.botToken).trim() : undefined,
+        messageTemplate: raw.messageTemplate ? String(raw.messageTemplate) : undefined,
+        enabled: drafted ? false : (raw.enabled ?? true),
+      },
+      drafted,
     };
   };
-
   const handleImportRules = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -216,18 +222,15 @@ export function Rules() {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.rules) ? parsed.rules : [];
-      if (!items.length) throw new Error('Файл не содержит Webhook');
+      if (!items.length) throw new Error('Р¤Р°Р№Р» РЅРµ СЃРѕРґРµСЂР¶РёС‚ Webhook');
 
       let created = 0;
       let failed = 0;
+      let draftedCount = 0;
       let lastError = '';
-      for (const item of items) {
-        const payload = normalizeImportedRule(item);
-        if (!payload.name || !payload.condition || !payload.chatId) {
-          failed += 1;
-          if (!lastError) lastError = 'Не заполнены название, условие или chatId';
-          continue;
-        }
+      for (const [index, item] of items.entries()) {
+        const { payload, drafted } = normalizeImportedRule(item, index);
+        if (drafted) draftedCount += 1;
         try {
           const createdRule = await api.createRule(payload);
           created += 1;
@@ -240,13 +243,15 @@ export function Rules() {
 
       const messageText =
         failed === 0
-          ? `Импортировано Webhook: ${created}`
+          ? draftedCount > 0
+            ? `Импортировано webhook: ${created}, черновиков: ${draftedCount}`
+            : `Импортировано webhook: ${created}`
           : lastError
-            ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
-            : `Импортировано: ${created}, пропущено: ${failed}`;
+            ? `Импортировано: ${created}, черновиков: ${draftedCount}, ошибок: ${failed}. Причина: ${lastError}`
+            : `Импортировано: ${created}, черновиков: ${draftedCount}, ошибок: ${failed}`;
       addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      addToast(error.message || 'Ошибка импорта Webhook', 'error');
+      addToast(error.message || 'РћС€РёР±РєР° РёРјРїРѕСЂС‚Р° Webhook', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -259,7 +264,7 @@ export function Rules() {
     <div className="card">
       <div className="card-header">
         <div className="flex items-center gap-3">
-        <h2 className="text-xl font-semibold">📥 Webhook</h2>
+        <h2 className="text-xl font-semibold">рџ“Ґ Webhook</h2>
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -273,7 +278,7 @@ export function Rules() {
               <TooltipContent side="bottom" className="max-w-sm">
                 <div className="space-y-3">
                   <div>
-                    <p className="mb-2 font-medium">Адрес вебхука для внешних систем:</p>
+                    <p className="mb-2 font-medium">РђРґСЂРµСЃ РІРµР±С…СѓРєР° РґР»СЏ РІРЅРµС€РЅРёС… СЃРёСЃС‚РµРј:</p>
                     <div className="flex items-center gap-2">
                       <code className="flex-1 rounded bg-[hsl(var(--muted))] px-2 py-1 break-all">
                         {webhookUrl}
@@ -281,7 +286,7 @@ export function Rules() {
                       <button
                         onClick={handleCopyWebhookUrl}
                         className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] transition-colors hover:bg-[hsl(var(--primary)_/_0.9)]"
-                        title="Копировать"
+                        title="РљРѕРїРёСЂРѕРІР°С‚СЊ"
                       >
                         {webhookUrlCopied ? (
                           <CheckCheck className="h-3.5 w-3.5" />
@@ -292,9 +297,9 @@ export function Rules() {
                     </div>
                   </div>
                   <div className="text-[hsl(var(--muted-foreground))]">
-                    <p className="mb-1"><strong>Метод:</strong> POST</p>
+                    <p className="mb-1"><strong>РњРµС‚РѕРґ:</strong> POST</p>
                     <p className="mb-1"><strong>Content-Type:</strong> application/json</p>
-                    <p>Укажите этот URL в настройках вебхуков вашей внешней системы (ITSM, CRM и т.д.)</p>
+                    <p>РЈРєР°Р¶РёС‚Рµ СЌС‚РѕС‚ URL РІ РЅР°СЃС‚СЂРѕР№РєР°С… РІРµР±С…СѓРєРѕРІ РІР°С€РµР№ РІРЅРµС€РЅРµР№ СЃРёСЃС‚РµРјС‹ (ITSM, CRM Рё С‚.Рґ.)</p>
                   </div>
                 </div>
               </TooltipContent>
@@ -307,21 +312,21 @@ export function Rules() {
               <button
                 onClick={() => handleEditRule(selectedRuleId)}
                 className="icon-button"
-                title="Редактировать"
+                title="Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ"
               >
                 <Pencil className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDuplicateRule(selectedRuleId)}
                 className="icon-button"
-                title="Дублировать"
+                title="Р”СѓР±Р»РёСЂРѕРІР°С‚СЊ"
               >
                 <Copy className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDeleteRule(selectedRuleId)}
                 className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                title="Удалить"
+                title="РЈРґР°Р»РёС‚СЊ"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -333,10 +338,10 @@ export function Rules() {
                   if (rule) {
                     void handleToggleRuleEnabled(rule, nextEnabled);
                   } else {
-                    addToast('Не удалось определить выбранный Webhook', 'error');
+                    addToast('РќРµ СѓРґР°Р»РѕСЃСЊ РѕРїСЂРµРґРµР»РёС‚СЊ РІС‹Р±СЂР°РЅРЅС‹Р№ Webhook', 'error');
                   }
                 }}
-                title={rules.find(r => r.id === selectedRuleId)?.enabled ? 'Выключить Webhook' : 'Включить Webhook'}
+                title={rules.find(r => r.id === selectedRuleId)?.enabled ? 'Р’С‹РєР»СЋС‡РёС‚СЊ Webhook' : 'Р’РєР»СЋС‡РёС‚СЊ Webhook'}
               />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
@@ -345,7 +350,7 @@ export function Rules() {
             <Search className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
             <input
               type="text"
-              placeholder="Поиск Webhook..."
+              placeholder="РџРѕРёСЃРє Webhook..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-56 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
@@ -364,21 +369,21 @@ export function Rules() {
                 onClick={() => importInputRef.current?.click()}
                 disabled={importing}
                 className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
-                title="Импорт Webhook"
+                title="РРјРїРѕСЂС‚ Webhook"
               >
                 <Upload className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setExportModalOpen(true)}
                 className="icon-button"
-                title="Экспорт Webhook"
+                title="Р­РєСЃРїРѕСЂС‚ Webhook"
               >
                 <Download className="h-4 w-4" />
               </button>
               <button
                 onClick={handleStartCreate}
                 className="icon-button"
-                title="Создать Webhook"
+                title="РЎРѕР·РґР°С‚СЊ Webhook"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -392,12 +397,12 @@ export function Rules() {
         <div className="split-left">
           <div className={`panel ${editingRuleId !== null ? 'entity-edit-panel' : ''}`}>
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список Webhook</h3>
+              <h3 className="text-sm font-semibold">рџ“‹ РЎРїРёСЃРѕРє Webhook</h3>
               <button
                 onClick={loadRules}
                 className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))]"
               >
-                Обновить
+                РћР±РЅРѕРІРёС‚СЊ
               </button>
             </div>
           <RulesList
@@ -432,13 +437,13 @@ export function Rules() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Выберите Webhook из списка слева для редактирования или просмотра</p>
+              <p className="mb-4">Р’С‹Р±РµСЂРёС‚Рµ Webhook РёР· СЃРїРёСЃРєР° СЃР»РµРІР° РґР»СЏ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РёР»Рё РїСЂРѕСЃРјРѕС‚СЂР°</p>
               <button
                 onClick={handleStartCreate}
                 className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
               >
                 <Plus className="h-4 w-4" />
-                Создать Webhook
+                РЎРѕР·РґР°С‚СЊ Webhook
               </button>
             </div>
           )}
@@ -450,14 +455,16 @@ export function Rules() {
       <ExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        title="Экспорт Webhook"
-        description="Выберите Webhook для экспорта"
+        title="Р­РєСЃРїРѕСЂС‚ Webhook"
+        description="Р’С‹Р±РµСЂРёС‚Рµ Webhook РґР»СЏ СЌРєСЃРїРѕСЂС‚Р°"
         items={rules.map((r) => ({ id: r.id, name: r.name, enabled: r.enabled }))}
         loading={loading}
         exportFileName={`rules-${new Date().toISOString().slice(0, 10)}.json`}
         exportType="rules"
-        onExportSuccess={(count) => addToast(`Экспортировано Webhook: ${count}`, 'success')}
+        onExportSuccess={(count) => addToast(`Р­РєСЃРїРѕСЂС‚РёСЂРѕРІР°РЅРѕ Webhook: ${count}`, 'success')}
       />
     </div>
   );
 }
+
+

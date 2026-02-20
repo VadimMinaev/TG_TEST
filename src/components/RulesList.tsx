@@ -7,6 +7,12 @@ interface RulesListProps {
   loading: boolean;
 }
 
+const isDraftRule = (rule: Rule) =>
+  !rule.enabled && (
+    String(rule.name || '').toLowerCase().startsWith('черновик') ||
+    String(rule.chatId || '').trim() === '0'
+  );
+
 export function RulesList({ rules, selectedId, onSelect, loading }: RulesListProps) {
   if (loading) {
     return (
@@ -43,7 +49,16 @@ export function RulesList({ rules, selectedId, onSelect, loading }: RulesListPro
                 selectedId === rule.id ? 'bg-[hsl(var(--accent))]' : ''
               }`}
             >
-              <td className="px-2 py-2 font-medium">{rule.name}</td>
+              <td className="px-2 py-2 font-medium">
+                <span className="inline-flex items-center gap-2">
+                  <span>{rule.name}</span>
+                  {isDraftRule(rule) && (
+                    <span className="rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                      Черновик
+                    </span>
+                  )}
+                </span>
+              </td>
               <td className="px-2 py-2">
                 <code className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-1">
                   {rule.condition}

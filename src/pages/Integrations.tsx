@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Integration, Rule, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
@@ -39,6 +39,9 @@ const DEFAULT_FORM: Omit<Integration, 'id'> = {
   messageTemplate: '',
 };
 
+const isDraftIntegration = (integration: Partial<Integration>) =>
+  !integration.enabled && String(integration.name || '').toLowerCase().startsWith('черновик');
+
 export function Integrations() {
   const { user } = useAuth();
   const canEdit = user?.role !== 'auditor';
@@ -58,7 +61,7 @@ export function Integrations() {
   const [togglingIntegrationId, setTogglingIntegrationId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // Автоматически скрывать уведомление через 4 секунды
+  // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё СЃРєСЂС‹РІР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ С‡РµСЂРµР· 4 СЃРµРєСѓРЅРґС‹
 
   const selectedIntegration = useMemo(
     () => integrations.find((i) => i.id === selectedId) || null,
@@ -77,7 +80,7 @@ export function Integrations() {
       setRules(rulesData);
       setPolls(pollsData);
     } catch (error: any) {
-      addToast(error.message || 'Не удалось загрузить данные', 'error');
+      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РґР°РЅРЅС‹Рµ', 'error');
     } finally {
       setLoading(false);
     }
@@ -87,7 +90,7 @@ export function Integrations() {
     loadIntegrations();
   }, []);
 
-  // Применить настройки из выбранного Webhook или пуллинга
+  // РџСЂРёРјРµРЅРёС‚СЊ РЅР°СЃС‚СЂРѕР№РєРё РёР· РІС‹Р±СЂР°РЅРЅРѕРіРѕ Webhook РёР»Рё РїСѓР»Р»РёРЅРіР°
   const handleApplySource = (sourceId: string) => {
     setSelectedSourceId(sourceId);
     if (!sourceId) return;
@@ -187,11 +190,11 @@ export function Integrations() {
     // Clear message is no longer needed with toast system
 
     if (!form.name) {
-      addToast('Укажите название', 'error');
+      addToast('РЈРєР°Р¶РёС‚Рµ РЅР°Р·РІР°РЅРёРµ', 'error');
       return;
     }
 
-    // Для webhook триггера поле pollingContinueAfterMatch должно быть null в БД
+    // Р”Р»СЏ webhook С‚СЂРёРіРіРµСЂР° РїРѕР»Рµ pollingContinueAfterMatch РґРѕР»Р¶РЅРѕ Р±С‹С‚СЊ null РІ Р‘Р”
     const dataToSave = {
       ...form,
       pollingContinueAfterMatch: form.triggerType === 'webhook' ? undefined : form.pollingContinueAfterMatch,
@@ -202,24 +205,24 @@ export function Integrations() {
         const updated = await api.updateIntegration(editingId, dataToSave);
         setEditingId(null);
         setSelectedId(updated.id);
-        addToast('Интеграция обновлена', 'success');
-        // Перезагружаем список для синхронизации
+        addToast('РРЅС‚РµРіСЂР°С†РёСЏ РѕР±РЅРѕРІР»РµРЅР°', 'success');
+        // РџРµСЂРµР·Р°РіСЂСѓР¶Р°РµРј СЃРїРёСЃРѕРє РґР»СЏ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
         await loadIntegrations();
       } else {
         const created = await api.createIntegration(dataToSave);
         setEditingId(null);
         setSelectedId(created.id);
-        addToast('Интеграция создана', 'success');
-        // Перезагружаем список для синхронизации
+        addToast('РРЅС‚РµРіСЂР°С†РёСЏ СЃРѕР·РґР°РЅР°', 'success');
+        // РџРµСЂРµР·Р°РіСЂСѓР¶Р°РµРј СЃРїРёСЃРѕРє РґР»СЏ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
         await loadIntegrations();
       }
     } catch (error: any) {
-      addToast(error.message || 'Ошибка сохранения', 'error');
+      addToast(error.message || 'РћС€РёР±РєР° СЃРѕС…СЂР°РЅРµРЅРёСЏ', 'error');
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Удалить интеграцию?')) return;
+    if (!confirm('РЈРґР°Р»РёС‚СЊ РёРЅС‚РµРіСЂР°С†РёСЋ?')) return;
     try {
       await api.deleteIntegration(id);
       setIntegrations((prev) => prev.filter((i) => i.id !== id));
@@ -227,7 +230,7 @@ export function Integrations() {
         setSelectedId(null);
         setEditingId(null);
       }
-      addToast('Интеграция удалена', 'success');
+      addToast('РРЅС‚РµРіСЂР°С†РёСЏ СѓРґР°Р»РµРЅР°', 'success');
     } catch (error: any) {
       addToast(error.message, 'error');
     }
@@ -238,12 +241,12 @@ export function Integrations() {
       const { id, ...data } = integration;
       const created = await api.createIntegration({
         ...data,
-        name: `${data.name} (копия)`,
+        name: `${data.name} (РєРѕРїРёСЏ)`,
         enabled: false,
       });
       setIntegrations((prev) => [created, ...prev]);
       setSelectedId(created.id);
-      addToast('Интеграция дублирована', 'success');
+        addToast('РРЅС‚РµРіСЂР°С†РёСЏ РґСѓР±Р»РёСЂРѕРІР°РЅР°', 'success');
     } catch (error: any) {
       addToast(error.message, 'error');
     }
@@ -254,9 +257,9 @@ export function Integrations() {
     try {
       const result = await api.runIntegration(id);
       if (result.status === 'success') {
-        addToast('Интеграция выполнена успешно', 'success');
+        addToast('РРЅС‚РµРіСЂР°С†РёСЏ РІС‹РїРѕР»РЅРµРЅР° СѓСЃРїРµС€РЅРѕ', 'success');
       } else {
-        addToast(`Ошибка: ${result.errorMessage || 'Неизвестная ошибка'}`, 'error');
+        addToast(`РћС€РёР±РєР°: ${result.errorMessage || 'РќРµРёР·РІРµСЃС‚РЅР°СЏ РѕС€РёР±РєР°'}`, 'error');
       }
     } catch (error: any) {
       addToast(error.message, 'error');
@@ -272,41 +275,45 @@ export function Integrations() {
       const updated = await api.updateIntegration(integration.id, { enabled: nextEnabled });
       const mergedUpdated = { ...integration, ...updated, id: integration.id };
       setIntegrations((prev) => prev.map((item) => (item.id === integration.id ? mergedUpdated : item)));
-      addToast(nextEnabled ? 'Интеграция включена' : 'Интеграция выключена', 'success');
+      addToast(nextEnabled ? 'РРЅС‚РµРіСЂР°С†РёСЏ РІРєР»СЋС‡РµРЅР°' : 'РРЅС‚РµРіСЂР°С†РёСЏ РІС‹РєР»СЋС‡РµРЅР°', 'success');
     } catch (error: any) {
-      addToast(error.message || 'Не удалось обновить статус интеграции', 'error');
+      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ РёРЅС‚РµРіСЂР°С†РёРё', 'error');
     } finally {
       setTogglingIntegrationId(null);
     }
   };
 
-  const normalizeImportedIntegration = (raw: any): Partial<Integration> => {
+  const normalizeImportedIntegration = (raw: any, index: number): { payload: Partial<Integration>; drafted: boolean } => {
     const triggerType = raw.triggerType === 'polling' ? 'polling' : 'webhook';
+    const name = String(raw.name ?? '').trim();
+    const drafted = !name;
     return {
-      name: String(raw.name ?? '').trim(),
-      enabled: raw.enabled ?? true,
-      triggerType,
-      triggerCondition: String(raw.triggerCondition ?? '').trim(),
-      pollingUrl: raw.pollingUrl != null ? String(raw.pollingUrl) : undefined,
-      pollingMethod: raw.pollingMethod || 'GET',
-      pollingHeaders: raw.pollingHeaders != null ? String(raw.pollingHeaders) : undefined,
-      pollingBody: raw.pollingBody != null ? String(raw.pollingBody) : undefined,
-      pollingInterval: Number(raw.pollingInterval) || 60,
-      pollingCondition: raw.pollingCondition != null ? String(raw.pollingCondition) : undefined,
-      // Для webhook триггера поле pollingContinueAfterMatch должно быть null в БД
-      pollingContinueAfterMatch: triggerType === 'webhook' ? undefined : (raw.pollingContinueAfterMatch ?? false),
-      actionUrl: raw.actionUrl != null ? String(raw.actionUrl) : undefined,
-      actionMethod: raw.actionMethod || 'POST',
-      actionHeaders: raw.actionHeaders != null ? String(raw.actionHeaders) : undefined,
-      actionBody: raw.actionBody != null ? String(raw.actionBody) : undefined,
-      timeoutSec: Number(raw.timeoutSec) || 30,
-      sendToTelegram: raw.sendToTelegram ?? false,
-      chatId: raw.chatId != null ? String(raw.chatId) : undefined,
-      botToken: raw.botToken ? String(raw.botToken) : undefined,
-      messageTemplate: raw.messageTemplate ? String(raw.messageTemplate) : undefined,
+      payload: {
+        name: name || `Черновик интеграции ${index + 1}`,
+        enabled: drafted ? false : (raw.enabled ?? true),
+        triggerType,
+        triggerCondition: String(raw.triggerCondition ?? '').trim(),
+        pollingUrl: raw.pollingUrl != null ? String(raw.pollingUrl) : undefined,
+        pollingMethod: raw.pollingMethod || 'GET',
+        pollingHeaders: raw.pollingHeaders != null ? String(raw.pollingHeaders) : undefined,
+        pollingBody: raw.pollingBody != null ? String(raw.pollingBody) : undefined,
+        pollingInterval: Number(raw.pollingInterval) || 60,
+        pollingCondition: raw.pollingCondition != null ? String(raw.pollingCondition) : undefined,
+        // Для webhook триггера поле pollingContinueAfterMatch должно быть null в БД
+        pollingContinueAfterMatch: triggerType === 'webhook' ? undefined : (raw.pollingContinueAfterMatch ?? false),
+        actionUrl: raw.actionUrl != null ? String(raw.actionUrl) : undefined,
+        actionMethod: raw.actionMethod || 'POST',
+        actionHeaders: raw.actionHeaders != null ? String(raw.actionHeaders) : undefined,
+        actionBody: raw.actionBody != null ? String(raw.actionBody) : undefined,
+        timeoutSec: Number(raw.timeoutSec) || 30,
+        sendToTelegram: raw.sendToTelegram ?? false,
+        chatId: raw.chatId != null ? String(raw.chatId) : undefined,
+        botToken: raw.botToken ? String(raw.botToken) : undefined,
+        messageTemplate: raw.messageTemplate ? String(raw.messageTemplate) : undefined,
+      },
+      drafted,
     };
   };
-
   const handleImportIntegrations = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -315,18 +322,15 @@ export function Integrations() {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.integrations) ? parsed.integrations : [];
-      if (!items.length) throw new Error('Файл не содержит интеграций');
+      if (!items.length) throw new Error('Р¤Р°Р№Р» РЅРµ СЃРѕРґРµСЂР¶РёС‚ РёРЅС‚РµРіСЂР°С†РёР№');
 
       let created = 0;
       let failed = 0;
+      let draftedCount = 0;
       let lastError = '';
-      for (const item of items) {
-        const payload = normalizeImportedIntegration(item);
-        if (!payload.name) {
-          failed += 1;
-          if (!lastError) lastError = 'Не заполнено название';
-          continue;
-        }
+      for (const [index, item] of items.entries()) {
+        const { payload, drafted } = normalizeImportedIntegration(item, index);
+        if (drafted) draftedCount += 1;
         try {
           const createdIntegration = await api.createIntegration(payload);
           created += 1;
@@ -339,13 +343,15 @@ export function Integrations() {
 
       const messageText =
         failed === 0
-          ? `Импортировано интеграций: ${created}`
+          ? draftedCount > 0
+            ? `Импортировано интеграций: ${created}, черновиков: ${draftedCount}`
+            : `Импортировано интеграций: ${created}`
           : lastError
-            ? `Импортировано: ${created}, пропущено: ${failed}. Причина: ${lastError}`
-            : `Импортировано: ${created}, пропущено: ${failed}`;
+            ? `Импортировано: ${created}, черновиков: ${draftedCount}, ошибок: ${failed}. Причина: ${lastError}`
+            : `Импортировано: ${created}, черновиков: ${draftedCount}, ошибок: ${failed}`;
       addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      addToast(error.message || 'Ошибка импорта интеграций', 'error');
+      addToast(error.message || 'РћС€РёР±РєР° РёРјРїРѕСЂС‚Р° РёРЅС‚РµРіСЂР°С†РёР№', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -357,7 +363,7 @@ export function Integrations() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">🔗 Интегратор</h2>
+        <h2 className="text-xl font-semibold">рџ”— РРЅС‚РµРіСЂР°С‚РѕСЂ</h2>
         <div className="flex items-center gap-2">
           {canEdit && selectedIntegration && !editingId && (
             <>
@@ -365,28 +371,28 @@ export function Integrations() {
                 onClick={() => handleRun(selectedIntegration.id)}
                 disabled={running}
                 className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)] disabled:opacity-50"
-                title={running ? 'Выполняется...' : 'Запустить'}
+                title={running ? 'Р’С‹РїРѕР»РЅСЏРµС‚СЃСЏ...' : 'Р—Р°РїСѓСЃС‚РёС‚СЊ'}
               >
                 <Play className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleEdit(selectedIntegration)}
                 className="icon-button"
-                title="Редактировать"
+                title="Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ"
               >
                 <Pencil className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDuplicate(selectedIntegration)}
                 className="icon-button"
-                title="Дублировать"
+                title="Р”СѓР±Р»РёСЂРѕРІР°С‚СЊ"
               >
                 <Copy className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDelete(selectedIntegration.id)}
                 className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                title="Удалить"
+                title="РЈРґР°Р»РёС‚СЊ"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -396,7 +402,7 @@ export function Integrations() {
                   const integration = integrations.find(i => i.id === selectedId);
                   if (integration) handleToggleIntegrationEnabled(integration);
                 }}
-                title={integrations.find(i => i.id === selectedId)?.enabled ? 'Выключить интеграцию' : 'Включить интеграцию'}
+                title={integrations.find(i => i.id === selectedId)?.enabled ? 'Р’С‹РєР»СЋС‡РёС‚СЊ РёРЅС‚РµРіСЂР°С†РёСЋ' : 'Р’РєР»СЋС‡РёС‚СЊ РёРЅС‚РµРіСЂР°С†РёСЋ'}
               />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
@@ -404,7 +410,7 @@ export function Integrations() {
           <button
             onClick={loadIntegrations}
             className="icon-button"
-            title="Обновить"
+            title="РћР±РЅРѕРІРёС‚СЊ"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -421,21 +427,21 @@ export function Integrations() {
                 onClick={() => importInputRef.current?.click()}
                 disabled={importing}
                 className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
-                title="Импорт интеграций"
+                title="РРјРїРѕСЂС‚ РёРЅС‚РµРіСЂР°С†РёР№"
               >
                 <Upload className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setExportModalOpen(true)}
                 className="icon-button"
-                title="Экспорт интеграций"
+                title="Р­РєСЃРїРѕСЂС‚ РёРЅС‚РµРіСЂР°С†РёР№"
               >
                 <Download className="h-4 w-4" />
               </button>
               <button
                 onClick={handleStartCreate}
                 className="icon-button"
-                title="Создать"
+                title="РЎРѕР·РґР°С‚СЊ"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -449,7 +455,7 @@ export function Integrations() {
         <div className="split-left">
           <div className="panel">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список интеграций</h3>
+              <h3 className="text-sm font-semibold">рџ“‹ РЎРїРёСЃРѕРє РёРЅС‚РµРіСЂР°С†РёР№</h3>
               <span className="text-xs text-[hsl(var(--muted-foreground))]">{integrations.length}</span>
             </div>
             {loading ? (
@@ -457,15 +463,15 @@ export function Integrations() {
                 <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
               </div>
             ) : integrations.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Интеграции не найдены</p>
+              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">РРЅС‚РµРіСЂР°С†РёРё РЅРµ РЅР°Р№РґРµРЅС‹</p>
             ) : (
               <div className="entity-list-scroll scrollbar-thin">
                 <table className="table-basic w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Название</th>
-                      <th className="px-2 py-2">Триггер</th>
-                      <th className="px-2 py-2">Статус</th>
+                      <th className="px-2 py-2">РќР°Р·РІР°РЅРёРµ</th>
+                      <th className="px-2 py-2">РўСЂРёРіРіРµСЂ</th>
+                      <th className="px-2 py-2">РЎС‚Р°С‚СѓСЃ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -477,11 +483,20 @@ export function Integrations() {
                           selectedId === integration.id ? 'bg-[hsl(var(--accent))]' : ''
                         }`}
                       >
-                        <td className="px-2 py-2 font-medium">{integration.name}</td>
-                        <td className="px-2 py-2 text-xs">
-                          {integration.triggerType === 'webhook' ? '📥 Webhook' : '🔄 Polling'}
+                        <td className="px-2 py-2 font-medium">
+                          <span className="inline-flex items-center gap-2">
+                            <span>{integration.name}</span>
+                            {isDraftIntegration(integration) && (
+                              <span className="rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                                Черновик
+                              </span>
+                            )}
+                          </span>
                         </td>
-                        <td className="px-2 py-2">{integration.enabled ? '✅ Вкл' : '⏸️ Выкл'}</td>
+                        <td className="px-2 py-2 text-xs">
+                          {integration.triggerType === 'webhook' ? 'рџ“Ґ Webhook' : 'рџ”„ Polling'}
+                        </td>
+                        <td className="px-2 py-2">{integration.enabled ? 'вњ… Р’РєР»' : 'вЏёпёЏ Р’С‹РєР»'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -496,21 +511,21 @@ export function Integrations() {
             {editingId !== null ? (
               <>
                 <h3 className="mb-4 text-lg font-semibold">
-                  {editingId === -1 ? 'Создание интеграции' : 'Редактирование'}
+                  {editingId === -1 ? 'РЎРѕР·РґР°РЅРёРµ РёРЅС‚РµРіСЂР°С†РёРё' : 'Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ'}
                 </h3>
                 <form className="entity-edit-form" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
+                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РќР°Р·РІР°РЅРёРµ</label>
                       <input
                         style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
-                        placeholder="Моя интеграция"
+                        placeholder="РњРѕСЏ РёРЅС‚РµРіСЂР°С†РёСЏ"
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Тип триггера</label>
+                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РўРёРї С‚СЂРёРіРіРµСЂР°</label>
                       <select
                         style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                         value={form.triggerType}
@@ -519,14 +534,14 @@ export function Integrations() {
                           setForm({
                             ...form,
                             triggerType: newTriggerType,
-                            // Сбрасываем pollingContinueAfterMatch при переключении на webhook
+                            // РЎР±СЂР°СЃС‹РІР°РµРј pollingContinueAfterMatch РїСЂРё РїРµСЂРµРєР»СЋС‡РµРЅРёРё РЅР° webhook
                             pollingContinueAfterMatch: newTriggerType === 'webhook' ? false : form.pollingContinueAfterMatch,
                           });
                           setSelectedSourceId('');
                         }}
                       >
-                        <option value="webhook">Webhook (входящий)</option>
-                        <option value="polling">Polling (опрос)</option>
+                        <option value="webhook">Webhook (РІС…РѕРґСЏС‰РёР№)</option>
+                        <option value="polling">Polling (РѕРїСЂРѕСЃ)</option>
                       </select>
                     </div>
                   </div>
@@ -535,26 +550,26 @@ export function Integrations() {
                     <>
                       {rules.length > 0 && (
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>📥 Использовать Webhook</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>рџ“Ґ РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ Webhook</label>
                           <select
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={selectedSourceId}
                             onChange={(e) => handleApplySource(e.target.value)}
                           >
-                            <option value="">— Настроить вручную —</option>
+                            <option value="">вЂ” РќР°СЃС‚СЂРѕРёС‚СЊ РІСЂСѓС‡РЅСѓСЋ вЂ”</option>
                             {rules.map((rule) => (
                               <option key={rule.id} value={rule.id}>
-                                {rule.name} {rule.enabled ? '✅' : '⏸️'}
+                                {rule.name} {rule.enabled ? 'вњ…' : 'вЏёпёЏ'}
                               </option>
                             ))}
                           </select>
                           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                            Выберите существующий Webhook для копирования настроек
+                            Р’С‹Р±РµСЂРёС‚Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ Webhook РґР»СЏ РєРѕРїРёСЂРѕРІР°РЅРёСЏ РЅР°СЃС‚СЂРѕРµРє
                           </p>
                         </div>
                       )}
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РЈСЃР»РѕРІРёРµ СЃСЂР°Р±Р°С‚С‹РІР°РЅРёСЏ</label>
                         <input
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                           value={form.triggerCondition}
@@ -562,7 +577,7 @@ export function Integrations() {
                           placeholder='payload.type === "order"'
                         />
                         <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                          JavaScript-выражение. Доступна переменная <code>payload</code>
+                          JavaScript-РІС‹СЂР°Р¶РµРЅРёРµ. Р”РѕСЃС‚СѓРїРЅР° РїРµСЂРµРјРµРЅРЅР°СЏ <code>payload</code>
                         </p>
                       </div>
                     </>
@@ -572,27 +587,27 @@ export function Integrations() {
                     <>
                       {polls.length > 0 && (
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>🔄 Использовать пуллинг</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>рџ”„ РСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїСѓР»Р»РёРЅРі</label>
                           <select
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={selectedSourceId}
                             onChange={(e) => handleApplySource(e.target.value)}
                           >
-                            <option value="">— Настроить вручную —</option>
+                            <option value="">вЂ” РќР°СЃС‚СЂРѕРёС‚СЊ РІСЂСѓС‡РЅСѓСЋ вЂ”</option>
                             {polls.map((poll) => (
                               <option key={poll.id} value={poll.id}>
-                                {poll.name} {poll.enabled ? '✅' : '⏸️'}
+                                {poll.name} {poll.enabled ? 'вњ…' : 'вЏёпёЏ'}
                               </option>
                             ))}
                           </select>
                           <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                            Выберите существующий пуллинг для копирования настроек
+                            Р’С‹Р±РµСЂРёС‚Рµ СЃСѓС‰РµСЃС‚РІСѓСЋС‰РёР№ РїСѓР»Р»РёРЅРі РґР»СЏ РєРѕРїРёСЂРѕРІР°РЅРёСЏ РЅР°СЃС‚СЂРѕРµРє
                           </p>
                         </div>
                       )}
                       <div className="grid grid-cols-3 gap-4">
                         <div className="col-span-2">
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL для опроса</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL РґР»СЏ РѕРїСЂРѕСЃР°</label>
                           <input
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.pollingUrl}
@@ -601,7 +616,7 @@ export function Integrations() {
                           />
                         </div>
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РњРµС‚РѕРґ</label>
                           <select
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                             value={form.pollingMethod}
@@ -615,7 +630,7 @@ export function Integrations() {
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РРЅС‚РµСЂРІР°Р» (СЃРµРє)</label>
                           <input
                             type="number"
                             min={5}
@@ -625,7 +640,7 @@ export function Integrations() {
                           />
                         </div>
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
+                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РўР°Р№РјР°СѓС‚ (СЃРµРє)</label>
                           <input
                             type="number"
                             min={1}
@@ -658,7 +673,7 @@ export function Integrations() {
                         </div>
                       )}
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РЈСЃР»РѕРІРёРµ СЃСЂР°Р±Р°С‚С‹РІР°РЅРёСЏ</label>
                         <input
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                           value={form.pollingCondition}
@@ -674,14 +689,14 @@ export function Integrations() {
                             onChange={(e) => setForm({ ...form, pollingContinueAfterMatch: e.target.checked })}
                             style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                           />
-                          Продолжать после совпадения
+                          РџСЂРѕРґРѕР»Р¶Р°С‚СЊ РїРѕСЃР»Рµ СЃРѕРІРїР°РґРµРЅРёСЏ
                         </label>
                       </div>
                     </>
                   )}
 
                   <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
-                    <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>🚀 Action (вызов API)</h4>
+                    <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>рџљЂ Action (РІС‹Р·РѕРІ API)</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
@@ -693,7 +708,7 @@ export function Integrations() {
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РњРµС‚РѕРґ</label>
                         <select
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                           value={form.actionMethod}
@@ -717,7 +732,7 @@ export function Integrations() {
                         placeholder='{"Authorization": "Bearer token", "X-Api-Key": "key"}'
                       />
                       <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                        Дополнительные заголовки запроса. Content-Type добавляется автоматически.
+                        Р”РѕРїРѕР»РЅРёС‚РµР»СЊРЅС‹Рµ Р·Р°РіРѕР»РѕРІРєРё Р·Р°РїСЂРѕСЃР°. Content-Type РґРѕР±Р°РІР»СЏРµС‚СЃСЏ Р°РІС‚РѕРјР°С‚РёС‡РµСЃРєРё.
                       </p>
                     </div>
                     {form.actionMethod !== 'GET' && (
@@ -731,7 +746,7 @@ export function Integrations() {
                           placeholder={'{"orderId": "{{payload.id}}"}'}
                         />
                         <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                          Используйте <code>{'{{payload.field}}'}</code> для подстановки данных
+                          РСЃРїРѕР»СЊР·СѓР№С‚Рµ <code>{'{{payload.field}}'}</code> РґР»СЏ РїРѕРґСЃС‚Р°РЅРѕРІРєРё РґР°РЅРЅС‹С…
                         </p>
                       </div>
                     )}
@@ -747,7 +762,7 @@ export function Integrations() {
                         style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                       />
                       <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-                        📱 Telegram уведомление
+                        рџ“± Telegram СѓРІРµРґРѕРјР»РµРЅРёРµ
                       </label>
                     </div>
                     
@@ -764,18 +779,18 @@ export function Integrations() {
                             />
                           </div>
                           <div>
-                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (опц.)</label>
+                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (РѕРїС†.)</label>
                             <input
                               style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                               value={form.botToken}
                               onChange={(e) => setForm({ ...form, botToken: e.target.value })}
-                              placeholder="Глобальный токен"
+                              placeholder="Р“Р»РѕР±Р°Р»СЊРЅС‹Р№ С‚РѕРєРµРЅ"
                             />
                           </div>
                         </div>
                         <div style={{ marginTop: '16px' }}>
                           <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                            Шаблон сообщения
+                            РЁР°Р±Р»РѕРЅ СЃРѕРѕР±С‰РµРЅРёСЏ
                             <TemplateHelp context="integration" />
                           </label>
                           <textarea
@@ -783,7 +798,7 @@ export function Integrations() {
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                             value={form.messageTemplate}
                             onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
-                            placeholder="${payload.name} — ${payload.status}"
+                            placeholder="${payload.name} вЂ” ${payload.status}"
                           />
                         </div>
                       </div>
@@ -803,7 +818,7 @@ export function Integrations() {
                       type="submit"
                       style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                     >
-                      Сохранить
+                      РЎРѕС…СЂР°РЅРёС‚СЊ
                     </button>
                     <button
                       type="button"
@@ -813,7 +828,7 @@ export function Integrations() {
                       }}
                       style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                     >
-                      Отмена
+                      РћС‚РјРµРЅР°
                     </button>
                   </div>
                 </form>
@@ -822,16 +837,16 @@ export function Integrations() {
               <div>
                 <div className="space-y-4">
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация об интеграции</h4>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РРЅС„РѕСЂРјР°С†РёСЏ РѕР± РёРЅС‚РµРіСЂР°С†РёРё</h4>
                     <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                       <div style={{ marginBottom: '12px' }}>
                         <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.id}</code>
                       </div>
                       <div style={{ marginBottom: '12px' }}>
-                        <strong>Название:</strong> {selectedIntegration.name}
+                        <strong>РќР°Р·РІР°РЅРёРµ:</strong> {selectedIntegration.name}
                       </div>
                       <div style={{ marginBottom: '12px' }}>
-                        <strong>Статус:</strong>{' '}
+                        <strong>РЎС‚Р°С‚СѓСЃ:</strong>{' '}
                         <span
                           style={{ padding: '4px 8px' }}
                           className={`rounded text-xs ${
@@ -840,13 +855,13 @@ export function Integrations() {
                               : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
                           }`}
                         >
-                          {selectedIntegration.enabled ? '✅ Включена' : '⏸️ Отключена'}
+                          {selectedIntegration.enabled ? 'вњ… Р’РєР»СЋС‡РµРЅР°' : 'вЏёпёЏ РћС‚РєР»СЋС‡РµРЅР°'}
                         </span>
                       </div>
                       <div>
-                        <strong>Тип триггера:</strong>{' '}
+                        <strong>РўРёРї С‚СЂРёРіРіРµСЂР°:</strong>{' '}
                         <span style={{ padding: '4px 8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)] text-xs">
-                          {selectedIntegration.triggerType === 'webhook' ? '📥 Webhook' : '🔄 Polling'}
+                          {selectedIntegration.triggerType === 'webhook' ? 'рџ“Ґ Webhook' : 'рџ”„ Polling'}
                         </span>
                       </div>
                     </div>
@@ -856,7 +871,7 @@ export function Integrations() {
                   {selectedIntegration.triggerType === 'webhook' ? (
                     selectedIntegration.triggerCondition && (
                       <div>
-                        <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие срабатывания</h4>
+                        <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РЈСЃР»РѕРІРёРµ СЃСЂР°Р±Р°С‚С‹РІР°РЅРёСЏ</h4>
                         <div style={{ padding: '16px' }} className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
                           <code className="block whitespace-pre-wrap break-words text-sm">{selectedIntegration.triggerCondition}</code>
                         </div>
@@ -864,7 +879,7 @@ export function Integrations() {
                     )
                   ) : (
                     <div>
-                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки Polling</h4>
+                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РќР°СЃС‚СЂРѕР№РєРё Polling</h4>
                       <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                         {selectedIntegration.pollingUrl && (
                           <div>
@@ -876,17 +891,17 @@ export function Integrations() {
                         )}
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <strong>Интервал:</strong>{' '}
+                            <strong>РРЅС‚РµСЂРІР°Р»:</strong>{' '}
                             <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.pollingInterval || 60}s</code>
                           </div>
                           <div>
-                            <strong>Таймаут:</strong>{' '}
+                            <strong>РўР°Р№РјР°СѓС‚:</strong>{' '}
                             <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.timeoutSec || 30}s</code>
                           </div>
                         </div>
                         {selectedIntegration.pollingCondition && (
                           <div>
-                            <strong>Условие:</strong>
+                            <strong>РЈСЃР»РѕРІРёРµ:</strong>
                             <div style={{ padding: '12px', marginTop: '8px' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
                               <code className="text-sm break-all">{selectedIntegration.pollingCondition}</code>
                             </div>
@@ -898,7 +913,7 @@ export function Integrations() {
 
                   {selectedIntegration.actionUrl && (
                     <div>
-                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">🚀 Action (API)</h4>
+                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">рџљЂ Action (API)</h4>
                       <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                         <div>
                           <strong>URL:</strong>
@@ -929,10 +944,10 @@ export function Integrations() {
                   )}
 
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">📱 Telegram уведомление</h4>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">рџ“± Telegram СѓРІРµРґРѕРјР»РµРЅРёРµ</h4>
                     <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                       <div>
-                        <strong>Статус:</strong>{' '}
+                        <strong>РЎС‚Р°С‚СѓСЃ:</strong>{' '}
                         <span
                           style={{ padding: '4px 8px' }}
                           className={`rounded text-xs ${
@@ -941,7 +956,7 @@ export function Integrations() {
                               : 'bg-[hsl(var(--muted)_/_0.3)] text-[hsl(var(--muted-foreground))]'
                           }`}
                         >
-                          {selectedIntegration.sendToTelegram ? '✅ Включено' : '⏸️ Отключено'}
+                          {selectedIntegration.sendToTelegram ? 'вњ… Р’РєР»СЋС‡РµРЅРѕ' : 'вЏёпёЏ РћС‚РєР»СЋС‡РµРЅРѕ'}
                         </span>
                       </div>
                       {selectedIntegration.sendToTelegram && (
@@ -955,12 +970,12 @@ export function Integrations() {
                           {selectedIntegration.botToken && (
                             <div>
                               <strong>Bot Token:</strong>{' '}
-                              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***настроен***</code>
+                              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***РЅР°СЃС‚СЂРѕРµРЅ***</code>
                             </div>
                           )}
                           {selectedIntegration.messageTemplate && (
                             <div>
-                              <strong>Шаблон сообщения:</strong>
+                              <strong>РЁР°Р±Р»РѕРЅ СЃРѕРѕР±С‰РµРЅРёСЏ:</strong>
                               <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
                                 {selectedIntegration.messageTemplate}
                               </div>
@@ -974,13 +989,13 @@ export function Integrations() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
-                <p className="mb-4">Выберите интеграцию или создайте новую</p>
+                <p className="mb-4">Р’С‹Р±РµСЂРёС‚Рµ РёРЅС‚РµРіСЂР°С†РёСЋ РёР»Рё СЃРѕР·РґР°Р№С‚Рµ РЅРѕРІСѓСЋ</p>
                 <button
                   onClick={handleStartCreate}
                   className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
                 >
                   <Plus className="h-4 w-4" />
-                  Создать интеграцию
+                  РЎРѕР·РґР°С‚СЊ РёРЅС‚РµРіСЂР°С†РёСЋ
                 </button>
               </div>
             )}
@@ -992,14 +1007,16 @@ export function Integrations() {
       <ExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        title="Экспорт интеграций"
-        description="Выберите интеграции для экспорта"
+        title="Р­РєСЃРїРѕСЂС‚ РёРЅС‚РµРіСЂР°С†РёР№"
+        description="Р’С‹Р±РµСЂРёС‚Рµ РёРЅС‚РµРіСЂР°С†РёРё РґР»СЏ СЌРєСЃРїРѕСЂС‚Р°"
         items={integrations.map((i) => ({ id: i.id, name: i.name, enabled: i.enabled }))}
         loading={loading}
         exportFileName="integrations-export.json"
         exportType="integrations"
-        onExportSuccess={(count) => addToast(`Экспортировано интеграций: ${count}`, 'success')}
+        onExportSuccess={(count) => addToast(`Р­РєСЃРїРѕСЂС‚РёСЂРѕРІР°РЅРѕ РёРЅС‚РµРіСЂР°С†РёР№: ${count}`, 'success')}
       />
     </div>
   );
 }
+
+
