@@ -1043,7 +1043,7 @@ export function Bots() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">
+            <div className="flex min-h-[420px] w-full flex-col items-center justify-center text-center text-[hsl(var(--muted-foreground))]">
               <p className="mb-4">Выберите бота слева или создайте нового</p>
               <button
                 onClick={handleStartCreate}

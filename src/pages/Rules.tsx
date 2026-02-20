@@ -432,7 +432,7 @@ export function Rules() {
               toggling={togglingRuleId === selectedRuleId}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
+            <div className="flex min-h-[420px] w-full flex-col items-center justify-center text-center text-[hsl(var(--muted-foreground))]">
               <p className="mb-4">Выберите Webhook из списка слева для редактирования или просмотра</p>
               <button
                 onClick={handleStartCreate}
