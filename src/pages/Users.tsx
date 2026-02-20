@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router';
 import { api, User, Account } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Eye, Plus, Search, Trash2, UserRound } from 'lucide-react';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { useToast } from '../components/ToastNotification';
 
 type Mode = 'view' | 'create' | 'profile';
@@ -141,14 +140,6 @@ export function Users() {
         <div className="flex flex-col gap-2">
           <div>
             <h2 className="text-xl font-semibold">Пользователи</h2>
-            <div className="mt-1">
-              <Breadcrumb
-                items={[
-                  { label: 'Главная', path: '/' },
-                  { label: 'Пользователи', active: true },
-                ]}
-              />
-            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

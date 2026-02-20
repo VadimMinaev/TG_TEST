@@ -3,7 +3,6 @@ import { Link } from 'react-router';
 import { api, Reminder, ReminderLog } from '../lib/api';
 import { useToast } from '../components/ToastNotification';
 import { useAuth } from '../lib/auth-context';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { Calendar, Pencil, RefreshCw, Settings, Trash2 } from 'lucide-react';
@@ -237,14 +236,6 @@ export function Reminders() {
         <div className="flex flex-col gap-2">
           <div>
             <h2 className="text-xl font-semibold">⏰ Напоминания</h2>
-            <div className="mt-1">
-              <Breadcrumb
-                items={[
-                  { label: 'Главная', path: '/' },
-                  { label: 'Напоминания', active: true },
-                ]}
-              />
-            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

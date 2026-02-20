@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, Integration, IntegrationRun } from '../lib/api';
 import { RefreshCw, Trash2 } from 'lucide-react';
-import { Breadcrumb } from '../components/Breadcrumb';
 
 export function IntegrationHistory() {
   const [runs, setRuns] = useState<IntegrationRun[]>([]);
@@ -65,18 +64,10 @@ export function IntegrationHistory() {
 
   return (
     <div className="card">
-      <div className="card-header entity-page-header-sticky">
+      <div className="card-header">
         <div className="flex flex-col gap-2">
           <div>
             <h2 className="text-xl font-semibold">📜 История интеграций</h2>
-            <div className="mt-1">
-              <Breadcrumb 
-                items={[
-                  { label: 'Главная', path: '/' },
-                  { label: 'Ист. интегр.', active: true }
-                ]} 
-              />
-            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
