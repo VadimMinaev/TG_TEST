@@ -301,6 +301,8 @@ if (process.env.DATABASE_URL) {
                     language_is_set BOOLEAN DEFAULT false,
                     timezone VARCHAR(64) DEFAULT 'UTC',
                     timezone_is_set BOOLEAN DEFAULT false,
+                    quiet_hours_start SMALLINT DEFAULT 23,
+                    quiet_hours_end SMALLINT DEFAULT 7,
                     is_bot BOOLEAN DEFAULT false,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -309,6 +311,8 @@ if (process.env.DATABASE_URL) {
             await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS language_is_set BOOLEAN DEFAULT false`);
             await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) DEFAULT 'UTC'`);
             await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS timezone_is_set BOOLEAN DEFAULT false`);
+            await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS quiet_hours_start SMALLINT DEFAULT 23`);
+            await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS quiet_hours_end SMALLINT DEFAULT 7`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_telegram_id ON telegram_users(telegram_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_username ON telegram_users(username) WHERE username IS NOT NULL`);
 
@@ -3144,6 +3148,29 @@ async function setUserLanguage(telegramUserId, languageCode) {
     }
 }
 
+async function setUserQuietHours(telegramUserId, startHour, endHour) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return { success: false, error: 'Database not available' };
+    }
+    const start = parseInt(String(startHour), 10);
+    const end = parseInt(String(endHour), 10);
+    if (!Number.isInteger(start) || !Number.isInteger(end) || start < 0 || start > 23 || end < 0 || end > 23) {
+        return { success: false, error: 'Invalid quiet hours' };
+    }
+    try {
+        await db.query(
+            `UPDATE telegram_users
+             SET quiet_hours_start = $1, quiet_hours_end = $2, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $3`,
+            [start, end, telegramUserId]
+        );
+        return { success: true };
+    } catch (err) {
+        console.error('[Reminder] Error updating quiet hours:', err);
+        return { success: false, error: err.message };
+    }
+}
+
 async function setUserTimeZone(telegramUserId, timeZone) {
     if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
         return { success: false, error: 'Database not available' };
@@ -3850,6 +3877,52 @@ function nextWeekdayAt(weekday, hour, minute, timeZone = 'UTC') {
     );
 }
 
+function isInQuietHoursInTimeZone(date, timeZone, quietStart, quietEnd) {
+    const start = Number(quietStart);
+    const end = Number(quietEnd);
+    if (!Number.isInteger(start) || !Number.isInteger(end)) return false;
+    const hour = getTimeZoneParts(date, timeZone).hour;
+    if (start === end) return true;
+    if (start < end) return hour >= start && hour < end;
+    return hour >= start || hour < end;
+}
+
+function nextAllowedTimeAfterQuiet(date, timeZone, quietStart, quietEnd) {
+    const start = Number(quietStart);
+    const end = Number(quietEnd);
+    const local = getTimeZoneParts(date, timeZone);
+    let y = local.year;
+    let m = local.month;
+    let d = local.day;
+    const h = local.hour;
+
+    if (start === end) {
+        // fully quiet day: fallback next day at 09:00
+        const nextDay = new Date(Date.UTC(y, m - 1, d + 1, 0, 0, 0));
+        return zonedDateTimeToUtc(nextDay.getUTCFullYear(), nextDay.getUTCMonth() + 1, nextDay.getUTCDate(), 9, 0, timeZone);
+    }
+
+    if (start < end) {
+        if (h >= start && h < end) {
+            return zonedDateTimeToUtc(y, m, d, end, 0, timeZone);
+        }
+        return date;
+    }
+
+    // quiet window crosses midnight (e.g. 23 -> 7)
+    if (h >= start) {
+        const nextDay = new Date(Date.UTC(y, m - 1, d + 1, 0, 0, 0));
+        y = nextDay.getUTCFullYear();
+        m = nextDay.getUTCMonth() + 1;
+        d = nextDay.getUTCDate();
+        return zonedDateTimeToUtc(y, m, d, end, 0, timeZone);
+    }
+    if (h < end) {
+        return zonedDateTimeToUtc(y, m, d, end, 0, timeZone);
+    }
+    return date;
+}
+
 function normalizeLanguageInput(input) {
     const value = String(input || '').trim().toLowerCase();
     if (!value) return null;
@@ -4023,7 +4096,7 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
     if (!isLanguageSelectedForUser(telegramUser) && !onboardingAllowed.includes(command)) {
         const botToken = await getReminderBotToken();
         pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        await sendTelegramMessage(
+        await sendLanguageSelectionPrompt(
             botToken,
             chatId,
             '⚠️ Перед использованием бота нужно выбрать язык.\n\nОтправьте:\nru\nили\nen\n\nИли командой:\n/settings language ru'
@@ -4034,7 +4107,7 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
     if (!isTimezoneSelectedForUser(telegramUser) && !onboardingAllowed.includes(command)) {
         const botToken = await getReminderBotToken();
         pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        await sendTelegramMessage(
+        await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
             '⚠️ Перед использованием бота нужно выбрать часовой пояс.\n\nОтправьте, например:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York\n\nИли командой:\n/settings timezone Europe/Moscow'
@@ -4096,16 +4169,7 @@ en
 
 Или командой:
 /settings language ru`;
-        await sendTelegramMessage(botToken, chatId, message, {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Русский', callback_data: 'setlang:ru' },
-                        { text: 'English', callback_data: 'setlang:en' }
-                    ]
-                ]
-            }
-        });
+        await sendLanguageSelectionPrompt(botToken, chatId, message);
         return { ok: true };
     }
 
@@ -4122,23 +4186,7 @@ America/New_York
 
 Или командой:
 /settings timezone Europe/Moscow`;
-        await sendTelegramMessage(botToken, chatId, message, {
-            reply_markup: {
-                inline_keyboard: [
-                    [
-                        { text: 'Europe/Moscow', callback_data: 'settz:Europe/Moscow' },
-                        { text: 'Asia/Almaty', callback_data: 'settz:Asia/Almaty' }
-                    ],
-                    [
-                        { text: 'America/New_York', callback_data: 'settz:America/New_York' },
-                        { text: 'Asia/Tashkent', callback_data: 'settz:Asia/Tashkent' }
-                    ],
-                    [
-                        { text: '✍️ Ввести вручную', callback_data: 'settz:manual' }
-                    ]
-                ]
-            }
-        });
+        await sendTimeZoneSelectionPrompt(botToken, chatId, message);
         return { ok: true };
     }
 
@@ -4241,11 +4289,24 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
     const currentTimeZone = await getUserTimeZone(telegramUser.id);
     const command = String(args?.[0] || '').toLowerCase();
     const value = args?.[1];
+    const value2 = args?.[2];
+
+    if (!command && !isLanguageSelectedForUser(telegramUser)) {
+        pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendLanguageSelectionPrompt(botToken, chatId, 'Выберите язык:');
+        return { ok: true };
+    }
+
+    if (!command && isLanguageSelectedForUser(telegramUser) && !isTimezoneSelectedForUser(telegramUser)) {
+        pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendTimeZoneSelectionPrompt(botToken, chatId, 'Выберите часовой пояс:');
+        return { ok: true };
+    }
 
     if ((command === 'language' || command === 'lang') && value) {
         const normalizedLanguage = normalizeLanguageInput(value);
         if (!normalizedLanguage) {
-            await sendTelegramMessage(
+            await sendLanguageSelectionPrompt(
                 botToken,
                 chatId,
                 `❌ Неверный язык: ${value}\n\nПример:\n/settings language ru\n/settings language en`
@@ -4265,7 +4326,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
 
         if (!isTimezoneSelectedForUser(telegramUser)) {
             pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-            await sendTelegramMessage(
+            await sendTimeZoneSelectionPrompt(
                 botToken,
                 chatId,
                 `✅ Язык обновлен: ${normalizedLanguage}\n\nТеперь выберите часовой пояс, например:\nEurope/Moscow`
@@ -4280,7 +4341,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
     if ((command === 'timezone' || command === 'tz') && value) {
         if (!isLanguageSelectedForUser(telegramUser)) {
             pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-            await sendTelegramMessage(
+            await sendLanguageSelectionPrompt(
                 botToken,
                 chatId,
                 '⚠️ Сначала выберите язык.\nВведите: ru или en\nили /settings language ru'
@@ -4289,7 +4350,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
         }
 
         if (!isValidTimeZone(value)) {
-            await sendTelegramMessage(
+            await sendTimeZoneSelectionPrompt(
                 botToken,
                 chatId,
                 `❌ Неверный часовой пояс: ${value}\n\nПример:\n/settings timezone Europe/Moscow\n/settings timezone Asia/Almaty\n/settings timezone America/New_York`
@@ -4310,10 +4371,23 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
         return { ok: true };
     }
 
+    if ((command === 'quiet' || command === 'sleep') && value && value2) {
+        const saveResult = await setUserQuietHours(telegramUser.id, value, value2);
+        if (!saveResult.success) {
+            await sendTelegramMessage(botToken, chatId, `❌ Не удалось сохранить quiet hours: ${saveResult.error}`);
+            return { ok: true };
+        }
+        telegramUser.quiet_hours_start = parseInt(value, 10);
+        telegramUser.quiet_hours_end = parseInt(value2, 10);
+        await sendTelegramMessage(botToken, chatId, `✅ Тихий режим обновлен: ${value}:00 - ${value2}:00`);
+        return { ok: true };
+    }
+
     const message = `⚙️ Настройки напоминаний
 
 Текущий язык: ${telegramUser.language_code || 'ru'}
 Текущий часовой пояс: ${currentTimeZone}
+Тихий режим: ${telegramUser.quiet_hours_start ?? 23}:00 - ${telegramUser.quiet_hours_end ?? 7}:00
 
 Чтобы изменить язык:
 /settings language ru
@@ -4324,8 +4398,20 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
 /settings timezone Asia/Almaty
 /settings timezone America/New_York
 
+Тихий режим (не присылать в эти часы):
+/settings quiet 23 7
+
 Веб-интерфейс: /web`;
-    await sendTelegramMessage(botToken, chatId, message);
+    await sendTelegramMessage(botToken, chatId, message, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '🌐 Язык', callback_data: 'open:settings:language' },
+                    { text: '🕒 Часовой пояс', callback_data: 'open:settings:timezone' }
+                ]
+            ]
+        }
+    });
     return { ok: true };
 }
 
@@ -4341,7 +4427,7 @@ async function handleCancelCommand(chatId, telegramUser) {
     pendingReminderInput.delete(telegramUser.id);
     pendingReminderConfirmation.delete(telegramUser.id);
     if (pendingLanguageInput.has(telegramUser.id)) {
-        await sendTelegramMessage(
+        await sendLanguageSelectionPrompt(
             botToken,
             chatId,
             '⚠️ Выбор языка обязателен.\nВведите: ru или en'
@@ -4349,7 +4435,7 @@ async function handleCancelCommand(chatId, telegramUser) {
         return { ok: true };
     }
     if (pendingTimezoneInput.has(telegramUser.id)) {
-        await sendTelegramMessage(
+        await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
             '⚠️ Выбор часового пояса обязателен.\nВведите, например: Europe/Moscow'
@@ -4364,7 +4450,7 @@ async function handlePendingLanguageInput(text, chatId, telegramUser) {
     const botToken = await getReminderBotToken();
     const normalizedLanguage = normalizeLanguageInput(text);
     if (!normalizedLanguage) {
-        await sendTelegramMessage(
+        await sendLanguageSelectionPrompt(
             botToken,
             chatId,
             `❌ Неверный язык: ${text}\n\nВведите: ru или en`
@@ -4384,7 +4470,7 @@ async function handlePendingLanguageInput(text, chatId, telegramUser) {
 
     if (!isTimezoneSelectedForUser(telegramUser)) {
         pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        await sendTelegramMessage(
+        await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
             `✅ Язык сохранен: ${normalizedLanguage}\nТеперь выберите часовой пояс, например: Europe/Moscow`
@@ -4400,7 +4486,7 @@ async function handlePendingTimezoneInput(text, chatId, telegramUser) {
     const botToken = await getReminderBotToken();
     const candidate = String(text || '').trim();
     if (!isValidTimeZone(candidate)) {
-        await sendTelegramMessage(
+        await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
             `❌ Неверный часовой пояс: ${candidate}\n\nПримеры корректных значений:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York`
@@ -4542,7 +4628,21 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            `Шаг 2/2: укажите дату/время.\n\nПримеры:\nзавтра в 10\n20 фев 2026 в 11:57\n20 02 26 в 1145`
+            `Шаг 2/2: укажите дату/время.\n\nПримеры:\nзавтра в 10\n20 фев 2026 в 11:57\n20 02 26 в 1145`,
+            {
+                reply_markup: {
+                    inline_keyboard: [
+                        [
+                            { text: 'Сегодня 18:00', callback_data: 'addwhen:today18' },
+                            { text: 'Завтра 10:00', callback_data: 'addwhen:tomorrow10' }
+                        ],
+                        [
+                            { text: '+1 час', callback_data: 'addwhen:plus1h' },
+                            { text: '+1 день', callback_data: 'addwhen:plus1d' }
+                        ]
+                    ]
+                }
+            }
         );
         return { ok: true };
     }
@@ -4557,10 +4657,11 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
 
     if (parsed.error) {
         await logReminderParseFailure(telegramUser.id, chatId, text, parsed.error);
+        const smartHints = `\n\nВарианты:\n• завтра в 10\n• ${new Date().getHours() + 1}00\n• 20 фев 2026 в 11:57`;
         await sendTelegramMessage(
             botToken,
             chatId,
-            `❌ ${parsed.error}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить\nПозвонить маме | 2026-02-21 10:00\nПозвонить в офис завтра в 10\nCall mom tomorrow at 10\n\nДля отмены: /cancel`
+            `❌ ${parsed.error}${smartHints}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить\nПозвонить маме | 2026-02-21 10:00\nПозвонить в офис завтра в 10\nCall mom tomorrow at 10\n\nДля отмены: /cancel`
         );
         return { ok: true };
     }
@@ -4702,9 +4803,29 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         pendingLanguageInput.delete(telegramUser.id);
         if (!isTimezoneSelectedForUser(telegramUser)) {
             pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-            await sendTelegramMessage(botToken, chatId, '✅ Язык сохранен. Теперь выберите часовой пояс (кнопкой или текстом).');
+            await sendTimeZoneSelectionPrompt(botToken, chatId, '✅ Язык сохранен. Теперь выберите часовой пояс.');
         }
         await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Язык сохранен');
+        return { ok: true };
+    }
+
+    if (data === 'open:settings:language') {
+        pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendLanguageSelectionPrompt(botToken, chatId, 'Выберите язык:');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id);
+        return { ok: true };
+    }
+
+    if (data === 'open:settings:timezone') {
+        if (!isLanguageSelectedForUser(telegramUser)) {
+            pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+            await sendLanguageSelectionPrompt(botToken, chatId, 'Сначала выберите язык:');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id);
+            return { ok: true };
+        }
+        pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendTimeZoneSelectionPrompt(botToken, chatId, 'Выберите часовой пояс:');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id);
         return { ok: true };
     }
 
@@ -4730,6 +4851,31 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         pendingTimezoneInput.delete(telegramUser.id);
         await sendTelegramMessage(botToken, chatId, `✅ Часовой пояс сохранен: ${tzValue}`);
         await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Timezone сохранен');
+        return { ok: true };
+    }
+
+    if (data.startsWith('addwhen:')) {
+        const pending = pendingReminderInput.get(telegramUser.id);
+        if (!pending || pending.mode !== 'wizard' || pending.step !== 'when' || !pending.message) {
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Сначала начните /add');
+            return { ok: true };
+        }
+        const key = data.split(':')[1];
+        let inputText = '';
+        if (key === 'today18') inputText = `${pending.message} сегодня в 18:00`;
+        if (key === 'tomorrow10') inputText = `${pending.message} завтра в 10:00`;
+        if (key === 'plus1h') inputText = `${pending.message} через 1 час`;
+        if (key === 'plus1d') inputText = `${pending.message} через 1 день`;
+
+        const userTimeZone = await getUserTimeZone(telegramUser.id);
+        const parsed = parseNaturalLanguageReminder(inputText, userTimeZone);
+        if (parsed.error) {
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Не удалось распознать');
+            return { ok: true };
+        }
+        pendingReminderInput.delete(telegramUser.id);
+        await maybeConfirmOrCreateReminder(parsed, chatId, telegramUser);
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Время выбрано');
         return { ok: true };
     }
 
@@ -4848,6 +4994,39 @@ async function answerTelegramCallbackQuery(botToken, callbackQueryId, text = '')
     }
 }
 
+async function sendLanguageSelectionPrompt(botToken, chatId, text) {
+    return await sendTelegramMessage(botToken, chatId, text, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: 'Русский', callback_data: 'setlang:ru' },
+                    { text: 'English', callback_data: 'setlang:en' }
+                ]
+            ]
+        }
+    });
+}
+
+async function sendTimeZoneSelectionPrompt(botToken, chatId, text) {
+    return await sendTelegramMessage(botToken, chatId, text, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: 'Europe/Moscow', callback_data: 'settz:Europe/Moscow' },
+                    { text: 'Asia/Almaty', callback_data: 'settz:Asia/Almaty' }
+                ],
+                [
+                    { text: 'America/New_York', callback_data: 'settz:America/New_York' },
+                    { text: 'Asia/Tashkent', callback_data: 'settz:Asia/Tashkent' }
+                ],
+                [
+                    { text: '✍️ Ввести вручную', callback_data: 'settz:manual' }
+                ]
+            ]
+        }
+    });
+}
+
 // ----- Reminder Dispatcher Worker -----
 async function processDueReminders() {
     if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return;
@@ -4857,7 +5036,7 @@ async function processDueReminders() {
         
         // Get all due reminders
         const result = await db.query(
-            `SELECT r.*, u.telegram_id, u.username 
+            `SELECT r.*, u.telegram_id, u.username, u.timezone, u.quiet_hours_start, u.quiet_hours_end
              FROM telegram_reminders r
              JOIN telegram_users u ON r.telegram_user_id = u.id
              WHERE r.is_active = true 
@@ -4876,6 +5055,18 @@ async function processDueReminders() {
 
 async function sendDueReminder(reminder) {
     try {
+        const timeZone = isValidTimeZone(reminder.timezone) ? reminder.timezone : 'UTC';
+        const quietStart = reminder.quiet_hours_start ?? 23;
+        const quietEnd = reminder.quiet_hours_end ?? 7;
+        if (isInQuietHoursInTimeZone(new Date(), timeZone, quietStart, quietEnd)) {
+            const deferred = nextAllowedTimeAfterQuiet(new Date(), timeZone, quietStart, quietEnd);
+            await db.query(
+                `UPDATE telegram_reminders SET next_run_at = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+                [deferred, reminder.id]
+            );
+            return;
+        }
+
         const botToken = await getReminderBotToken();
         const messageText = `⏰ Напоминание\n\n📝 ${reminder.message}`;
         const sendResult = await sendTelegramMessage(
