@@ -462,6 +462,33 @@ body {
   flex-direction: column;
 }
 
+.entity-view {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.entity-view-title {
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  color: hsl(var(--muted-foreground));
+}
+
+.entity-view-card {
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  padding: 16px;
+}
+
+.entity-view-card-muted {
+  border-radius: 10px;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / 0.3);
+  padding: 16px;
+}
+
 
 .table-basic th,
 .table-basic td {

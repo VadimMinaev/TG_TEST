@@ -997,10 +997,10 @@ export function Polling() {
             </div>
           ) : selectedPoll ? (
             <div>
-              <div className="space-y-4">
+              <div className="entity-view">
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о задаче</h4>
-                  <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                  <h4 className="entity-view-title">Информация о задаче</h4>
+                  <div className="entity-view-card">
                     <div style={{ marginBottom: '12px' }}>
                       <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.id}</code>
               </div>
@@ -1025,8 +1025,8 @@ export function Polling() {
 
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки опроса</h4>
-                  <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                  <h4 className="entity-view-title">Настройки опроса</h4>
+                  <div className="entity-view-card space-y-3">
                     <div>
                       <strong>URL:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.url}</code>
@@ -1049,8 +1049,8 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">📱 Telegram уведомление</h4>
-                  <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                  <h4 className="entity-view-title">📱 Telegram уведомление</h4>
+                  <div className="entity-view-card space-y-3">
                     <div>
                       <strong>Статус:</strong>{' '}
                       <span

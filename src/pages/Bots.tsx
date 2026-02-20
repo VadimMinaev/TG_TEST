@@ -908,10 +908,10 @@ export function Bots() {
             </div>
           ) : selectedBot ? (
             <div>
-              <div className="space-y-4">
+              <div className="entity-view">
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о боте</h4>
-                  <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                  <h4 className="entity-view-title">Информация о боте</h4>
+                  <div className="entity-view-card">
                     <div style={{ marginBottom: '12px' }}>
                       <strong>ID:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
@@ -944,8 +944,8 @@ export function Bots() {
 
                 {selectedBot.messageType === 'poll' && (
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Голосование</h4>
-                    <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                    <h4 className="entity-view-title">Голосование</h4>
+                    <div className="entity-view-card space-y-3">
                       <div>
                         <strong>Вопрос:</strong> {selectedBot.pollQuestion}
                       </div>
@@ -973,16 +973,16 @@ export function Bots() {
 
                 {selectedBot.messageType === 'text' && selectedBot.messageText && (
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Сообщение</h4>
-                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                    <h4 className="entity-view-title">Сообщение</h4>
+                    <div className="entity-view-card">
                       <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{selectedBot.messageText}</div>
                     </div>
                   </div>
                 )}
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Расписание</h4>
-                  <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                  <h4 className="entity-view-title">Расписание</h4>
+                  <div className="entity-view-card space-y-3">
                     <div>
                       <strong>Режим:</strong>{' '}
                       <span style={{ padding: '4px 8px' }} className="rounded bg-[hsl(var(--muted)_/_0.3)] text-xs">
@@ -1018,8 +1018,8 @@ export function Bots() {
                 </div>
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Отправка</h4>
-                  <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                  <h4 className="entity-view-title">Отправка</h4>
+                  <div className="entity-view-card space-y-3">
                     <div>
                       <strong>Chat ID:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">

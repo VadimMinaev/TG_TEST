@@ -44,10 +44,10 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
 
   return (
     <div>
-      <div className="space-y-4">
+      <div className="entity-view">
         <div>
-          <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о Webhook</h4>
-          <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+          <h4 className="entity-view-title">Информация о Webhook</h4>
+          <div className="entity-view-card">
             <div style={{ marginBottom: '12px' }}>
               <strong>ID:</strong> <code>{rule.id}</code>
             </div>
@@ -77,15 +77,15 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
 
 
         <div>
-          <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие</h4>
-          <div style={{ padding: '16px' }} className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
+          <h4 className="entity-view-title">Условие</h4>
+          <div className="entity-view-card-muted overflow-x-auto">
             <code className="block whitespace-pre-wrap break-words text-sm">{rule.condition}</code>
           </div>
         </div>
 
         <div>
-          <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки отправки</h4>
-          <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+          <h4 className="entity-view-title">Настройки отправки</h4>
+          <div className="entity-view-card space-y-3">
             <div>
               <strong>ID канала/чата:</strong>{' '}
               <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{rule.chatId}</code>

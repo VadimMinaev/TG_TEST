@@ -430,10 +430,10 @@ export function Reminders() {
               </form>
             </div>
           ) : selectedReminder ? (
-            <div className="space-y-4">
+            <div className="entity-view">
               <div>
-                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация</h4>
-                <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                <h4 className="entity-view-title">Информация</h4>
+                <div className="entity-view-card space-y-3">
                   <div>
                     <strong>ID:</strong>{' '}
                     <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{selectedReminder.id}</code>
@@ -463,8 +463,8 @@ export function Reminders() {
               </div>
 
               <div>
-                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Расписание</h4>
-                <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                <h4 className="entity-view-title">Расписание</h4>
+                <div className="entity-view-card space-y-3">
                   <div>
                     <strong>Запуск:</strong> {formatDateTime(selectedReminder.run_at)}
                   </div>
@@ -493,8 +493,8 @@ export function Reminders() {
               </div>
 
               <div>
-                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Мета</h4>
-                <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                <h4 className="entity-view-title">Мета</h4>
+                <div className="entity-view-card space-y-3">
                   <div>
                     <strong>Создано:</strong> {formatDateTime(selectedReminder.created_at)}
                   </div>
@@ -505,8 +505,8 @@ export function Reminders() {
               </div>
 
               <div>
-                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">История отправок</h4>
-                <div className="space-y-2 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 text-sm">
+                <h4 className="entity-view-title">История отправок</h4>
+                <div className="entity-view-card space-y-2 text-sm">
                   {historyLoading ? (
                     <div className="text-[hsl(var(--muted-foreground))]">Загрузка...</div>
                   ) : history.length === 0 ? (

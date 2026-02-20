@@ -836,10 +836,10 @@ export function Integrations() {
               </>
             ) : selectedIntegration ? (
               <div>
-                <div className="space-y-4">
+                <div className="entity-view">
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация об интеграции</h4>
-                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                    <h4 className="entity-view-title">Информация об интеграции</h4>
+                    <div className="entity-view-card">
                       <div style={{ marginBottom: '12px' }}>
                         <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.id}</code>
                       </div>
@@ -872,16 +872,16 @@ export function Integrations() {
                   {selectedIntegration.triggerType === 'webhook' ? (
                     selectedIntegration.triggerCondition && (
                       <div>
-                        <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Условие срабатывания</h4>
-                        <div style={{ padding: '16px' }} className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
+                        <h4 className="entity-view-title">Условие срабатывания</h4>
+                        <div className="entity-view-card-muted overflow-x-auto">
                           <code className="block whitespace-pre-wrap break-words text-sm">{selectedIntegration.triggerCondition}</code>
                         </div>
                       </div>
                     )
                   ) : (
                     <div>
-                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки Polling</h4>
-                      <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                      <h4 className="entity-view-title">Настройки Polling</h4>
+                      <div className="entity-view-card space-y-3">
                         {selectedIntegration.pollingUrl && (
                           <div>
                             <strong>URL:</strong>{' '}
@@ -914,8 +914,8 @@ export function Integrations() {
 
                   {selectedIntegration.actionUrl && (
                     <div>
-                      <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">🚀 Action (API)</h4>
-                      <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                      <h4 className="entity-view-title">🚀 Action (API)</h4>
+                      <div className="entity-view-card space-y-3">
                         <div>
                           <strong>URL:</strong>
                           <div style={{ padding: '12px', marginTop: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
@@ -945,8 +945,8 @@ export function Integrations() {
                   )}
 
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">📱 Telegram уведомление</h4>
-                    <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+                    <h4 className="entity-view-title">📱 Telegram уведомление</h4>
+                    <div className="entity-view-card space-y-3">
                       <div>
                         <strong>Статус:</strong>{' '}
                         <span
