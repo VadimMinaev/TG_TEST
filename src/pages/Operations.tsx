@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Activity, AlertTriangle, CheckCircle2, Clock, Mail, RefreshCw, ScrollText } from 'lucide-react';
+import { AlertTriangle, Bot, CheckCircle2, Link as LinkIcon, MessageSquare, RefreshCw, Repeat2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { History } from './History';
 import { Queue } from './Queue';
@@ -26,12 +26,16 @@ type OperationsEvent = {
 };
 
 type OperationsMetrics = {
-  webhookLogs: number;
+  totalRules: number;
+  activeRules: number;
+  polls: number;
+  activePolls: number;
+  integrations: number;
+  activeIntegrations: number;
+  bots: number;
+  activeBots: number;
   queueTotal: number;
   queuePending: number;
-  pollRuns: number;
-  integrationRuns: number;
-  botRuns: number;
 };
 
 const TAB_ITEMS: Array<{ key: OperationsTab; label: string }> = [
@@ -44,12 +48,16 @@ const TAB_ITEMS: Array<{ key: OperationsTab; label: string }> = [
 ];
 
 const INITIAL_METRICS: OperationsMetrics = {
-  webhookLogs: 0,
+  totalRules: 0,
+  activeRules: 0,
+  polls: 0,
+  activePolls: 0,
+  integrations: 0,
+  activeIntegrations: 0,
+  bots: 0,
+  activeBots: 0,
   queueTotal: 0,
   queuePending: 0,
-  pollRuns: 0,
-  integrationRuns: 0,
-  botRuns: 0,
 };
 
 function getTabFromSearch(rawTab: string | null): OperationsTab {
@@ -78,7 +86,11 @@ export function Operations() {
   const loadOverview = useCallback(async () => {
     setLoading(true);
     try {
-      const [webhookLogs, queueStatus, pollHistory, integrationHistory, botHistory] = await Promise.all([
+      const [rules, polls, integrations, bots, webhookLogs, queueStatus, pollHistory, integrationHistory, botHistory] = await Promise.all([
+        api.getRules().catch(() => []),
+        api.getPolls().catch(() => []),
+        api.getIntegrations().catch(() => []),
+        api.getBots().catch(() => []),
         api.getWebhookLogs().catch(() => []),
         api.getQueueStatus().catch(() => ({ total: 0, pending: 0 })),
         api.getPollHistory().catch(() => []),
@@ -86,18 +98,26 @@ export function Operations() {
         api.getBotHistory().catch(() => []),
       ]);
 
+      const rulesList = Array.isArray(rules) ? rules : [];
+      const pollsList = Array.isArray(polls) ? polls : [];
+      const integrationsList = Array.isArray(integrations) ? integrations : [];
+      const botsList = Array.isArray(bots) ? bots : [];
       const webhookLogsList = Array.isArray(webhookLogs) ? webhookLogs : [];
       const pollRuns = Array.isArray(pollHistory) ? pollHistory : [];
       const integrationRuns = Array.isArray(integrationHistory) ? integrationHistory : [];
       const botRuns = Array.isArray(botHistory) ? botHistory : [];
 
       setMetrics({
-        webhookLogs: webhookLogsList.length,
+        totalRules: rulesList.length,
+        activeRules: rulesList.filter((rule: any) => rule?.enabled).length,
+        polls: pollsList.length,
+        activePolls: pollsList.filter((poll: any) => poll?.enabled).length,
+        integrations: integrationsList.length,
+        activeIntegrations: integrationsList.filter((integration: any) => integration?.enabled).length,
+        bots: botsList.length,
+        activeBots: botsList.filter((bot: any) => bot?.enabled).length,
         queueTotal: Number(queueStatus?.total ?? 0),
         queuePending: Number(queueStatus?.pending ?? 0),
-        pollRuns: pollRuns.length,
-        integrationRuns: integrationRuns.length,
-        botRuns: botRuns.length,
       });
 
       const recentEvents: OperationsEvent[] = [
@@ -194,44 +214,46 @@ export function Operations() {
       <div className="dashboard-stat-grid">
         <article className="dashboard-stat-card dashboard-tone-primary">
           <div className="dashboard-stat-head">
-            <span>Webhook логи</span>
+            <span>Webhook</span>
             <div className="dashboard-stat-icon">
-              <ScrollText className="h-5 w-5" />
+              <MessageSquare className="h-5 w-5" />
             </div>
           </div>
-          <p className="dashboard-stat-value">{loading ? '...' : metrics.webhookLogs}</p>
+          <p className="dashboard-stat-value">{loading ? '...' : metrics.totalRules}</p>
+          <p className="dashboard-stat-subtitle">{metrics.activeRules} активных</p>
         </article>
 
         <article className="dashboard-stat-card dashboard-tone-info">
           <div className="dashboard-stat-head">
-            <span>Очередь Telegram</span>
+            <span>Интеграции</span>
             <div className="dashboard-stat-icon">
-              <Mail className="h-5 w-5" />
+              <LinkIcon className="h-5 w-5" />
             </div>
           </div>
-          <p className="dashboard-stat-value">{loading ? '...' : metrics.queueTotal}</p>
-          <p className="dashboard-stat-subtitle">Ожидает: {metrics.queuePending}</p>
+          <p className="dashboard-stat-value">{loading ? '...' : metrics.integrations}</p>
+          <p className="dashboard-stat-subtitle">{metrics.activeIntegrations} активных</p>
         </article>
 
         <article className="dashboard-stat-card dashboard-tone-success">
           <div className="dashboard-stat-head">
-            <span>Пуллинг / Интеграции</span>
+            <span>Пуллинги</span>
             <div className="dashboard-stat-icon">
-              <Activity className="h-5 w-5" />
+              <Repeat2 className="h-5 w-5" />
             </div>
           </div>
-          <p className="dashboard-stat-value">{loading ? '...' : metrics.pollRuns + metrics.integrationRuns}</p>
-          <p className="dashboard-stat-subtitle">Пуллинг: {metrics.pollRuns}, Интеграции: {metrics.integrationRuns}</p>
+          <p className="dashboard-stat-value">{loading ? '...' : metrics.polls}</p>
+          <p className="dashboard-stat-subtitle">{metrics.activePolls} выполняются</p>
         </article>
 
-        <article className="dashboard-stat-card dashboard-tone-neutral">
+        <article className="dashboard-stat-card dashboard-tone-info">
           <div className="dashboard-stat-head">
-            <span>История ботов</span>
+            <span>Боты</span>
             <div className="dashboard-stat-icon">
-              <Clock className="h-5 w-5" />
+              <Bot className="h-5 w-5" />
             </div>
           </div>
-          <p className="dashboard-stat-value">{loading ? '...' : metrics.botRuns}</p>
+          <p className="dashboard-stat-value">{loading ? '...' : metrics.bots}</p>
+          <p className="dashboard-stat-subtitle">{metrics.activeBots} активных</p>
         </article>
       </div>
 
@@ -251,7 +273,7 @@ export function Operations() {
           </div>
           <div className="dashboard-status-item">
             <span>Webhook записей</span>
-            <strong>{metrics.webhookLogs}</strong>
+            <strong>{metrics.activeRules}</strong>
           </div>
         </div>
       </article>
@@ -293,8 +315,8 @@ export function Operations() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="card">
+    <div className="operations-page">
+      <div className="card operations-tabs-card">
         <div className="card-header">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold">Операции</h2>
@@ -316,7 +338,7 @@ export function Operations() {
         </div>
       </div>
 
-      {renderContent()}
+      <div className="operations-content">{renderContent()}</div>
     </div>
   );
 }

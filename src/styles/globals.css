@@ -501,6 +501,27 @@ body {
   scrollbar-color: hsl(var(--border)) transparent;
 }
 
+.operations-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.operations-tabs-card {
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+/* Do not apply sticky card header behavior for local operations tab switcher */
+.operations-tabs-card > .card-header {
+  position: static !important;
+  top: auto !important;
+}
+
+.operations-content {
+  margin-top: 2px;
+}
+
 .operations-tabbar::-webkit-scrollbar {
   height: 6px;
 }
