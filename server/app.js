@@ -3881,7 +3881,8 @@ function isInQuietHoursInTimeZone(date, timeZone, quietStart, quietEnd) {
     const end = Number(quietEnd);
     if (!Number.isInteger(start) || !Number.isInteger(end)) return false;
     const hour = getTimeZoneParts(date, timeZone).hour;
-    if (start === end) return true;
+    // start == end means quiet mode is disabled
+    if (start === end) return false;
     if (start < end) return hour >= start && hour < end;
     return hour >= start || hour < end;
 }
@@ -3895,11 +3896,8 @@ function nextAllowedTimeAfterQuiet(date, timeZone, quietStart, quietEnd) {
     let d = local.day;
     const h = local.hour;
 
-    if (start === end) {
-        // fully quiet day: fallback next day at 09:00
-        const nextDay = new Date(Date.UTC(y, m - 1, d + 1, 0, 0, 0));
-        return zonedDateTimeToUtc(nextDay.getUTCFullYear(), nextDay.getUTCMonth() + 1, nextDay.getUTCDate(), 9, 0, timeZone);
-    }
+    // start == end means quiet mode disabled
+    if (start === end) return date;
 
     if (start < end) {
         if (h >= start && h < end) {
@@ -4037,7 +4035,7 @@ function formatReminderList(reminders, timeZone = 'UTC') {
     });
 
     lines.push('');
-    lines.push('Удалить: /delete <номер>');
+    lines.push('Удалить: /delete номер');
     
     return lines.join('\n');
 }
