@@ -166,6 +166,7 @@ if (process.env.DATABASE_URL) {
                 )
             `);
             await client.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS slug VARCHAR(255)`);
+            await client.query(`ALTER TABLE accounts ADD COLUMN IF NOT EXISTS bot_token TEXT`);
             await ensureUniqueAccountNames(client);
             await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_slug ON accounts(slug) WHERE slug IS NOT NULL`);
             await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_accounts_name_unique ON accounts ((LOWER(TRIM(name))))`);
@@ -670,6 +671,32 @@ function getAccountIdForCreate(req) {
     return null;
 }
 
+async function getAccountToken(accountId) {
+    if (accountId == null) return '';
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT bot_token FROM accounts WHERE id = $1', [accountId]);
+            const token = result.rows[0]?.bot_token;
+            return typeof token === 'string' ? token.trim() : '';
+        } catch (error) {
+            console.error('Error loading account bot token:', error);
+            return '';
+        }
+    }
+    return '';
+}
+
+async function resolveBotToken(localToken, accountId = null) {
+    const ownToken = typeof localToken === 'string' ? localToken.trim() : '';
+    if (ownToken) return ownToken;
+
+    const accountToken = await getAccountToken(accountId);
+    if (accountToken && accountToken !== 'YOUR_TOKEN') return accountToken;
+
+    if (TELEGRAM_BOT_TOKEN && TELEGRAM_BOT_TOKEN !== 'YOUR_TOKEN') return TELEGRAM_BOT_TOKEN;
+    return '';
+}
+
 /** Require account scope for non-vadmin; for vadmin optional (null = no filter for list-all) */
 function requireAccountOrVadmin(req, res, next) {
     if (req.user.username === 'vadmin') return next();
@@ -1001,6 +1028,7 @@ function normalizePoll(poll) {
     const intervalSec = Math.max(5, parseInt(poll.intervalSec, 10) || 60);
     return {
         id: poll.id,
+        account_id: poll.account_id ?? null,
         name: (poll.name || '').trim(),
         url: (poll.url || '').trim(),
         method: (poll.method || 'GET').toUpperCase(),
@@ -1010,6 +1038,7 @@ function normalizePoll(poll) {
         messageTemplate: typeof poll.messageTemplate === 'string' ? poll.messageTemplate : '',
         chatId: (poll.chatId || '').toString().trim(),
         botToken: typeof poll.botToken === 'string' ? poll.botToken.trim() : '',
+        sendToTelegram: poll.sendToTelegram !== false,
         enabled: poll.enabled !== false,
         onlyOnChange: poll.onlyOnChange !== false,
         continueAfterMatch: poll.continueAfterMatch !== false,
@@ -1202,8 +1231,8 @@ async function executePoll(poll, options = {}) {
         poll.lastError = null;
 
         let sent = false;
-        if (matched && (!poll.onlyOnChange || !poll.lastMatch)) {
-            const botToken = poll.botToken || TELEGRAM_BOT_TOKEN;
+        if (matched && poll.sendToTelegram !== false && (!poll.onlyOnChange || !poll.lastMatch)) {
+            const botToken = await resolveBotToken(poll.botToken, poll.account_id);
             const messageText = formatMessage(payload, payload, { messageTemplate: poll.messageTemplate });
             if (botToken && poll.chatId) {
                 const result = await addMessageToQueue(botToken, poll.chatId, messageText, 0, null, poll.account_id);
@@ -1800,11 +1829,56 @@ app.get('/api/bot-token', auth, (req, res) => {
     res.json({ botToken: masked, isSet: TELEGRAM_BOT_TOKEN !== 'YOUR_TOKEN' });
 });
 
+app.get('/api/account-bot-token', auth, async (req, res) => {
+    try {
+        const accountId = getAccountId(req);
+        if (accountId == null) return res.status(400).json({ error: 'Account required' });
+
+        if (!(process.env.DATABASE_URL && db && typeof db.query === 'function')) {
+            return res.json({ botToken: '', isSet: false });
+        }
+
+        const result = await db.query('SELECT bot_token FROM accounts WHERE id = $1', [accountId]);
+        const token = typeof result.rows[0]?.bot_token === 'string' ? result.rows[0].bot_token.trim() : '';
+        const masked = token ? token.substring(0, 10) + '...' : '';
+        res.json({ botToken: masked, isSet: Boolean(token) });
+    } catch (error) {
+        console.error('Error loading account bot token:', error);
+        res.status(500).json({ error: 'Failed to load account bot token' });
+    }
+});
+
+app.post('/api/account-bot-token', auth, blockAuditorWrite, async (req, res) => {
+    try {
+        const accountId = getAccountId(req);
+        if (accountId == null) return res.status(400).json({ error: 'Account required' });
+        if (!(process.env.DATABASE_URL && db && typeof db.query === 'function')) {
+            return res.status(400).json({ error: 'Database is required' });
+        }
+
+        const tokenValue = typeof req.body.botToken === 'string' ? req.body.botToken.trim() : '';
+        if (tokenValue) {
+            try {
+                const response = await axios.get(`https://api.telegram.org/bot${tokenValue}/getMe`);
+                if (!response.data.ok) return res.status(400).json({ error: 'Invalid bot token' });
+            } catch {
+                return res.status(400).json({ error: 'Invalid bot token' });
+            }
+        }
+
+        await db.query('UPDATE accounts SET bot_token = $1 WHERE id = $2', [tokenValue || null, accountId]);
+        res.json({ status: 'ok', isSet: Boolean(tokenValue) });
+    } catch (error) {
+        console.error('Error saving account bot token:', error);
+        res.status(500).json({ error: 'Failed to save account bot token' });
+    }
+});
+
 app.post('/api/test-send', auth, async (req, res) => {
     const { chatId, message, botToken } = req.body;
     if (!chatId || !message) return res.status(400).json({ error: 'chatId and message required' });
 
-    const token = botToken || TELEGRAM_BOT_TOKEN;
+    const token = await resolveBotToken(botToken, getAccountId(req));
     if (!token || token === 'YOUR_TOKEN') return res.status(400).json({ success: false, error: 'Bot token is required' });
 
     try {
@@ -1893,7 +1967,7 @@ app.post('/api/rules', auth, blockAuditorWrite, async (req, res) => {
 
         const { botToken, messageTemplate = '', ...ruleData } = req.body;
         const trimmedToken = typeof botToken === 'string' ? botToken.trim() : '';
-        const resolvedToken = trimmedToken || TELEGRAM_BOT_TOKEN;
+        const resolvedToken = await resolveBotToken(trimmedToken, accountId);
         const isEnabled = req.body.enabled !== false;
 
         if (isEnabled && (!resolvedToken || resolvedToken === 'YOUR_TOKEN')) {
@@ -1969,8 +2043,12 @@ app.put('/api/rules/:id', auth, blockAuditorWrite, async (req, res) => {
             }
             const trimmedToken = botToken.trim();
             if (trimmedToken) {
-                const response = await axios.get(`https://api.telegram.org/bot${trimmedToken}/getMe`);
-                if (!response.data.ok) {
+                try {
+                    const response = await axios.get(`https://api.telegram.org/bot${trimmedToken}/getMe`);
+                    if (!response.data.ok) {
+                        return res.status(400).json({ error: 'Invalid bot token' });
+                    }
+                } catch {
                     return res.status(400).json({ error: 'Invalid bot token' });
                 }
             }
@@ -1985,7 +2063,8 @@ app.put('/api/rules/:id', auth, blockAuditorWrite, async (req, res) => {
         };
 
         const updatedEnabled = updated.enabled !== false;
-        if (updatedEnabled && !updated.botToken && (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_TOKEN')) {
+        const resolvedToken = await resolveBotToken(updated.botToken, accountId);
+        if (updatedEnabled && !resolvedToken) {
             return res.status(400).json({ error: 'Bot token is required' });
         }
 
@@ -2324,13 +2403,10 @@ app.post('/webhook/:accountSlug', async (req, res) => {
         if (ruleMatches) {
             matched++;
             const messageText = formatMessage(req.body, incomingPayload, rule);
-            let token = rule.botToken;
-            if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
-                token = TELEGRAM_BOT_TOKEN;
-                if (!token || token === 'YOUR_TOKEN') {
-                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
-                    continue;
-                }
+            const token = await resolveBotToken(rule.botToken, accountId);
+            if (!token) {
+                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Rule #${rule.id}`, chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
+                continue;
             }
             const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
             if (chatIds.length === 0) {
@@ -2424,15 +2500,11 @@ app.post('/webhook', async (req, res) => {
 
             const messageText = formatMessage(req.body, incomingPayload, rule);
 
-            let token = rule.botToken;
-            if (!token || token === 'YOUR_TOKEN' || token === 'ВАШ_ТОКЕН_ЗДЕСЬ') {
-                token = TELEGRAM_BOT_TOKEN;
-                if (!token || token === 'YOUR_TOKEN') {
-                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
-                    continue;
-                }
+            const token = await resolveBotToken(rule.botToken, rule.account_id ?? null);
+            if (!token) {
+                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Rule #${rule.id}`, chatId: rule.chatId || null, success: false, error: 'No bot token configured' });
+                continue;
             }
-
             const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
             if (chatIds.length === 0) {
                 telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: null, success: false, error: 'No chatId configured' });
@@ -2660,7 +2732,7 @@ async function logBotRun(botId, data) {
 }
 
 async function executeBot(bot) {
-    const botToken = bot.botToken || TELEGRAM_BOT_TOKEN;
+    const botToken = await resolveBotToken(bot.botToken, bot.account_id);
     if (!botToken || botToken === 'YOUR_TOKEN') {
         await logBotRun(bot.id, { status: 'error', messageType: bot.messageType, errorMessage: 'No bot token configured', accountId: bot.account_id });
         return;
@@ -5924,7 +5996,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
 
         // Отправляем в Telegram если включено и настроено
         if (integration.sendToTelegram && integration.chatId && runData.status === 'success') {
-            const botToken = integration.botToken || TELEGRAM_BOT_TOKEN;
+            const botToken = await resolveBotToken(integration.botToken, integration.account_id);
             let message = integration.messageTemplate || `Интеграция "${integration.name}" выполнена`;
             
             // Данные для шаблона: response (ответ action API) и trigger (данные триггера)

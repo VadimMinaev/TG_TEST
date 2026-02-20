@@ -35,6 +35,7 @@ export interface Poll {
   timeoutSec: number;
   chatId: string;
   botToken?: string;
+  sendToTelegram?: boolean;
   messageTemplate?: string;
   onlyOnChange: boolean;
   continueAfterMatch: boolean;
@@ -517,6 +518,25 @@ export const api = {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error('Failed to clear bot history');
+  },
+
+  getAccountBotToken: async (): Promise<{ botToken: string; isSet: boolean }> => {
+    const res = await fetch(`${API_BASE}/account-bot-token`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to load account bot token');
+    return res.json();
+  },
+
+  saveAccountBotToken: async (botToken: string) => {
+    const res = await fetch(`${API_BASE}/account-bot-token`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ botToken }),
+    });
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.error || 'Failed to save account bot token');
+    }
+    return res.json();
   },
 
   // Reminders

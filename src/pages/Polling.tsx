@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, Info } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Settings, Trash2, Upload, Info } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
@@ -27,6 +27,7 @@ const DEFAULT_FORM = {
   timeoutSec: 10,
   chatId: '',
   botToken: '',
+  sendToTelegram: false,
   messageTemplate: '',
   enabled: true,
   onlyOnChange: false,
@@ -44,6 +45,7 @@ const normalizeForm = (poll?: Poll) => ({
   timeoutSec: poll?.timeoutSec ?? 10,
   chatId: poll?.chatId || '',
   botToken: poll?.botToken || '',
+  sendToTelegram: poll?.sendToTelegram ?? Boolean(poll?.chatId),
   messageTemplate: poll?.messageTemplate || '',
   enabled: poll?.enabled ?? true,
   onlyOnChange: poll?.onlyOnChange ?? false,
@@ -70,6 +72,12 @@ export function Polling() {
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [togglingPollId, setTogglingPollId] = useState<number | null>(null);
+  const [accountTokenModalOpen, setAccountTokenModalOpen] = useState(false);
+  const [accountTokenValue, setAccountTokenValue] = useState('');
+  const [accountTokenMasked, setAccountTokenMasked] = useState('');
+  const [accountTokenIsSet, setAccountTokenIsSet] = useState(false);
+  const [accountTokenLoading, setAccountTokenLoading] = useState(false);
+  const [accountTokenSaving, setAccountTokenSaving] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
@@ -91,9 +99,43 @@ export function Polling() {
     }
   };
 
+  const loadAccountBotToken = async () => {
+    try {
+      setAccountTokenLoading(true);
+      const data = await api.getAccountBotToken();
+      setAccountTokenMasked(data.botToken || '');
+      setAccountTokenIsSet(Boolean(data.isSet));
+      setAccountTokenValue('');
+    } catch (error: any) {
+      addToast(error.message || 'Не удалось загрузить токен аккаунта', 'error');
+    } finally {
+      setAccountTokenLoading(false);
+    }
+  };
+
+  const handleSaveAccountBotToken = async () => {
+    try {
+      setAccountTokenSaving(true);
+      await api.saveAccountBotToken(accountTokenValue.trim());
+      addToast(accountTokenValue.trim() ? 'Токен аккаунта сохранен' : 'Токен аккаунта очищен', 'success');
+      await loadAccountBotToken();
+      setAccountTokenModalOpen(false);
+    } catch (error: any) {
+      addToast(error.message || 'Не удалось сохранить токен аккаунта', 'error');
+    } finally {
+      setAccountTokenSaving(false);
+    }
+  };
+
   useEffect(() => {
     loadPolls();
   }, []);
+
+  useEffect(() => {
+    if (accountTokenModalOpen) {
+      loadAccountBotToken();
+    }
+  }, [accountTokenModalOpen]);
 
   // Проверяем параметры create и select в URL
   useEffect(() => {
@@ -142,13 +184,6 @@ export function Polling() {
       return;
     }
 
-    // If Telegram notification is enabled (both chatId and botToken are present), validate them
-    // If only one of them is present, it's an error
-    if (!!form.chatId !== !!form.botToken) {
-      addToast('Для Telegram уведомления укажите и Chat ID, и Bot Token', 'error');
-      return;
-    }
-
     try {
       const payload = {
         ...form,
@@ -157,8 +192,9 @@ export function Polling() {
         headersJson: form.headersJson || undefined,
         bodyJson: form.bodyJson || undefined,
         conditionJson: form.conditionJson || undefined,
-        botToken: form.botToken || undefined,
-        messageTemplate: form.messageTemplate || undefined,
+        botToken: form.sendToTelegram ? (form.botToken || undefined) : undefined,
+        sendToTelegram: form.sendToTelegram,
+        messageTemplate: form.sendToTelegram ? (form.messageTemplate || undefined) : undefined,
       };
 
       if (editingPollId && editingPollId !== -1) {
@@ -253,6 +289,7 @@ export function Polling() {
         timeoutSec: Number(raw.timeoutSec) || 10,
         chatId: chatId || '0',
         botToken: raw.botToken ? String(raw.botToken).trim() : undefined,
+        sendToTelegram: raw.sendToTelegram ?? Boolean(chatId),
         messageTemplate: raw.messageTemplate ? String(raw.messageTemplate) : undefined,
         enabled: drafted ? false : (raw.enabled ?? true),
         onlyOnChange: raw.onlyOnChange ?? false,
@@ -361,6 +398,15 @@ export function Polling() {
           >
             <RefreshCw className="h-4 w-4" />
           </button>
+          {canEdit && (
+            <button
+              onClick={() => setAccountTokenModalOpen(true)}
+              className="icon-button"
+              title="Account Telegram token"
+            >
+              <Settings className="h-4 w-4" />
+            </button>
+          )}
           {canEdit && (
             <>
               <input
@@ -852,24 +898,25 @@ export function Polling() {
                     </TooltipProvider>
                   </label>
                 </div>
-
                 <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
                     <input
                       type="checkbox"
                       id="sendToTelegram"
-                      checked={!!form.botToken}
+                      checked={form.sendToTelegram}
                       onChange={(e) => {
-                        if (!e.target.checked) {
-                          setForm({ ...form, botToken: '' });
-                        } else {
-                          setForm({ ...form, botToken: form.botToken || '' });
-                        }
+                        const enabled = e.target.checked;
+                        setForm({
+                          ...form,
+                          sendToTelegram: enabled,
+                          botToken: enabled ? form.botToken : '',
+                          messageTemplate: enabled ? form.messageTemplate : '',
+                        });
                       }}
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-                      📱 Telegram уведомление
+                      Telegram notifications
                     </label>
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
@@ -883,83 +930,29 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>Включить отправку уведомлений в Telegram.</p>
-                            <p>Для работы уведомлений укажите Bot Token. Chat ID берется из основных настроек.</p>
+                            <p>Enable Telegram notifications for this polling task.</p>
+                            <p>Chat ID is taken from the main field above.</p>
+                            <p>Bot Token is optional: empty means account token will be used.</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
                   </div>
 
-                  {!!form.botToken && (
+                  {form.sendToTelegram && (
                     <div style={{ paddingLeft: '30px', opacity: 1 }}>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID
-                          <TooltipProvider delayDuration={200}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
-                                  aria-label="Показать подсказку"
-                                >
-                                  <Info className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs text-left">
-                                <div className="space-y-2">
-                                  <p>Числовой идентификатор чата/канала в Telegram (берется из основных настроек).</p>
-                                  <p>Используется для отправки уведомлений при срабатывании пуллинга.</p>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          </label>
-                          <input
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={form.chatId}
-                            onChange={(e) => setForm({ ...form, chatId: e.target.value })}
-                            placeholder="-1001234567890"
-                          />
-                        </div>
-                        <div>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token
-                          <TooltipProvider delayDuration={200}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  type="button"
-                                  className="flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
-                                >
-                                  <Info className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent side="top" className="max-w-xs text-left">
-                                <div className="space-y-2">
-                                  <p>Токен Telegram бота для отправки сообщений.</p>
-                                  <p><strong>Как получить:</strong></p>
-                                  <ul className="list-disc list-inside">
-                                    <li>Создайте бота через <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
-                                    <li>Скопируйте токен из сообщения</li>
-                                  </ul>
-                                  <p>Формат: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABCdefGHIjklMNOpqrSTUvwxYZ</code></p>
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                          </label>
-                          <input
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-                            value={form.botToken}
-                            onChange={(e) => setForm({ ...form, botToken: e.target.value })}
-                            placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-                          />
-                        </div>
+                      <div>
+                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (optional)</label>
+                        <input
+                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          value={form.botToken}
+                          onChange={(e) => setForm({ ...form, botToken: e.target.value })}
+                          placeholder="Empty = account token"
+                        />
                       </div>
                       <div style={{ marginTop: '16px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                          Шаблон сообщения
+                          Message template
                           <TemplateHelp context="poll" />
                         </label>
                         <textarea
@@ -967,7 +960,7 @@ export function Polling() {
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                           value={form.messageTemplate}
                           onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
-                          placeholder="${payload.name} — ${payload.status}"
+                          placeholder="${payload.name} - ${payload.status}"
                         />
                       </div>
                     </div>
@@ -1057,12 +1050,12 @@ export function Polling() {
                       <span
                         style={{ padding: '4px 8px' }}
                         className={`rounded text-xs ${
-                          selectedPoll.chatId && selectedPoll.botToken
+                          selectedPoll.sendToTelegram !== false
                             ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
                             : 'bg-[hsl(var(--muted)_/_0.3)] text-[hsl(var(--muted-foreground))]'
                         }`}
                       >
-                        {selectedPoll.chatId && selectedPoll.botToken ? '✅ Включено' : '⏸️ Отключено'}
+                        {selectedPoll.sendToTelegram !== false ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
                     </div>
                     {selectedPoll.chatId && (
@@ -1074,7 +1067,13 @@ export function Polling() {
                     {selectedPoll.botToken && (
                       <div>
                         <strong>Bot Token:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***настроен***</code>
+                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***set***</code>
+                      </div>
+                    )}
+                    {!selectedPoll.botToken && selectedPoll.sendToTelegram !== false && (
+                      <div>
+                        <strong>Bot Token:</strong>{' '}
+                        <span className="text-sm text-[hsl(var(--muted-foreground))]">Using account token</span>
                       </div>
                     )}
                     {selectedPoll.messageTemplate && (
@@ -1105,6 +1104,67 @@ export function Polling() {
       </div>
 
       {/* Export Modal */}
+      {accountTokenModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            paddingTop: '100px',
+            zIndex: 9999,
+          }}
+          onClick={() => setAccountTokenModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'hsl(var(--card))',
+              borderRadius: '12px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '520px',
+              border: '1px solid hsl(var(--border))',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 text-lg font-semibold">Telegram token for account</h3>
+            <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
+              Used by default for rules, polling, integrations and bots if local token is empty.
+            </p>
+            <div className="mb-4 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.2)] p-3 text-sm">
+              {accountTokenLoading ? 'Loading...' : (accountTokenIsSet ? `Current: ${accountTokenMasked}` : 'Not set')}
+            </div>
+            <label className="mb-2 block text-sm font-medium">New token (empty = clear)</label>
+            <input
+              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+              value={accountTokenValue}
+              onChange={(e) => setAccountTokenValue(e.target.value)}
+              placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+            />
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={handleSaveAccountBotToken}
+                disabled={accountTokenSaving}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, opacity: accountTokenSaving ? 0.7 : 1 }}
+              >
+                {accountTokenSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountTokenModalOpen(false)}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <ExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
