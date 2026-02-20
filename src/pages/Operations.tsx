@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useMemo, useState } from 'react';
-import { NavLink, useSearchParams } from 'react-router';
-import { Activity, AlertTriangle, ArrowRight, CheckCircle2, Clock, Mail, RefreshCw, ScrollText } from 'lucide-react';
+import { useSearchParams } from 'react-router';
+import { Activity, AlertTriangle, CheckCircle2, Clock, Mail, RefreshCw, ScrollText } from 'lucide-react';
 import { api } from '../lib/api';
 import { History } from './History';
 import { Queue } from './Queue';
@@ -235,58 +235,26 @@ export function Operations() {
         </article>
       </div>
 
-      <div className="dashboard-grid">
-        <article className="panel dashboard-block">
-          <div className="dashboard-block-title">Состояние системы</div>
-          <div className="dashboard-status-list">
-            <div className="dashboard-status-item">
-              <span>Очередь сообщений</span>
-              <span className={`dashboard-badge ${queueState.tone === 'warn' ? 'dashboard-badge-warn' : 'dashboard-badge-ok'}`}>
-                {queueState.tone === 'warn' ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                {queueState.text}
-              </span>
-            </div>
-            <div className="dashboard-status-item">
-              <span>Ожидают отправки</span>
-              <strong>{metrics.queuePending}</strong>
-            </div>
-            <div className="dashboard-status-item">
-              <span>Webhook записей</span>
-              <strong>{metrics.webhookLogs}</strong>
-            </div>
+      <article className="panel dashboard-block">
+        <div className="dashboard-block-title">Состояние системы</div>
+        <div className="dashboard-status-list">
+          <div className="dashboard-status-item">
+            <span>Очередь сообщений</span>
+            <span className={`dashboard-badge ${queueState.tone === 'warn' ? 'dashboard-badge-warn' : 'dashboard-badge-ok'}`}>
+              {queueState.tone === 'warn' ? <AlertTriangle className="h-3.5 w-3.5" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              {queueState.text}
+            </span>
           </div>
-        </article>
-
-        <article className="panel dashboard-block">
-          <div className="dashboard-block-title">Быстрые действия</div>
-          <div className="dashboard-actions-list">
-            <button type="button" className="dashboard-action-item" onClick={() => setTab('history')}>
-              Webhook история
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <button type="button" className="dashboard-action-item" onClick={() => setTab('queue')}>
-              Очередь Telegram
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <button type="button" className="dashboard-action-item" onClick={() => setTab('polling-history')}>
-              История пуллинга
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <button type="button" className="dashboard-action-item" onClick={() => setTab('integration-history')}>
-              История интеграций
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <button type="button" className="dashboard-action-item" onClick={() => setTab('bot-history')}>
-              История ботов
-              <ArrowRight className="h-4 w-4" />
-            </button>
-            <NavLink to="/rules" className="dashboard-action-item">
-              Webhook правила
-              <ArrowRight className="h-4 w-4" />
-            </NavLink>
+          <div className="dashboard-status-item">
+            <span>Ожидают отправки</span>
+            <strong>{metrics.queuePending}</strong>
           </div>
-        </article>
-      </div>
+          <div className="dashboard-status-item">
+            <span>Webhook записей</span>
+            <strong>{metrics.webhookLogs}</strong>
+          </div>
+        </div>
+      </article>
 
       <article className="panel dashboard-block">
         <div className="dashboard-block-title">Последние события</div>

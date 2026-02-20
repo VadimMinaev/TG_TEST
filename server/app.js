@@ -3435,7 +3435,7 @@ function parseReminderCommand(args, timeZone = 'UTC') {
         return naturalParsed;
     }
 
-    return { error: 'Неверный формат. Примеры:\n/remind 10m Купить молоко\n/remind 1h Встреча\n/remind 2025-02-20 14:00 Совещание\n/remind every 1h Принять лекарство\nили: Позвонить завтра в 10' };
+    return { error: 'Неверный формат. Примеры:\n/remind 10m Купить молоко\n/remind 1h Встреча\n/remind 2026-02-21 10:00 Совещание\n/remind every 1h Принять лекарство\nили: Позвонить завтра в 10\nили: Встреча 28 февраля 2026 года в 12:00' };
 }
 
 function parseReminderTextInput(text, timeZone = 'UTC') {
@@ -3567,7 +3567,7 @@ function parseExplicitDateTimeReminder(text, timeZone = 'UTC') {
     // Date first: "20 фев 2026 в 11:57 Встреча с командой"
     // Also supports separators and typo "ы" instead of "в".
     let m = normalized.match(
-        /^(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})\s*(?:в|at|ы)?\s*([0-9:]{1,5})\s+(.+)$/i
+        /^(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})(?:\s+(?:г|г\.|год|года|year))?\s*(?:в|at|ы)?\s*([0-9:]{1,5})\s+(.+)$/i
     );
     if (m) {
         return buildExplicitDateReminder(m[5], m[1], m[2], m[3], m[4], timeZone);
@@ -3575,7 +3575,7 @@ function parseExplicitDateTimeReminder(text, timeZone = 'UTC') {
 
     // Message first: "Встреча с командой 20 02 26 ы 1145"
     m = normalized.match(
-        /^(.+?)\s+(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})\s*(?:в|at|ы)?\s*([0-9:]{1,5})$/i
+        /^(.+?)\s+(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})(?:\s+(?:г|г\.|год|года|year))?\s*(?:в|at|ы)?\s*([0-9:]{1,5})$/i
     );
     if (m) {
         return buildExplicitDateReminder(m[1], m[2], m[3], m[4], m[5], timeZone);
@@ -3982,6 +3982,7 @@ function runReminderParserSelfTests() {
     const cases = [
         { text: 'Позвонить завтра в 10', tz: 'Europe/Moscow' },
         { text: '20 фев 2026 в 11:57 Встреча с командой', tz: 'Europe/Moscow' },
+        { text: 'Встреча 28 февраля 2026 года в 12:00', tz: 'Europe/Moscow' },
         { text: 'Встреча с командой 20 02 26 ы 1145', tz: 'Europe/Moscow' },
         { text: 'check report in half an hour', tz: 'America/New_York' },
         { text: 'drink water every 2 hours', tz: 'Asia/Almaty' },
@@ -4233,7 +4234,7 @@ async function handleHelpCommand(chatId) {
 
 Поддерживаемые варианты времени:
 • Интервал: "через 20 минут", "10m", "1h"
-• Дата/время: "2026-02-21 10:00", "20 фев 2026 в 11:57", "20 02 26 в 1145"
+• Дата/время: "2026-02-21 10:00", "20 фев 2026 в 11:57", "28 февраля 2026 года в 12:00", "20 02 26 в 1145"
 • Естественно: "завтра в 10", "в понедельник 1200", "через полчаса"
 • Повтор: "каждые 10 минут", "по будням в 9", "/remind cron 0 9 * * 1-5 ..."
 
@@ -4287,6 +4288,7 @@ async function handleFormatsCommand(chatId) {
 2) Конкретная дата и время:
 /remind 2026-02-20 14:00 Текст
 /add -> 20 фев 2026 в 11:57 Встреча с командой
+/add -> 28 февраля 2026 года в 12:00 Встреча с командой
 /add -> Встреча с командой 20 02 26 в 1145
 /add -> в понедельник 1200
 
@@ -4643,7 +4645,7 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            `Шаг 2/2: укажите дату/время.\n\nПримеры:\nзавтра в 10\nв понедельник 1200\n20 фев 2026 в 11:57\n20 02 26 в 1145`,
+            `Шаг 2/2: укажите дату/время.\n\nПримеры:\nзавтра в 10\nв понедельник 1200\n20 фев 2026 в 11:57\n28 февраля 2026 года в 12:00\n20 02 26 в 1145`,
             {
                 reply_markup: {
                     inline_keyboard: [
@@ -4672,11 +4674,11 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
 
     if (parsed.error) {
         await logReminderParseFailure(telegramUser.id, chatId, text, parsed.error);
-        const smartHints = `\n\nВарианты:\n• завтра в 10\n• ${new Date().getHours() + 1}00\n• 20 фев 2026 в 11:57`;
+        const smartHints = `\n\nВарианты:\n• завтра в 10\n• ${new Date().getHours() + 1}00\n• 20 фев 2026 в 11:57\n• 28 февраля 2026 года в 12:00`;
         await sendTelegramMessage(
             botToken,
             chatId,
-            `❌ ${parsed.error}${smartHints}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nCall team tomorrow at 10\n\nДля отмены: /cancel`
+            `❌ ${parsed.error}${smartHints}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nПозвонить клиенту 28 февраля 2026 года в 12:00\nCall team tomorrow at 10\n\nДля отмены: /cancel`
         );
         return { ok: true };
     }
@@ -4692,7 +4694,7 @@ async function handleRemindCommand(args, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            'Введите напоминание и время одним сообщением.\n\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nCall team tomorrow at 10\n\nДля отмены: /cancel'
+            'Введите напоминание и время одним сообщением.\n\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nПозвонить клиенту 28 февраля 2026 года в 12:00\nCall team tomorrow at 10\n\nДля отмены: /cancel'
         );
         return { ok: true };
     }

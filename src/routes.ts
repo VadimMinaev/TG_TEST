@@ -2,7 +2,6 @@ import { createBrowserRouter, redirect } from 'react-router';
 import { Root } from './pages/Root';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
-import { Operations } from './pages/Operations';
 import { Rules } from './pages/Rules';
 import { Testing } from './pages/Testing';
 import { Polling } from './pages/Polling';
@@ -26,15 +25,15 @@ export const router = createBrowserRouter([
           { index: true, Component: Rules },
           { path: 'rules', Component: Rules },
           { path: 'testing', Component: Testing },
-          { path: 'operations', Component: Operations },
-          { path: 'history', loader: () => redirect('/operations?tab=history') },
-          { path: 'queue', loader: () => redirect('/operations?tab=queue') },
+          { path: 'operations', loader: () => redirect('/?tab=overview') },
+          { path: 'history', loader: () => redirect('/?tab=history') },
+          { path: 'queue', loader: () => redirect('/?tab=queue') },
           { path: 'polling', Component: Polling },
-          { path: 'polling-history', loader: () => redirect('/operations?tab=polling-history') },
+          { path: 'polling-history', loader: () => redirect('/?tab=polling-history') },
           { path: 'integrations', Component: Integrations },
-          { path: 'integration-history', loader: () => redirect('/operations?tab=integration-history') },
+          { path: 'integration-history', loader: () => redirect('/?tab=integration-history') },
           { path: 'bots', Component: Bots },
-          { path: 'bot-history', loader: () => redirect('/operations?tab=bot-history') },
+          { path: 'bot-history', loader: () => redirect('/?tab=bot-history') },
           { path: 'accounts', Component: Accounts },
           { path: 'users', Component: Users },
           { path: 'reminders', Component: Reminders },
