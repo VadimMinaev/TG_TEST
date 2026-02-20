@@ -107,6 +107,9 @@ let dbConnected = false;
 
 // Reminder Engine globals
 let reminderDispatcherInterval = null;
+const pendingReminderInput = new Map();
+const pendingTimezoneInput = new Map();
+const pendingLanguageInput = new Map();
 
 async function ensureUniqueAccountNames(client) {
     const result = await client.query('SELECT id, name FROM accounts ORDER BY id');
@@ -294,11 +297,17 @@ if (process.env.DATABASE_URL) {
                     first_name VARCHAR(255),
                     last_name VARCHAR(255),
                     language_code VARCHAR(10) DEFAULT 'ru',
+                    language_is_set BOOLEAN DEFAULT false,
+                    timezone VARCHAR(64) DEFAULT 'UTC',
+                    timezone_is_set BOOLEAN DEFAULT false,
                     is_bot BOOLEAN DEFAULT false,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             `);
+            await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS language_is_set BOOLEAN DEFAULT false`);
+            await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS timezone VARCHAR(64) DEFAULT 'UTC'`);
+            await client.query(`ALTER TABLE telegram_users ADD COLUMN IF NOT EXISTS timezone_is_set BOOLEAN DEFAULT false`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_telegram_id ON telegram_users(telegram_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_username ON telegram_users(username) WHERE username IS NOT NULL`);
 
@@ -3047,14 +3056,17 @@ async function getOrCreateTelegramUser(telegramUser) {
         }
         // Create new user
         const result = await db.query(
-            `INSERT INTO telegram_users (telegram_id, username, first_name, last_name, language_code, is_bot)
-             VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+            `INSERT INTO telegram_users (telegram_id, username, first_name, last_name, language_code, language_is_set, timezone, timezone_is_set, is_bot)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
             [
                 telegramUser.id,
                 telegramUser.username || null,
                 telegramUser.first_name || null,
                 telegramUser.last_name || null,
-                telegramUser.language_code || 'ru',
+                'ru',
+                false,
+                'UTC',
+                false,
                 telegramUser.is_bot || false
             ]
         );
@@ -3074,6 +3086,71 @@ async function getTelegramUserById(telegramId) {
     } catch (err) {
         console.error('[Reminder] Error getting Telegram user:', err);
         return null;
+    }
+}
+
+async function getUserTimeZone(telegramUserId) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') return 'UTC';
+    try {
+        const result = await db.query('SELECT timezone FROM telegram_users WHERE id = $1', [telegramUserId]);
+        const tz = result.rows?.[0]?.timezone;
+        return tz && isValidTimeZone(tz) ? tz : 'UTC';
+    } catch (err) {
+        console.error('[Reminder] Error getting user timezone:', err);
+        return 'UTC';
+    }
+}
+
+function isTimezoneSelectedForUser(telegramUser) {
+    return Boolean(telegramUser?.timezone_is_set);
+}
+
+function isLanguageSelectedForUser(telegramUser) {
+    return Boolean(telegramUser?.language_is_set);
+}
+
+async function setUserLanguage(telegramUserId, languageCode) {
+    const allowed = ['ru', 'en'];
+    if (!allowed.includes(languageCode)) {
+        return { success: false, error: 'Invalid language' };
+    }
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return { success: false, error: 'Database not available' };
+    }
+    try {
+        await db.query(
+            `UPDATE telegram_users
+             SET language_code = $1, language_is_set = true, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $2`,
+            [languageCode, telegramUserId]
+        );
+        return { success: true };
+    } catch (err) {
+        console.error('[Reminder] Error updating user language:', err);
+        return { success: false, error: err.message };
+    }
+}
+
+async function setUserTimeZone(telegramUserId, timeZone) {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return { success: false, error: 'Database not available' };
+    }
+
+    if (!isValidTimeZone(timeZone)) {
+        return { success: false, error: 'Invalid timezone' };
+    }
+
+    try {
+        await db.query(
+            `UPDATE telegram_users
+             SET timezone = $1, timezone_is_set = true, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $2`,
+            [timeZone, telegramUserId]
+        );
+        return { success: true };
+    } catch (err) {
+        console.error('[Reminder] Error updating user timezone:', err);
+        return { success: false, error: err.message };
     }
 }
 
@@ -3171,7 +3248,60 @@ async function logReminderSend(reminderId, telegramUserId, status, messageText, 
 }
 
 // ----- Command Parser -----
-function parseReminderCommand(args) {
+function isValidTimeZone(timeZone) {
+    try {
+        Intl.DateTimeFormat('en-US', { timeZone }).format(new Date());
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function getTimeZoneParts(date, timeZone) {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    }).formatToParts(date);
+
+    const value = (type) => parseInt(parts.find((p) => p.type === type)?.value || '0', 10);
+    return {
+        year: value('year'),
+        month: value('month'),
+        day: value('day'),
+        hour: value('hour'),
+        minute: value('minute'),
+        second: value('second')
+    };
+}
+
+function zonedDateTimeToUtc(year, month, day, hour, minute, timeZone) {
+    let utcMs = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+    const desiredAsUtc = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+
+    for (let i = 0; i < 6; i++) {
+        const actual = getTimeZoneParts(new Date(utcMs), timeZone);
+        const actualAsUtc = Date.UTC(actual.year, actual.month - 1, actual.day, actual.hour, actual.minute, 0, 0);
+        const diff = desiredAsUtc - actualAsUtc;
+        if (diff === 0) break;
+        utcMs += diff;
+    }
+
+    return new Date(utcMs);
+}
+
+function getWeekdayInTimeZone(date, timeZone) {
+    const short = new Intl.DateTimeFormat('en-US', { timeZone, weekday: 'short' }).format(date);
+    const map = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    return map[short];
+}
+
+function parseReminderCommand(args, timeZone = 'UTC') {
     // Supported formats:
     // /remind 10m Купить молоко
     // /remind 1h Встреча
@@ -3223,7 +3353,9 @@ function parseReminderCommand(args) {
     if (dateMatch && args.length >= 2) {
         const timeMatch = args[1].match(/^(\d{1,2}:\d{2})$/);
         if (timeMatch) {
-            const dateTime = new Date(`${args[0]}T${args[1]}:00`);
+            const [y, m, d] = args[0].split('-').map((v) => parseInt(v, 10));
+            const [hh, mm] = args[1].split(':').map((v) => parseInt(v, 10));
+            const dateTime = zonedDateTimeToUtc(y, m, d, hh, mm, timeZone);
             if (isNaN(dateTime.getTime())) {
                 return { error: 'Неверная дата или время' };
             }
@@ -3241,7 +3373,256 @@ function parseReminderCommand(args) {
         return result;
     }
     
-    return { error: 'Неверный формат. Примеры:\n/remind 10m Купить молоко\n/remind 1h Встреча\n/remind 2025-02-20 14:00 Совещание\n/remind every 1h Принять лекарство' };
+    // Natural language fallback:
+    // "позвонить в офис через 20 минут", "позвонить завтра в 10", "call mom tomorrow at 10"
+    const naturalParsed = parseNaturalLanguageReminder(args.join(' '), timeZone);
+    if (!naturalParsed.error) {
+        return naturalParsed;
+    }
+
+    return { error: 'Неверный формат. Примеры:\n/remind 10m Купить молоко\n/remind 1h Встреча\n/remind 2025-02-20 14:00 Совещание\n/remind every 1h Принять лекарство\nили: Позвонить завтра в 10' };
+}
+
+function parseReminderTextInput(text, timeZone = 'UTC') {
+    if (!text || typeof text !== 'string') {
+        return { error: 'Пустое сообщение' };
+    }
+
+    const trimmed = text.trim();
+    if (!trimmed) {
+        return { error: 'Пустое сообщение' };
+    }
+
+    // Format: "<текст> | <время>"
+    // Example: "Позвонить маме | 2026-02-21 10:00"
+    const parts = trimmed.split('|').map((p) => p.trim()).filter(Boolean);
+    if (parts.length === 2) {
+        const message = parts[0];
+        const timePart = parts[1];
+        const timeArgs = timePart.split(/\s+/).filter(Boolean);
+        const parsedByArgs = parseReminderCommand([...timeArgs, message], timeZone);
+        if (!parsedByArgs.error) {
+            parsedByArgs.message = message;
+            return parsedByArgs;
+        }
+
+        const parsedNatural = parseNaturalLanguageReminder(`${message} ${timePart}`, timeZone);
+        if (!parsedNatural.error) {
+            parsedNatural.message = message || parsedNatural.message || 'Напоминание';
+            return parsedNatural;
+        }
+
+        return parsedByArgs;
+    }
+
+    // Default format is identical to /remind args without command itself.
+    return parseReminderCommand(trimmed.split(/\s+/), timeZone);
+}
+
+function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
+    if (!rawText || typeof rawText !== 'string') {
+        return { error: 'Пустое сообщение' };
+    }
+
+    const text = rawText.trim().replace(/\s+/g, ' ');
+    if (!text) {
+        return { error: 'Пустое сообщение' };
+    }
+
+    // 1) "<message> через 20 минут" / "<message> in 20 minutes"
+    {
+        const m = text.match(/^(.*)\s+(?:через|in)\s+(\d+)\s*(минут[ауы]?|мин|minute|minutes|час|часа|часов|hour|hours|день|дня|дней|day|days|недел[яиюь]|week|weeks)$/i);
+        if (m) {
+            const message = (m[1] || '').trim();
+            const value = parseInt(m[2], 10);
+            const unit = normalizeNaturalUnit(m[3]);
+            const seconds = convertUnitToSeconds(value, unit);
+            if (message && seconds > 0) {
+                return {
+                    message,
+                    runAt: new Date(Date.now() + seconds * 1000),
+                    repeatType: 'none',
+                    repeatConfig: null,
+                    error: null
+                };
+            }
+        }
+    }
+
+    // 2) "<message> каждые 10 минут" / "<message> every 10 minutes"
+    {
+        const m = text.match(/^(.*)\s+(?:каждые|каждый|every)\s+(\d+)\s*(минут[ауы]?|мин|minute|minutes|час|часа|часов|hour|hours|день|дня|дней|day|days|недел[яиюь]|week|weeks)$/i);
+        if (m) {
+            const message = (m[1] || '').trim();
+            const value = parseInt(m[2], 10);
+            const unit = normalizeNaturalUnit(m[3]);
+            const seconds = convertUnitToSeconds(value, unit);
+            if (message && seconds > 0) {
+                return {
+                    message,
+                    runAt: new Date(Date.now() + seconds * 1000),
+                    repeatType: 'interval',
+                    repeatConfig: { interval_seconds: seconds },
+                    error: null
+                };
+            }
+        }
+    }
+
+    // 3) "<message> завтра в 10[:30]" / "tomorrow at 10[:30]"
+    {
+        const m = text.match(/^(.*)\s+(сегодня|today|завтра|tomorrow|послезавтра|day after tomorrow)(?:\s+(?:в|at)\s+(\d{1,2})(?::(\d{2}))?)?$/i);
+        if (m) {
+            const message = (m[1] || '').trim();
+            const dayWord = String(m[2] || '').toLowerCase();
+            const hour = m[3] != null ? parseInt(m[3], 10) : 9;
+            const minute = m[4] != null ? parseInt(m[4], 10) : 0;
+            if (!message || !isValidHourMinute(hour, minute)) {
+                return { error: 'Неверное время. Используйте часы 0-23 и минуты 0-59' };
+            }
+
+            let offsetDays = 0;
+            if (dayWord === 'завтра' || dayWord === 'tomorrow') offsetDays = 1;
+            if (dayWord === 'послезавтра' || dayWord === 'day after tomorrow') offsetDays = 2;
+
+            const nowInTz = getTimeZoneParts(new Date(), timeZone);
+            const localDay = new Date(Date.UTC(nowInTz.year, nowInTz.month - 1, nowInTz.day + offsetDays, 0, 0, 0));
+            let runAt = zonedDateTimeToUtc(
+                localDay.getUTCFullYear(),
+                localDay.getUTCMonth() + 1,
+                localDay.getUTCDate(),
+                hour,
+                minute,
+                timeZone
+            );
+
+            if (runAt.getTime() <= Date.now()) {
+                const nextLocalDay = new Date(Date.UTC(localDay.getUTCFullYear(), localDay.getUTCMonth(), localDay.getUTCDate() + 1, 0, 0, 0));
+                runAt = zonedDateTimeToUtc(
+                    nextLocalDay.getUTCFullYear(),
+                    nextLocalDay.getUTCMonth() + 1,
+                    nextLocalDay.getUTCDate(),
+                    hour,
+                    minute,
+                    timeZone
+                );
+            }
+
+            return {
+                message,
+                runAt,
+                repeatType: 'none',
+                repeatConfig: null,
+                error: null
+            };
+        }
+    }
+
+    // 4) "<message> в понедельник в 10" / "<message> on monday at 10"
+    {
+        const m = text.match(/^(.*)\s+(?:в|on)\s+(понедельник|вторник|среда|среду|четверг|пятница|пятницу|суббота|субботу|воскресенье|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:в|at)\s+(\d{1,2})(?::(\d{2}))?)?$/i);
+        if (m) {
+            const message = (m[1] || '').trim();
+            const weekdayWord = String(m[2] || '').toLowerCase();
+            const hour = m[3] != null ? parseInt(m[3], 10) : 9;
+            const minute = m[4] != null ? parseInt(m[4], 10) : 0;
+            const weekday = parseWeekday(weekdayWord);
+            if (!message || weekday == null || !isValidHourMinute(hour, minute)) {
+                return { error: 'Неверный формат дня недели или времени' };
+            }
+
+            const runAt = nextWeekdayAt(weekday, hour, minute, timeZone);
+            return {
+                message,
+                runAt,
+                repeatType: 'none',
+                repeatConfig: null,
+                error: null
+            };
+        }
+    }
+
+    return { error: 'Не удалось распознать естественный формат' };
+}
+
+function normalizeNaturalUnit(unitRaw) {
+    const unit = String(unitRaw || '').toLowerCase();
+    if (['мин', 'минута', 'минут', 'минуты', 'minute', 'minutes'].includes(unit)) return 'm';
+    if (['час', 'часа', 'часов', 'hour', 'hours'].includes(unit)) return 'h';
+    if (['день', 'дня', 'дней', 'day', 'days'].includes(unit)) return 'd';
+    if (['неделя', 'недели', 'неделю', 'недель', 'week', 'weeks'].includes(unit)) return 'w';
+    return null;
+}
+
+function convertUnitToSeconds(value, unit) {
+    if (!Number.isFinite(value) || value < 1 || !unit) return 0;
+    switch (unit) {
+        case 'm': return value * 60;
+        case 'h': return value * 3600;
+        case 'd': return value * 86400;
+        case 'w': return value * 604800;
+        default: return 0;
+    }
+}
+
+function isValidHourMinute(hour, minute) {
+    return Number.isInteger(hour) && Number.isInteger(minute) && hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59;
+}
+
+function parseWeekday(wordRaw) {
+    const word = String(wordRaw || '').toLowerCase();
+    const map = {
+        'воскресенье': 0,
+        'monday': 1,
+        'понедельник': 1,
+        'tuesday': 2,
+        'вторник': 2,
+        'wednesday': 3,
+        'среда': 3,
+        'среду': 3,
+        'thursday': 4,
+        'четверг': 4,
+        'friday': 5,
+        'пятница': 5,
+        'пятницу': 5,
+        'saturday': 6,
+        'суббота': 6,
+        'субботу': 6,
+        'sunday': 0,
+    };
+    return map[word];
+}
+
+function nextWeekdayAt(weekday, hour, minute, timeZone = 'UTC') {
+    const now = new Date();
+    const nowParts = getTimeZoneParts(now, timeZone);
+    const todayWeekday = getWeekdayInTimeZone(now, timeZone);
+
+    let delta = weekday - todayWeekday;
+    if (delta < 0) delta += 7;
+
+    const todayCandidate = zonedDateTimeToUtc(nowParts.year, nowParts.month, nowParts.day, hour, minute, timeZone);
+    if (delta === 0 && todayCandidate.getTime() <= now.getTime()) {
+        delta = 7;
+    }
+
+    const targetLocalDate = new Date(Date.UTC(nowParts.year, nowParts.month - 1, nowParts.day + delta, 0, 0, 0));
+    return zonedDateTimeToUtc(
+        targetLocalDate.getUTCFullYear(),
+        targetLocalDate.getUTCMonth() + 1,
+        targetLocalDate.getUTCDate(),
+        hour,
+        minute,
+        timeZone
+    );
+}
+
+function normalizeLanguageInput(input) {
+    const value = String(input || '').trim().toLowerCase();
+    if (!value) return null;
+    if (['ru', 'русский', 'russian', 'рус'].includes(value)) return 'ru';
+    if (['en', 'english', 'английский', 'англ'].includes(value)) return 'en';
+    return null;
 }
 
 function parseInterval(str) {
@@ -3292,14 +3673,15 @@ function parseCronNextRun(cronExpr) {
     }
 }
 
-function formatReminderDate(date) {
+function formatReminderDate(date, timeZone = 'UTC') {
     return date.toLocaleString('ru-RU', {
+        timeZone,
         day: '2-digit', month: '2-digit', year: '2-digit',
         hour: '2-digit', minute: '2-digit'
     });
 }
 
-function formatReminderList(reminders) {
+function formatReminderList(reminders, timeZone = 'UTC') {
     if (!reminders || reminders.length === 0) {
         return '📭 У вас нет активных напоминаний';
     }
@@ -3307,7 +3689,7 @@ function formatReminderList(reminders) {
     const lines = ['📋 Ваши напоминания:'];
     reminders.forEach((r, i) => {
         const runAt = new Date(r.run_at);
-        const dateStr = formatReminderDate(runAt);
+        const dateStr = formatReminderDate(runAt, timeZone);
         const repeatInfo = r.repeat_type === 'interval' 
             ? ` (каждые ${Math.round(r.repeat_config?.interval_seconds / 60)} мин)`
             : r.repeat_type === 'cron' ? ' (по расписанию)' : '';
@@ -3343,8 +3725,21 @@ async function handleTelegramUpdate(update) {
             if (text.startsWith('/')) {
                 return await handleTelegramCommand(text, chatId, telegramUser);
             }
+
+            if (pendingLanguageInput.has(telegramUser.id)) {
+                return await handlePendingLanguageInput(text, chatId, telegramUser);
+            }
+
+            if (pendingTimezoneInput.has(telegramUser.id)) {
+                return await handlePendingTimezoneInput(text, chatId, telegramUser);
+            }
             
-            // Handle non-command messages (could be part of conversation)
+            // Handle pending two-step reminder creation: /remind -> user text
+            if (pendingReminderInput.has(telegramUser.id)) {
+                return await handlePendingReminderInput(text, chatId, telegramUser);
+            }
+
+            // Handle non-command messages (no active conversation)
             return { ok: true };
         }
         
@@ -3366,6 +3761,29 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
     const args = parts.slice(1);
     
     console.log(`[Telegram] Command: ${command} from user ${telegramUser.telegram_id}`);
+
+    const onboardingAllowed = ['/start', '/settings', '/help', '/cancel'];
+    if (!isLanguageSelectedForUser(telegramUser) && !onboardingAllowed.includes(command)) {
+        const botToken = await getReminderBotToken();
+        pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            '⚠️ Перед использованием бота нужно выбрать язык.\n\nОтправьте:\nru\nили\nen\n\nИли командой:\n/settings language ru'
+        );
+        return { ok: true };
+    }
+
+    if (!isTimezoneSelectedForUser(telegramUser) && !onboardingAllowed.includes(command)) {
+        const botToken = await getReminderBotToken();
+        pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            '⚠️ Перед использованием бота нужно выбрать часовой пояс.\n\nОтправьте, например:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York\n\nИли командой:\n/settings timezone Europe/Moscow'
+        );
+        return { ok: true };
+    }
     
     switch (command) {
         case '/start':
@@ -3374,12 +3792,28 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
         case '/help':
             return await handleHelpCommand(chatId);
         
+        case '/add':
+            return await handleAddCommand(args, chatId, telegramUser);
+        
         case '/remind':
             return await handleRemindCommand(args, chatId, telegramUser);
         
+        case '/list':
         case '/myreminders':
         case '/reminders':
             return await handleMyRemindersCommand(chatId, telegramUser);
+        
+        case '/formats':
+            return await handleFormatsCommand(chatId);
+        
+        case '/settings':
+            return await handleSettingsCommand(args, chatId, telegramUser);
+        
+        case '/web':
+            return await handleWebCommand(chatId);
+        
+        case '/cancel':
+            return await handleCancelCommand(chatId, telegramUser);
         
         case '/delete':
             return await handleDeleteCommand(args, chatId, telegramUser);
@@ -3391,20 +3825,56 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
 
 async function handleStartCommand(chatId, telegramUser) {
     const botToken = await getReminderBotToken();
+
+    if (!isLanguageSelectedForUser(telegramUser)) {
+        pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        const message = `👋 Привет, ${telegramUser.first_name || 'пользователь'}!
+
+Перед началом работы нужно выбрать язык.
+
+Отправьте одним сообщением:
+ru
+или
+en
+
+Или командой:
+/settings language ru`;
+        await sendTelegramMessage(botToken, chatId, message);
+        return { ok: true };
+    }
+
+    if (!isTimezoneSelectedForUser(telegramUser)) {
+        pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        const message = `👋 Привет, ${telegramUser.first_name || 'пользователь'}!
+
+Перед началом работы нужно выбрать часовой пояс.
+
+Отправьте одним сообщением, например:
+Europe/Moscow
+Asia/Almaty
+America/New_York
+
+Или командой:
+/settings timezone Europe/Moscow`;
+        await sendTelegramMessage(botToken, chatId, message);
+        return { ok: true };
+    }
+
     const message = `👋 Привет, ${telegramUser.first_name || 'пользователь'}!
 
-Я бот-напоминаний. Вот что я умею:
+Я могу помочь вам создавать и управлять вашими напоминаниями, которые потом я буду присылать вам через Telegram в указанное вами время.
 
-⏰ /remind — создать напоминание
-📋 /myreminders — мои напоминания
-❌ /delete — удалить напоминание
-❓ /help — справка
+Вот список моих основных возможностей:
 
-Примеры использования /remind:
-• /remind 10m Купить молоко
-• /remind 1h Встреча с клиентом
-• /remind 2025-02-20 14:00 Совещание
-• /remind every 1h Принять лекарство`;
+• По умолчанию я понимаю русский и английский
+• Вы можете создавать напоминания командой /add или /remind
+• Поддерживаются одноразовые и повторяющиеся напоминания
+• Язык можно изменить: /settings language ru|en
+• Часовой пояс можно настроить: /settings timezone Europe/Moscow
+• Я покажу список ваших напоминаний по команде /list
+• Для web-управления используйте команду /web
+
+Полная справка и список команд: /help`;
 
     await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
@@ -3412,45 +3882,260 @@ async function handleStartCommand(chatId, telegramUser) {
 
 async function handleHelpCommand(chatId) {
     const botToken = await getReminderBotToken();
-    const message = `📖 Справка по боту напоминаний
+    const message = `📖 Справка по напоминаниям
 
-Создание напоминаний:
+Я могу помочь вам создавать и управлять вашими напоминаниями, которые потом я буду присылать вам через Telegram в указанное вами время.
 
-1️⃣ Простое напоминание (через N минут/часов/дней):
-   /remind 10m Текст напоминания
-   /remind 1h Текст напоминания
-   /remind 1d Текст напоминания
+Вот список моих основных возможностей:
 
-2️⃣ Напоминание на конкретную дату:
-   /remind 2025-02-20 14:00 Текст напоминания
+• По умолчанию я понимаю русский и английский, но в настройках (/settings) можно включить дополнительные языки
+• Вы можете создавать напоминания в форматах: "/remind 20m ...", "/remind 2026-02-20 10:00 ...", "/remind every 10m ..."
+• Поддерживается естественный формат: "позвонить завтра в 10", "call mom tomorrow at 10"
+• Язык: /settings language ru|en
+• Также у меня есть веб-интерфейс. Чтобы войти, используйте /web
+• Вы можете деактивировать напоминание командой /delete
+• Вы можете просматривать текущие напоминания через /list
 
-3️⃣ Повторяющееся напоминание:
-   /remind every 1h Текст напоминания
-   /remind every 1d Текст напоминания
+А вот полный список моих команд:
 
-Обозначения времени:
-• m — минуты
-• h — часы
-• d — дни
-• w — недели
-
-Управление:
-• /myreminders — показать все напоминания
-• /delete <номер> — удалить напоминание по номеру`;
+/start - начать использовать бота/переход в главное меню
+/help - открыть справку
+/add - добавить напоминание
+/list - показать список напоминаний
+/formats - показать список поддерживаемых форматов даты и времени
+/settings - настройки (язык и часовой пояс)
+/web - ссылка на веб-интерфейс
+/cancel - отменить текущую операцию`;
 
     await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
 
-async function handleRemindCommand(args, chatId, telegramUser) {
+async function handleAddCommand(args, chatId, telegramUser) {
     const botToken = await getReminderBotToken();
-    const parsed = parseReminderCommand(args);
 
-    if (parsed.error) {
-        await sendTelegramMessage(botToken, chatId, `❌ ${parsed.error}`);
+    if (!args || args.length === 0) {
+        pendingReminderInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            'Пожалуйста, введите текст напоминания и время.\n\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nПозвонить маме | 2026-02-21 10:00\nПозвонить в офис завтра в 10\nCall mom tomorrow at 10\n\nДля отмены: /cancel'
+        );
         return { ok: true };
     }
 
+    return await handleRemindCommand(args, chatId, telegramUser);
+}
+
+async function handleFormatsCommand(chatId) {
+    const botToken = await getReminderBotToken();
+    const message = `📅 Поддерживаемые форматы даты и времени:
+
+1) Через интервал:
+/remind 10m Текст
+/remind 2h Текст
+/remind 1d Текст
+/remind 1w Текст
+
+2) Конкретная дата и время:
+/remind 2026-02-20 14:00 Текст
+
+3) Повтор:
+/remind every 10m Текст
+/remind every 1d Текст
+/remind cron 0 9 * * * Текст`;
+
+    await sendTelegramMessage(botToken, chatId, message);
+    return { ok: true };
+}
+
+async function handleSettingsCommand(args, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    const currentTimeZone = await getUserTimeZone(telegramUser.id);
+    const command = String(args?.[0] || '').toLowerCase();
+    const value = args?.[1];
+
+    if ((command === 'language' || command === 'lang') && value) {
+        const normalizedLanguage = normalizeLanguageInput(value);
+        if (!normalizedLanguage) {
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                `❌ Неверный язык: ${value}\n\nПример:\n/settings language ru\n/settings language en`
+            );
+            return { ok: true };
+        }
+
+        const saveResult = await setUserLanguage(telegramUser.id, normalizedLanguage);
+        if (!saveResult.success) {
+            await sendTelegramMessage(botToken, chatId, `❌ Не удалось сохранить язык: ${saveResult.error}`);
+            return { ok: true };
+        }
+
+        telegramUser.language_code = normalizedLanguage;
+        telegramUser.language_is_set = true;
+        pendingLanguageInput.delete(telegramUser.id);
+
+        if (!isTimezoneSelectedForUser(telegramUser)) {
+            pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                `✅ Язык обновлен: ${normalizedLanguage}\n\nТеперь выберите часовой пояс, например:\nEurope/Moscow`
+            );
+            return { ok: true };
+        }
+
+        await sendTelegramMessage(botToken, chatId, `✅ Язык обновлен: ${normalizedLanguage}`);
+        return { ok: true };
+    }
+
+    if ((command === 'timezone' || command === 'tz') && value) {
+        if (!isLanguageSelectedForUser(telegramUser)) {
+            pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                '⚠️ Сначала выберите язык.\nВведите: ru или en\nили /settings language ru'
+            );
+            return { ok: true };
+        }
+
+        if (!isValidTimeZone(value)) {
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                `❌ Неверный часовой пояс: ${value}\n\nПример:\n/settings timezone Europe/Moscow\n/settings timezone Asia/Almaty\n/settings timezone America/New_York`
+            );
+            return { ok: true };
+        }
+
+        const saveResult = await setUserTimeZone(telegramUser.id, value);
+        if (!saveResult.success) {
+            await sendTelegramMessage(botToken, chatId, `❌ Не удалось сохранить часовой пояс: ${saveResult.error}`);
+            return { ok: true };
+        }
+
+        telegramUser.timezone = value;
+        telegramUser.timezone_is_set = true;
+        pendingTimezoneInput.delete(telegramUser.id);
+        await sendTelegramMessage(botToken, chatId, `✅ Часовой пояс обновлен: ${value}`);
+        return { ok: true };
+    }
+
+    const message = `⚙️ Настройки напоминаний
+
+Текущий язык: ${telegramUser.language_code || 'ru'}
+Текущий часовой пояс: ${currentTimeZone}
+
+Чтобы изменить язык:
+/settings language ru
+/settings language en
+
+Чтобы изменить пояс:
+/settings timezone Europe/Moscow
+/settings timezone Asia/Almaty
+/settings timezone America/New_York
+
+Веб-интерфейс: /web`;
+    await sendTelegramMessage(botToken, chatId, message);
+    return { ok: true };
+}
+
+async function handleWebCommand(chatId) {
+    const botToken = await getReminderBotToken();
+    const message = '🌐 Веб-интерфейс напоминаний: откройте панель проекта и перейдите в раздел /reminders';
+    await sendTelegramMessage(botToken, chatId, message);
+    return { ok: true };
+}
+
+async function handleCancelCommand(chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    pendingReminderInput.delete(telegramUser.id);
+    if (pendingLanguageInput.has(telegramUser.id)) {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            '⚠️ Выбор языка обязателен.\nВведите: ru или en'
+        );
+        return { ok: true };
+    }
+    if (pendingTimezoneInput.has(telegramUser.id)) {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            '⚠️ Выбор часового пояса обязателен.\nВведите, например: Europe/Moscow'
+        );
+        return { ok: true };
+    }
+    await sendTelegramMessage(botToken, chatId, '✅ Текущая операция отменена.');
+    return { ok: true };
+}
+
+async function handlePendingLanguageInput(text, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    const normalizedLanguage = normalizeLanguageInput(text);
+    if (!normalizedLanguage) {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `❌ Неверный язык: ${text}\n\nВведите: ru или en`
+        );
+        return { ok: true };
+    }
+
+    const saveResult = await setUserLanguage(telegramUser.id, normalizedLanguage);
+    if (!saveResult.success) {
+        await sendTelegramMessage(botToken, chatId, `❌ Не удалось сохранить язык: ${saveResult.error}`);
+        return { ok: true };
+    }
+
+    telegramUser.language_code = normalizedLanguage;
+    telegramUser.language_is_set = true;
+    pendingLanguageInput.delete(telegramUser.id);
+
+    if (!isTimezoneSelectedForUser(telegramUser)) {
+        pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `✅ Язык сохранен: ${normalizedLanguage}\nТеперь выберите часовой пояс, например: Europe/Moscow`
+        );
+        return { ok: true };
+    }
+
+    await sendTelegramMessage(botToken, chatId, `✅ Язык сохранен: ${normalizedLanguage}`);
+    return { ok: true };
+}
+
+async function handlePendingTimezoneInput(text, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    const candidate = String(text || '').trim();
+    if (!isValidTimeZone(candidate)) {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `❌ Неверный часовой пояс: ${candidate}\n\nПримеры корректных значений:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York`
+        );
+        return { ok: true };
+    }
+
+    const saveResult = await setUserTimeZone(telegramUser.id, candidate);
+    if (!saveResult.success) {
+        await sendTelegramMessage(botToken, chatId, `❌ Не удалось сохранить часовой пояс: ${saveResult.error}`);
+        return { ok: true };
+    }
+
+    telegramUser.timezone = candidate;
+    telegramUser.timezone_is_set = true;
+    pendingTimezoneInput.delete(telegramUser.id);
+    await sendTelegramMessage(botToken, chatId, `✅ Часовой пояс сохранен: ${candidate}\nТеперь можно создавать напоминания через /remind или /add`);
+    return { ok: true };
+}
+
+async function createReminderFromParsed(parsed, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    const userTimeZone = await getUserTimeZone(telegramUser.id);
     const result = await createReminder(
         telegramUser.id,
         parsed.message,
@@ -3461,7 +4146,7 @@ async function handleRemindCommand(args, chatId, telegramUser) {
 
     if (result.success) {
         const runAtDate = new Date(parsed.runAt);
-        const dateStr = formatReminderDate(runAtDate);
+        const dateStr = formatReminderDate(runAtDate, userTimeZone);
         const repeatInfo = parsed.repeatType === 'interval'
             ? ` (повтор каждые ${Math.round(parsed.repeatConfig.interval_seconds / 60)} мин)`
             : parsed.repeatType === 'cron' ? ' (по расписанию)' : '';
@@ -3469,19 +4154,61 @@ async function handleRemindCommand(args, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            `✅ Напоминание создано!\n\n⏰ ${dateStr}${repeatInfo}\n📝 ${parsed.message}`
+            `✅ Напоминание создано!\n\n⏰ ${dateStr}${repeatInfo}\n🌍 ${userTimeZone}\n📝 ${parsed.message}`
         );
     } else {
         await sendTelegramMessage(botToken, chatId, `❌ Ошибка: ${result.error}`);
     }
+}
 
+async function handlePendingReminderInput(text, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    const userTimeZone = await getUserTimeZone(telegramUser.id);
+    const parsed = parseReminderTextInput(text, userTimeZone);
+
+    if (parsed.error) {
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            `❌ ${parsed.error}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить\nПозвонить маме | 2026-02-21 10:00\nПозвонить в офис завтра в 10\nCall mom tomorrow at 10\n\nДля отмены: /cancel`
+        );
+        return { ok: true };
+    }
+
+    await createReminderFromParsed(parsed, chatId, telegramUser);
+    pendingReminderInput.delete(telegramUser.id);
+    return { ok: true };
+}
+
+async function handleRemindCommand(args, chatId, telegramUser) {
+    const botToken = await getReminderBotToken();
+    if (!args || args.length === 0) {
+        pendingReminderInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            'Введите напоминание и время одним сообщением.\n\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить\nПозвонить маме | 2026-02-21 10:00\nПозвонить в офис завтра в 10\nCall mom tomorrow at 10\n\nДля отмены: /cancel'
+        );
+        return { ok: true };
+    }
+
+    const userTimeZone = await getUserTimeZone(telegramUser.id);
+    const parsed = parseReminderCommand(args, userTimeZone);
+
+    if (parsed.error) {
+        await sendTelegramMessage(botToken, chatId, `❌ ${parsed.error}`);
+        return { ok: true };
+    }
+
+    await createReminderFromParsed(parsed, chatId, telegramUser);
     return { ok: true };
 }
 
 async function handleMyRemindersCommand(chatId, telegramUser) {
     const botToken = await getReminderBotToken();
     const reminders = await getUserReminders(telegramUser.id, true);
-    const message = formatReminderList(reminders);
+    const userTimeZone = await getUserTimeZone(telegramUser.id);
+    const message = formatReminderList(reminders, userTimeZone);
     await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
@@ -3492,13 +4219,14 @@ async function handleDeleteCommand(args, chatId, telegramUser) {
     if (args.length === 0) {
         // Show reminders with numbers for deletion
         const reminders = await getUserReminders(telegramUser.id, true);
+        const userTimeZone = await getUserTimeZone(telegramUser.id);
         if (reminders.length === 0) {
             await sendTelegramMessage(botToken, chatId, '📭 У вас нет напоминаний для удаления');
             return { ok: true };
         }
 
         const message = ['📋 Выберите напоминание для удаления (отправьте номер):'].concat(
-            reminders.map((r, i) => `${i + 1}. ⏰ ${formatReminderDate(new Date(r.run_at))} — ${r.message}`)
+            reminders.map((r, i) => `${i + 1}. ⏰ ${formatReminderDate(new Date(r.run_at), userTimeZone)} — ${r.message}`)
         ).join('\n');
 
         await sendTelegramMessage(botToken, chatId, message);
@@ -3702,21 +4430,166 @@ app.post('/api/telegram/webhook', async (req, res) => {
 
 // API endpoints for reminder management (web interface)
 app.get('/api/reminders', auth, async (req, res) => {
-    // Get reminders for the authenticated user's Telegram account
-    // This requires linking web user to Telegram user
-    const accountId = getAccountId(req);
-    
     if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
-        return res.json({ reminders: [], error: 'Database not available' });
+        return res.json([]);
     }
-    
+
     try {
-        // Find Telegram users linked to this account (by username match or custom linking)
-        // For now, return empty - Telegram reminders are managed via bot
-        res.json({ reminders: [] });
+        const result = await db.query(
+            `SELECT
+                r.id,
+                r.telegram_user_id,
+                r.message,
+                r.run_at,
+                r.repeat_type,
+                r.repeat_config,
+                r.is_active,
+                r.created_at,
+                r.updated_at,
+                r.next_run_at,
+                u.telegram_id,
+                u.username,
+                u.first_name,
+                u.last_name
+             FROM telegram_reminders r
+             JOIN telegram_users u ON u.id = r.telegram_user_id
+             ORDER BY r.created_at DESC`
+        );
+
+        res.json(result.rows);
     } catch (err) {
         console.error('[API] Error getting reminders:', err);
         res.status(500).json({ error: 'Failed to get reminders' });
+    }
+});
+
+app.put('/api/reminders/:id', auth, blockAuditorWrite, async (req, res) => {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return res.status(500).json({ error: 'Database not available' });
+    }
+
+    const reminderId = Number(req.params.id);
+    if (!Number.isInteger(reminderId) || reminderId < 1) {
+        return res.status(400).json({ error: 'Invalid reminder id' });
+    }
+
+    const {
+        message,
+        runAt,
+        repeatType,
+        repeatConfig,
+        isActive,
+        nextRunAt,
+    } = req.body || {};
+
+    const fields = [];
+    const values = [];
+
+    const addField = (sqlPart, value) => {
+        values.push(value);
+        fields.push(`${sqlPart} = $${values.length}`);
+    };
+
+    if (message !== undefined) {
+        const normalizedMessage = String(message).trim();
+        if (!normalizedMessage) {
+            return res.status(400).json({ error: 'Message is required' });
+        }
+        addField('message', normalizedMessage);
+    }
+
+    if (runAt !== undefined) {
+        const parsedRunAt = new Date(runAt);
+        if (Number.isNaN(parsedRunAt.getTime())) {
+            return res.status(400).json({ error: 'Invalid runAt date' });
+        }
+        addField('run_at', parsedRunAt);
+    }
+
+    if (repeatType !== undefined) {
+        const allowed = ['none', 'interval', 'cron'];
+        if (!allowed.includes(repeatType)) {
+            return res.status(400).json({ error: 'Invalid repeatType' });
+        }
+        addField('repeat_type', repeatType);
+    }
+
+    if (repeatConfig !== undefined) {
+        if (repeatConfig !== null && typeof repeatConfig !== 'object') {
+            return res.status(400).json({ error: 'Invalid repeatConfig' });
+        }
+        addField('repeat_config', repeatConfig);
+    }
+
+    if (isActive !== undefined) {
+        addField('is_active', Boolean(isActive));
+    }
+
+    if (nextRunAt !== undefined) {
+        if (nextRunAt === null || nextRunAt === '') {
+            addField('next_run_at', null);
+        } else {
+            const parsedNextRunAt = new Date(nextRunAt);
+            if (Number.isNaN(parsedNextRunAt.getTime())) {
+                return res.status(400).json({ error: 'Invalid nextRunAt date' });
+            }
+            addField('next_run_at', parsedNextRunAt);
+        }
+    }
+
+    if (fields.length === 0) {
+        return res.status(400).json({ error: 'No fields to update' });
+    }
+
+    values.push(reminderId);
+
+    try {
+        const result = await db.query(
+            `UPDATE telegram_reminders
+             SET ${fields.join(', ')}, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $${values.length}
+             RETURNING *`,
+            values
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Reminder not found' });
+        }
+
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('[API] Error updating reminder:', err);
+        res.status(500).json({ error: 'Failed to update reminder' });
+    }
+});
+
+app.delete('/api/reminders/:id', auth, blockAuditorWrite, async (req, res) => {
+    if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
+        return res.status(500).json({ error: 'Database not available' });
+    }
+
+    const reminderId = Number(req.params.id);
+    if (!Number.isInteger(reminderId) || reminderId < 1) {
+        return res.status(400).json({ error: 'Invalid reminder id' });
+    }
+
+    try {
+        const result = await db.query(
+            `UPDATE telegram_reminders
+             SET is_active = false, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $1
+             RETURNING *`,
+            [reminderId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Reminder not found' });
+        }
+
+        res.json({ ok: true });
+    } catch (err) {
+        console.error('[API] Error deleting reminder:', err);
+        res.status(500).json({ error: 'Failed to delete reminder' });
     }
 });
 

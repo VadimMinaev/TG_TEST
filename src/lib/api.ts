@@ -133,6 +133,23 @@ export interface BotRun {
   created_at: string;
 }
 
+export interface Reminder {
+  id: number;
+  telegram_user_id: number;
+  telegram_id?: number;
+  username?: string;
+  first_name?: string;
+  last_name?: string;
+  message: string;
+  run_at: string;
+  repeat_type: 'none' | 'interval' | 'cron';
+  repeat_config?: any;
+  is_active: boolean;
+  next_run_at?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface IntegrationRun {
   id: number;
   integration_id: number;
@@ -490,6 +507,37 @@ export const api = {
       headers: getHeaders(),
     });
     if (!res.ok) throw new Error('Failed to clear bot history');
+  },
+
+  // Reminders
+  getReminders: async (): Promise<Reminder[]> => {
+    const res = await fetch(`${API_BASE}/reminders`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch reminders');
+    return res.json();
+  },
+
+  updateReminder: async (id: number, data: Partial<Reminder> & { runAt?: string; repeatType?: 'none' | 'interval' | 'cron'; repeatConfig?: any; isActive?: boolean; nextRunAt?: string | null }): Promise<Reminder> => {
+    const res = await fetch(`${API_BASE}/reminders/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to update reminder');
+    }
+    return res.json();
+  },
+
+  deleteReminder: async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE}/reminders/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to delete reminder');
+    }
   },
 
   // Accounts (vadmin only)

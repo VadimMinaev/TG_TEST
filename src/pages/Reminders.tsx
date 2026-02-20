@@ -1,32 +1,113 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router';
+import { api, Reminder } from '../lib/api';
 import { useToast } from '../components/ToastNotification';
 import { useAuth } from '../lib/auth-context';
-import { Clock, Plus, Trash2, Repeat, Calendar, Settings } from 'lucide-react';
+import { Breadcrumb } from '../components/Breadcrumb';
+import { EntityStateSwitch } from '../components/StateToggle';
+import { ToolbarToggle } from '../components/ToolbarToggle';
+import { Calendar, Pencil, RefreshCw, Settings, Trash2 } from 'lucide-react';
 
-interface Reminder {
-  id: number;
+type ReminderForm = {
   message: string;
-  run_at: string;
-  repeat_type: 'none' | 'interval' | 'cron';
-  repeat_config: any;
-  is_active: boolean;
-  next_run_at?: string;
+  runAtLocal: string;
+  repeatType: 'none' | 'interval' | 'cron';
+  intervalMinutes: string;
+  cronExpression: string;
+  isActive: boolean;
+};
+
+function toDateTimeLocal(value?: string) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  return date.toLocaleString('ru-RU', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function reminderOwnerLabel(reminder: Reminder) {
+  if (reminder.username) return `@${reminder.username}`;
+  const fullName = [reminder.first_name, reminder.last_name].filter(Boolean).join(' ');
+  if (fullName) return fullName;
+  if (reminder.telegram_id) return `ID ${reminder.telegram_id}`;
+  return `User ${reminder.telegram_user_id}`;
+}
+
+function reminderScheduleLabel(reminder: Reminder) {
+  if (reminder.repeat_type === 'interval') {
+    const seconds = Number(reminder.repeat_config?.interval_seconds || 0);
+    const minutes = Math.max(1, Math.round(seconds / 60));
+    return `Каждые ${minutes} мин`;
+  }
+  if (reminder.repeat_type === 'cron') {
+    return `Cron: ${reminder.repeat_config?.cron || '—'}`;
+  }
+  return formatDateTime(reminder.run_at);
+}
+
+function normalizeForm(reminder: Reminder): ReminderForm {
+  return {
+    message: reminder.message || '',
+    runAtLocal: toDateTimeLocal(reminder.run_at),
+    repeatType: reminder.repeat_type || 'none',
+    intervalMinutes:
+      reminder.repeat_type === 'interval'
+        ? String(Math.max(1, Math.round(Number(reminder.repeat_config?.interval_seconds || 60) / 60)))
+        : '60',
+    cronExpression: reminder.repeat_type === 'cron' ? String(reminder.repeat_config?.cron || '') : '',
+    isActive: reminder.is_active,
+  };
 }
 
 export function Reminders() {
   const { user } = useAuth();
+  const canEdit = user?.role !== 'auditor';
   const { addToast } = useToast();
+
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [showInfo, setShowInfo] = useState(true);
+  const [selectedReminderId, setSelectedReminderId] = useState<number | null>(null);
+  const [editingReminderId, setEditingReminderId] = useState<number | null>(null);
+  const [form, setForm] = useState<ReminderForm>({
+    message: '',
+    runAtLocal: '',
+    repeatType: 'none',
+    intervalMinutes: '60',
+    cronExpression: '',
+    isActive: true,
+  });
+
+  const selectedReminder = useMemo(
+    () => reminders.find((r) => r.id === selectedReminderId) || null,
+    [reminders, selectedReminderId]
+  );
 
   const loadReminders = async () => {
     try {
       setLoading(true);
-      // Пока API возвращает пустой массив - напоминания управляются через бота
-      // В будущем можно добавить связь Telegram user с web user
-      setReminders([]);
+      const data = await api.getReminders();
+      setReminders(data);
+      if (data.length && (selectedReminderId == null || !data.some((r) => r.id === selectedReminderId))) {
+        setSelectedReminderId(data[0].id);
+      }
+      if (!data.length) {
+        setSelectedReminderId(null);
+        setEditingReminderId(null);
+      }
     } catch (error: any) {
       addToast(error.message || 'Не удалось загрузить напоминания', 'error');
     } finally {
@@ -38,214 +119,379 @@ export function Reminders() {
     loadReminders();
   }, []);
 
-  const formatDateTime = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+  const handleEditReminder = (reminder: Reminder) => {
+    setSelectedReminderId(reminder.id);
+    setEditingReminderId(reminder.id);
+    setForm(normalizeForm(reminder));
   };
 
-  const getRepeatLabel = (reminder: Reminder) => {
-    if (reminder.repeat_type === 'interval') {
-      const minutes = Math.round(reminder.repeat_config?.interval_seconds / 60);
-      return `Каждые ${minutes} мин`;
+  const handleSaveReminder = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!selectedReminder || editingReminderId == null) return;
+
+    const message = form.message.trim();
+    if (!message) {
+      addToast('Введите текст напоминания', 'error');
+      return;
     }
-    if (reminder.repeat_type === 'cron') {
-      return 'По расписанию';
+
+    if (!form.runAtLocal) {
+      addToast('Укажите дату и время', 'error');
+      return;
     }
-    return 'Однократно';
+
+    const runAtDate = new Date(form.runAtLocal);
+    if (Number.isNaN(runAtDate.getTime())) {
+      addToast('Некорректная дата и время', 'error');
+      return;
+    }
+
+    let repeatConfig: any = null;
+    if (form.repeatType === 'interval') {
+      const minutes = Number(form.intervalMinutes);
+      if (!Number.isFinite(minutes) || minutes < 1) {
+        addToast('Интервал должен быть больше 0', 'error');
+        return;
+      }
+      repeatConfig = { interval_seconds: Math.round(minutes * 60) };
+    } else if (form.repeatType === 'cron') {
+      const cron = form.cronExpression.trim();
+      if (!cron) {
+        addToast('Введите cron-выражение', 'error');
+        return;
+      }
+      repeatConfig = { cron };
+    }
+
+    try {
+      setSaving(true);
+      const runAtIso = runAtDate.toISOString();
+      const updated = await api.updateReminder(selectedReminder.id, {
+        message,
+        runAt: runAtIso,
+        nextRunAt: runAtIso,
+        repeatType: form.repeatType,
+        repeatConfig,
+        isActive: form.isActive,
+      });
+
+      setReminders((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
+      setEditingReminderId(null);
+      addToast('Напоминание обновлено', 'success');
+    } catch (error: any) {
+      addToast(error.message || 'Не удалось сохранить напоминание', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleReminder = async (reminder: Reminder) => {
+    const nextActive = !reminder.is_active;
+    try {
+      const updated = await api.updateReminder(reminder.id, { isActive: nextActive });
+      setReminders((prev) => prev.map((r) => (r.id === reminder.id ? { ...r, ...updated } : r)));
+      addToast(nextActive ? 'Напоминание включено' : 'Напоминание выключено', 'success');
+    } catch (error: any) {
+      addToast(error.message || 'Не удалось изменить статус', 'error');
+    }
+  };
+
+  const handleDeleteReminder = async (reminder: Reminder) => {
+    if (!confirm(`Деактивировать напоминание "${reminder.message}"?`)) return;
+    try {
+      await api.deleteReminder(reminder.id);
+      setReminders((prev) => prev.map((r) => (r.id === reminder.id ? { ...r, is_active: false } : r)));
+      if (selectedReminderId === reminder.id) {
+        setEditingReminderId(null);
+      }
+      addToast('Напоминание деактивировано', 'success');
+    } catch (error: any) {
+      addToast(error.message || 'Не удалось деактивировать напоминание', 'error');
+    }
   };
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-            Напоминания Telegram
-          </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Управление напоминаниями через Telegram-бота
-          </p>
+    <div className="card">
+      <div className="card-header">
+        <div className="flex flex-col gap-2">
+          <div>
+            <h2 className="text-xl font-semibold">⏰ Напоминания</h2>
+            <div className="mt-1">
+              <Breadcrumb
+                items={[
+                  { label: 'Главная', path: '/' },
+                  { label: 'Напоминания', active: true },
+                ]}
+              />
+            </div>
+          </div>
         </div>
-        <Link
-          to="/reminders/settings"
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium flex items-center gap-2"
-        >
-          <Settings className="w-4 h-4" />
-          Настройки бота
-        </Link>
+        <div className="flex items-center gap-2">
+          {canEdit && selectedReminder && editingReminderId === null && (
+            <>
+              <button
+                onClick={() => handleEditReminder(selectedReminder)}
+                className="icon-button"
+                title="Редактировать"
+              >
+                <Pencil className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => handleDeleteReminder(selectedReminder)}
+                className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+                title="Деактивировать"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+              <ToolbarToggle
+                enabled={selectedReminder.is_active}
+                onChange={() => handleToggleReminder(selectedReminder)}
+                title={selectedReminder.is_active ? 'Отключить напоминание' : 'Включить напоминание'}
+              />
+              <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
+            </>
+          )}
+          <button onClick={() => loadReminders()} className="icon-button" title="Обновить список">
+            <RefreshCw className="h-4 w-4" />
+          </button>
+          <Link to="/reminders/settings" className="icon-button" title="Настройки бота напоминаний">
+            <Settings className="h-4 w-4" />
+          </Link>
+        </div>
       </div>
 
-      {/* Info Block */}
-      {showInfo && (
-        <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div className="flex items-start justify-between">
-            <div className="flex-1">
-              <h3 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
-                <Clock className="w-5 h-5" />
-                Как использовать напоминания
-              </h3>
-              <div className="mt-3 text-sm text-blue-800 dark:text-blue-200 space-y-2">
-                <p>📱 Напоминания управляются через Telegram-бота:</p>
-                <ol className="list-decimal list-inside space-y-1 ml-2">
-                  <li>Откройте диалог с ботом в Telegram</li>
-                  <li>Отправьте <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/start</code> для начала работы</li>
-                  <li>Используйте команду <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/remind</code> для создания напоминания</li>
-                </ol>
-                
-                <div className="mt-3 p-3 bg-blue-100 dark:bg-blue-800/30 rounded text-xs font-mono">
-                  <p className="font-semibold mb-2">Примеры команд:</p>
-                  <p>/remind 10m Купить молоко</p>
-                  <p>/remind 1h Встреча с клиентом</p>
-                  <p>/remind 2025-02-20 14:00 Совещание</p>
-                  <p>/remind every 1h Принять лекарство</p>
+      <div className="split-layout p-6">
+        <div className="split-left">
+          <div className="panel">
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="text-sm font-semibold">📋 Список напоминаний</h3>
+              <button
+                onClick={() => loadReminders()}
+                className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs"
+              >
+                Обновить
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
+              </div>
+            ) : reminders.length === 0 ? (
+              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Напоминаний нет</p>
+            ) : (
+              <div className="entity-list-scroll scrollbar-thin">
+                <table className="table-basic w-full border-collapse text-sm">
+                  <thead>
+                    <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
+                      <th className="px-2 py-2">Текст</th>
+                      <th className="px-2 py-2">Пользователь</th>
+                      <th className="px-2 py-2">Расписание</th>
+                      <th className="px-2 py-2">Статус</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reminders.map((reminder) => (
+                      <tr
+                        key={reminder.id}
+                        onClick={() => {
+                          setSelectedReminderId(reminder.id);
+                          setEditingReminderId(null);
+                        }}
+                        className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
+                          selectedReminderId === reminder.id ? 'bg-[hsl(var(--accent))]' : ''
+                        }`}
+                      >
+                        <td className="max-w-[220px] truncate px-2 py-2 font-medium">{reminder.message}</td>
+                        <td className="px-2 py-2 text-xs">{reminderOwnerLabel(reminder)}</td>
+                        <td className="px-2 py-2 text-xs">{reminderScheduleLabel(reminder)}</td>
+                        <td className="px-2 py-2">{reminder.is_active ? '✅' : '⏸️'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="split-right">
+          {editingReminderId !== null && selectedReminder ? (
+            <div className="panel">
+              <h3 className="mb-4 text-lg font-semibold">Редактирование напоминания</h3>
+              <form onSubmit={handleSaveReminder} className="flex flex-col gap-5">
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Текст</label>
+                  <textarea
+                    rows={3}
+                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                    value={form.message}
+                    onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
+                    placeholder="Текст напоминания"
+                  />
                 </div>
 
-                <div className="mt-3">
-                  <p className="font-semibold mb-1">Доступные команды:</p>
-                  <ul className="grid grid-cols-2 gap-2 text-xs">
-                    <li><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/remind</code> — создать напоминание</li>
-                    <li><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/myreminders</code> — мои напоминания</li>
-                    <li><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/delete</code> — удалить напоминание</li>
-                    <li><code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/help</code> — справка</li>
-                  </ul>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Дата и время</label>
+                    <input
+                      type="datetime-local"
+                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                      value={form.runAtLocal}
+                      onChange={(e) => setForm((prev) => ({ ...prev, runAtLocal: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Тип повтора</label>
+                    <select
+                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                      value={form.repeatType}
+                      onChange={(e) =>
+                        setForm((prev) => ({ ...prev, repeatType: e.target.value as 'none' | 'interval' | 'cron' }))
+                      }
+                    >
+                      <option value="none">Однократно</option>
+                      <option value="interval">Интервал</option>
+                      <option value="cron">Cron</option>
+                    </select>
+                  </div>
+                </div>
+
+                {form.repeatType === 'interval' && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Интервал (минуты)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                      value={form.intervalMinutes}
+                      onChange={(e) => setForm((prev) => ({ ...prev, intervalMinutes: e.target.value }))}
+                    />
+                  </div>
+                )}
+
+                {form.repeatType === 'cron' && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Cron выражение</label>
+                    <input
+                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
+                      value={form.cronExpression}
+                      onChange={(e) => setForm((prev) => ({ ...prev, cronExpression: e.target.value }))}
+                      placeholder="0 9 * * *"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <EntityStateSwitch
+                    idPrefix="reminder-edit"
+                    enabled={form.isActive}
+                    onChange={(nextEnabled) => setForm((prev) => ({ ...prev, isActive: nextEnabled }))}
+                  />
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] disabled:opacity-60"
+                  >
+                    {saving ? 'Сохранение...' : 'Сохранить'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingReminderId(null)}
+                    className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
+                  >
+                    Отмена
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : selectedReminder ? (
+            <div className="space-y-4">
+              <div>
+                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация</h4>
+                <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                  <div>
+                    <strong>ID:</strong>{' '}
+                    <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{selectedReminder.id}</code>
+                  </div>
+                  <div>
+                    <strong>Пользователь:</strong> {reminderOwnerLabel(selectedReminder)}
+                  </div>
+                  <div>
+                    <strong>Статус:</strong>{' '}
+                    <span
+                      className={`rounded px-2 py-1 text-xs ${
+                        selectedReminder.is_active
+                          ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                          : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
+                      }`}
+                    >
+                      {selectedReminder.is_active ? '✅ Активно' : '⏸️ Неактивно'}
+                    </span>
+                  </div>
+                  <div>
+                    <strong>Текст:</strong>
+                    <div className="mt-1 whitespace-pre-wrap break-words rounded bg-[hsl(var(--muted)_/_0.25)] p-2">
+                      {selectedReminder.message}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Расписание</h4>
+                <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                  <div>
+                    <strong>Запуск:</strong> {formatDateTime(selectedReminder.run_at)}
+                  </div>
+                  <div>
+                    <strong>Следующий запуск:</strong> {formatDateTime(selectedReminder.next_run_at)}
+                  </div>
+                  <div>
+                    <strong>Тип:</strong>{' '}
+                    <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{selectedReminder.repeat_type}</code>
+                  </div>
+                  {selectedReminder.repeat_type === 'interval' && (
+                    <div>
+                      <strong>Интервал:</strong>{' '}
+                      {Math.max(1, Math.round(Number(selectedReminder.repeat_config?.interval_seconds || 0) / 60))} мин
+                    </div>
+                  )}
+                  {selectedReminder.repeat_type === 'cron' && (
+                    <div>
+                      <strong>Cron:</strong>{' '}
+                      <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">
+                        {selectedReminder.repeat_config?.cron || '—'}
+                      </code>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Мета</h4>
+                <div className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4">
+                  <div>
+                    <strong>Создано:</strong> {formatDateTime(selectedReminder.created_at)}
+                  </div>
+                  <div>
+                    <strong>Обновлено:</strong> {formatDateTime(selectedReminder.updated_at)}
+                  </div>
                 </div>
               </div>
             </div>
-            <button
-              onClick={() => setShowInfo(false)}
-              className="ml-4 text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200"
-            >
-              <span className="sr-only">Закрыть</span>
-              ✕
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Show Info Button (if hidden) */}
-      {!showInfo && (
-        <button
-          onClick={() => setShowInfo(true)}
-          className="mb-4 text-sm text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 flex items-center gap-1"
-        >
-          <Clock className="w-4 h-4" />
-          Показать справку
-        </button>
-      )}
-
-      {/* Reminders List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-            <Calendar className="w-5 h-5" />
-            Ваши напоминания
-          </h2>
-          <button
-            onClick={loadReminders}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
-            title="Обновить"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="p-4">
-          {loading ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              Загрузка...
-            </div>
-          ) : reminders.length === 0 ? (
-            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-              <Calendar className="w-12 h-12 mx-auto mb-3 opacity-50" />
-              <p>Нет напоминаний</p>
-              <p className="text-sm mt-1">
-                Используйте <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">/myreminders</code> в Telegram для просмотра
-              </p>
-            </div>
           ) : (
-            <div className="space-y-3">
-              {reminders.map((reminder) => (
-                <div
-                  key={reminder.id}
-                  className={`p-4 rounded-lg border ${
-                    reminder.is_active
-                      ? 'border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50'
-                      : 'border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        {reminder.repeat_type !== 'none' ? (
-                          <Repeat className="w-4 h-4 text-blue-500" />
-                        ) : (
-                          <Clock className="w-4 h-4 text-gray-500" />
-                        )}
-                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                          {getRepeatLabel(reminder)}
-                        </span>
-                      </div>
-                      <p className="text-gray-900 dark:text-gray-100 mb-2">
-                        {reminder.message}
-                      </p>
-                      <div className="text-xs text-gray-500 dark:text-gray-400">
-                        <p>
-                          Запуск: {formatDateTime(reminder.run_at)}
-                        </p>
-                        {reminder.next_run_at && (
-                          <p>
-                            Следующий: {formatDateTime(reminder.next_run_at)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {!reminder.is_active && (
-                      <span className="text-xs text-red-500 font-medium">
-                        Неактивно
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">
+              <Calendar className="mb-3 h-8 w-8" />
+              <p>Выберите напоминание слева для просмотра и редактирования</p>
             </div>
           )}
-        </div>
-      </div>
-
-      {/* Quick Setup Guide */}
-      <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg border border-gray-200 dark:border-gray-700">
-        <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-          <Plus className="w-5 h-5" />
-          Быстрый старт
-        </h3>
-        <div className="grid md:grid-cols-3 gap-4 text-sm">
-          <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">1</div>
-            <p className="text-gray-700 dark:text-gray-300">
-              Откройте Telegram и найдите вашего бота
-            </p>
-          </div>
-          <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">2</div>
-            <p className="text-gray-700 dark:text-gray-300">
-              Отправьте <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">/start</code>
-            </p>
-          </div>
-          <div className="p-3 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700">
-            <div className="text-lg font-bold text-blue-600 dark:text-blue-400 mb-1">3</div>
-            <p className="text-gray-700 dark:text-gray-300">
-              Используйте <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">/remind</code> для создания
-            </p>
-          </div>
         </div>
       </div>
     </div>
   );
 }
+
