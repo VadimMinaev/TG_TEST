@@ -4408,6 +4408,9 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
                 [
                     { text: '🌐 Язык', callback_data: 'open:settings:language' },
                     { text: '🕒 Часовой пояс', callback_data: 'open:settings:timezone' }
+                ],
+                [
+                    { text: '🌙 Тихий режим', callback_data: 'open:settings:quiet' }
                 ]
             ]
         }
@@ -4551,7 +4554,7 @@ function buildReminderConfirmationText(parsed, userTimeZone) {
 🌍 ${userTimeZone}${repeatInfo}`;
 }
 
-async function maybeConfirmOrCreateReminder(parsed, chatId, telegramUser) {
+async function maybeConfirmOrCreateReminder(parsed, chatId, telegramUser, sourceMode = 'single') {
     const botToken = await getReminderBotToken();
     const userTimeZone = await getUserTimeZone(telegramUser.id);
     const parsedRunAt = new Date(parsed.runAt);
@@ -4560,6 +4563,7 @@ async function maybeConfirmOrCreateReminder(parsed, chatId, telegramUser) {
         pendingReminderConfirmation.set(telegramUser.id, {
             action: 'past_time',
             parsed,
+            sourceMode,
             chatId,
             createdAt: Date.now()
         });
@@ -4584,6 +4588,7 @@ async function maybeConfirmOrCreateReminder(parsed, chatId, telegramUser) {
     pendingReminderConfirmation.set(telegramUser.id, {
         action: 'create',
         parsed,
+        sourceMode,
         chatId,
         createdAt: Date.now()
     });
@@ -4667,7 +4672,7 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
     }
 
     pendingReminderInput.delete(telegramUser.id);
-    return await maybeConfirmOrCreateReminder(parsed, chatId, telegramUser);
+    return await maybeConfirmOrCreateReminder(parsed, chatId, telegramUser, pending.mode || 'single');
 }
 
 async function handleRemindCommand(args, chatId, telegramUser) {
@@ -4691,7 +4696,7 @@ async function handleRemindCommand(args, chatId, telegramUser) {
         return { ok: true };
     }
 
-    return await maybeConfirmOrCreateReminder(parsed, chatId, telegramUser);
+    return await maybeConfirmOrCreateReminder(parsed, chatId, telegramUser, 'single');
 }
 
 async function handleMyRemindersCommand(args, chatId, telegramUser) {
@@ -4829,6 +4834,38 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         return { ok: true };
     }
 
+    if (data === 'open:settings:quiet') {
+        await sendQuietHoursSelectionPrompt(
+            botToken,
+            chatId,
+            `Текущий тихий режим: ${telegramUser.quiet_hours_start ?? 23}:00 - ${telegramUser.quiet_hours_end ?? 7}:00\n\nВыберите пресет:`
+        );
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id);
+        return { ok: true };
+    }
+
+    if (data.startsWith('setquiet:')) {
+        const parts = data.split(':');
+        const start = parseInt(parts[1], 10);
+        const end = parseInt(parts[2], 10);
+        const saveResult = await setUserQuietHours(telegramUser.id, start, end);
+        if (!saveResult.success) {
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Ошибка сохранения quiet режима');
+            return { ok: true };
+        }
+        telegramUser.quiet_hours_start = start;
+        telegramUser.quiet_hours_end = end;
+        await sendTelegramMessage(
+            botToken,
+            chatId,
+            start === end
+                ? '✅ Тихий режим отключен'
+                : `✅ Тихий режим обновлен: ${start}:00 - ${end}:00`
+        );
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Тихий режим сохранен');
+        return { ok: true };
+    }
+
     if (data.startsWith('settz:')) {
         const tzValue = data.substring('settz:'.length);
         if (tzValue === 'manual') {
@@ -4890,9 +4927,40 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
     }
 
     if (data === 'confirm:edit') {
+        const pending = pendingReminderConfirmation.get(telegramUser.id);
         pendingReminderConfirmation.delete(telegramUser.id);
-        pendingReminderInput.set(telegramUser.id, { mode: 'single', step: 'full', chatId, createdAt: Date.now() });
-        await sendTelegramMessage(botToken, chatId, 'Ок, отправьте напоминание заново одним сообщением.');
+
+        if (pending?.sourceMode === 'wizard' && pending?.parsed?.message) {
+            pendingReminderInput.set(telegramUser.id, {
+                mode: 'wizard',
+                step: 'when',
+                message: pending.parsed.message,
+                chatId,
+                createdAt: Date.now()
+            });
+            await sendTelegramMessage(
+                botToken,
+                chatId,
+                `Ок, изменим время для:\n📝 ${pending.parsed.message}\n\nУкажите новую дату/время.`,
+                {
+                    reply_markup: {
+                        inline_keyboard: [
+                            [
+                                { text: 'Сегодня 18:00', callback_data: 'addwhen:today18' },
+                                { text: 'Завтра 10:00', callback_data: 'addwhen:tomorrow10' }
+                            ],
+                            [
+                                { text: '+1 час', callback_data: 'addwhen:plus1h' },
+                                { text: '+1 день', callback_data: 'addwhen:plus1d' }
+                            ]
+                        ]
+                    }
+                }
+            );
+        } else {
+            pendingReminderInput.set(telegramUser.id, { mode: 'single', step: 'full', chatId, createdAt: Date.now() });
+            await sendTelegramMessage(botToken, chatId, 'Ок, отправьте напоминание заново одним сообщением.');
+        }
         await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Введите заново');
         return { ok: true };
     }
@@ -5021,6 +5089,23 @@ async function sendTimeZoneSelectionPrompt(botToken, chatId, text) {
                 ],
                 [
                     { text: '✍️ Ввести вручную', callback_data: 'settz:manual' }
+                ]
+            ]
+        }
+    });
+}
+
+async function sendQuietHoursSelectionPrompt(botToken, chatId, text) {
+    return await sendTelegramMessage(botToken, chatId, text, {
+        reply_markup: {
+            inline_keyboard: [
+                [
+                    { text: '🌙 23:00-07:00', callback_data: 'setquiet:23:7' },
+                    { text: '🌙 22:00-08:00', callback_data: 'setquiet:22:8' }
+                ],
+                [
+                    { text: '🌙 00:00-06:00', callback_data: 'setquiet:0:6' },
+                    { text: '🔔 Выкл', callback_data: 'setquiet:0:0' }
                 ]
             ]
         }
