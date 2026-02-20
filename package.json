@@ -1,13 +1,14 @@
 {
   "name": "telegram-webhook-integration",
-  "version": "1.0.357",
+  "version": "1.0.358",
   "description": "Webhook to Telegram integration with routing rules",
   "main": "server/app.js",
   "scripts": {
     "start": "node server/app.js",
     "dev": "node --watch server/app.js",
     "dev:client": "vite",
-    "build": "vite build",
+    "check:encoding": "node scripts/check-encoding.js",
+    "build": "npm run check:encoding && vite build",
     "preview": "vite preview",
     "deploy:local": "npm run build && echo 'Build complete. Now run: git add build/ && git commit -m \"Update build\" && git push'"
   },

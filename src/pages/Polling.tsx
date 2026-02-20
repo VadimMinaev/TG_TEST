@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
@@ -72,7 +72,7 @@ export function Polling() {
   const [togglingPollId, setTogglingPollId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
-  // РђРІС‚РѕРјР°С‚РёС‡РµСЃРєРё СЃРєСЂС‹РІР°С‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ С‡РµСЂРµР· 4 СЃРµРєСѓРЅРґС‹
+  // Автоматически скрывать уведомление через 4 секунды
 
   const selectedPoll = useMemo(
     () => polls.find((poll) => poll.id === selectedPollId) || null,
@@ -85,7 +85,7 @@ export function Polling() {
       const data = await api.getPolls();
       setPolls(data);
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ РїСѓР»Р»РёРЅРі', 'error');
+      addToast(error.message || 'Не удалось загрузить пуллинг', 'error');
     } finally {
       setLoading(false);
     }
@@ -95,7 +95,7 @@ export function Polling() {
     loadPolls();
   }, []);
 
-  // РџСЂРѕРІРµСЂСЏРµРј РїР°СЂР°РјРµС‚СЂС‹ create Рё select РІ URL
+  // Проверяем параметры create и select в URL
   useEffect(() => {
     const createParam = searchParams.get('create');
     const selectParam = searchParams.get('select');
@@ -138,14 +138,14 @@ export function Polling() {
 
     // Basic validation - name, URL and chatId are always required
     if (!form.name || !form.url || !form.chatId) {
-      addToast('РЈРєР°Р¶РёС‚Рµ РЅР°Р·РІР°РЅРёРµ, URL Рё Chat ID', 'error');
+      addToast('Укажите название, URL и Chat ID', 'error');
       return;
     }
 
     // If Telegram notification is enabled (both chatId and botToken are present), validate them
     // If only one of them is present, it's an error
     if (!!form.chatId !== !!form.botToken) {
-      addToast('Р”Р»СЏ Telegram СѓРІРµРґРѕРјР»РµРЅРёСЏ СѓРєР°Р¶РёС‚Рµ Рё Chat ID, Рё Bot Token', 'error');
+      addToast('Для Telegram уведомления укажите и Chat ID, и Bot Token', 'error');
       return;
     }
 
@@ -165,19 +165,19 @@ export function Polling() {
         const updated = await api.updatePoll(editingPollId, payload);
         setEditingPollId(null);
         setSelectedPollId(updated.id);
-        addToast('РџСѓР»Р»РёРЅРі РѕР±РЅРѕРІР»С‘РЅ', 'success');
-        // РџРµСЂРµР·Р°РіСЂСѓР¶Р°РµРј СЃРїРёСЃРѕРє РґР»СЏ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
+        addToast('Пуллинг обновлён', 'success');
+        // Перезагружаем список для синхронизации
         await loadPolls();
       } else {
         const created = await api.createPoll(payload);
         setEditingPollId(null);
         setSelectedPollId(created.id);
-        addToast('РџСѓР»Р»РёРЅРі СЃРѕР·РґР°РЅ', 'success');
-        // РџРµСЂРµР·Р°РіСЂСѓР¶Р°РµРј СЃРїРёСЃРѕРє РґР»СЏ СЃРёРЅС…СЂРѕРЅРёР·Р°С†РёРё
+        addToast('Пуллинг создан', 'success');
+        // Перезагружаем список для синхронизации
         await loadPolls();
       }
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ РїСѓР»Р»РёРЅРі', 'error');
+      addToast(error.message || 'Не удалось сохранить пуллинг', 'error');
     }
   };
 
@@ -185,20 +185,20 @@ export function Polling() {
     try {
       const copyPayload = {
         ...normalizeForm(poll),
-        name: `${poll.name} (РєРѕРїРёСЏ)`,
+        name: `${poll.name} (копия)`,
         enabled: false,
       };
       const created = await api.createPoll(copyPayload);
       setPolls((prev) => [created, ...prev]);
       setSelectedPollId(created.id);
-        addToast('РџСѓР»Р»РёРЅРі РїСЂРѕРґСѓР±Р»РёСЂРѕРІР°РЅ', 'success');
+      addToast('Пуллинг продублирован', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РґСѓР±Р»РёСЂРѕРІР°С‚СЊ РїСѓР»Р»РёРЅРі', 'error');
+      addToast(error.message || 'Не удалось дублировать пуллинг', 'error');
     }
   };
 
   const handleDeletePoll = async (poll: Poll) => {
-    if (!confirm(`РЈРґР°Р»РёС‚СЊ РїСѓР»Р»РёРЅРі "${poll.name}"?`)) return;
+    if (!confirm(`Удалить пуллинг "${poll.name}"?`)) return;
     try {
       await api.deletePoll(poll.id);
       setPolls((prev) => prev.filter((p) => p.id !== poll.id));
@@ -206,18 +206,18 @@ export function Polling() {
         setSelectedPollId(null);
         setEditingPollId(null);
       }
-      addToast('РџСѓР»Р»РёРЅРі СѓРґР°Р»С‘РЅ', 'success');
+      addToast('Пуллинг удалён', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ РїСѓР»Р»РёРЅРі', 'error');
+      addToast(error.message || 'Не удалось удалить пуллинг', 'error');
     }
   };
 
   const handleRunPoll = async (poll: Poll) => {
     try {
       await api.runPoll(poll.id);
-      addToast('Р—Р°РїСѓСЃРє РІС‹РїРѕР»РЅРµРЅ', 'success');
+      addToast('Запуск выполнен', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїСѓСЃС‚РёС‚СЊ РїСѓР»Р»РёРЅРі', 'error');
+      addToast(error.message || 'Не удалось запустить пуллинг', 'error');
     }
   };
 
@@ -228,9 +228,9 @@ export function Polling() {
       const updated = await api.updatePoll(poll.id, { enabled: nextEnabled });
       const mergedUpdated = { ...poll, ...updated, id: poll.id };
       setPolls((prev) => prev.map((p) => (p.id === poll.id ? mergedUpdated : p)));
-      addToast(nextEnabled ? 'РџСѓР»Р»РёРЅРі РІРєР»СЋС‡РµРЅ' : 'РџСѓР»Р»РёРЅРі РІС‹РєР»СЋС‡РµРЅ', 'success');
+      addToast(nextEnabled ? 'Пуллинг включен' : 'Пуллинг выключен', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ РїСѓР»Р»РёРЅРіР°', 'error');
+      addToast(error.message || 'Не удалось обновить статус пуллинга', 'error');
     } finally {
       setTogglingPollId(null);
     }
@@ -243,7 +243,7 @@ export function Polling() {
     const drafted = !name || !url || !chatId;
     return {
       payload: {
-        name: name || `Черновик пулинга ${index + 1}`,
+        name: name || `Черновик пуллинга ${index + 1}`,
         url: url || 'https://example.com/health',
         method: raw.method || 'GET',
         headersJson: raw.headersJson != null ? String(raw.headersJson) : undefined,
@@ -261,6 +261,7 @@ export function Polling() {
       drafted,
     };
   };
+
   const handleImportPolls = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -269,7 +270,7 @@ export function Polling() {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.polls) ? parsed.polls : [];
-      if (!items.length) throw new Error('Р¤Р°Р№Р» РЅРµ СЃРѕРґРµСЂР¶РёС‚ РїСѓР»Р»РёРЅРіРѕРІ');
+      if (!items.length) throw new Error('Файл не содержит пуллингов');
 
       let created = 0;
       let failed = 0;
@@ -291,14 +292,14 @@ export function Polling() {
       const messageText =
         failed === 0
           ? draftedCount > 0
-            ? `Импортировано пулингов: ${created}, черновиков: ${draftedCount}`
-            : `Импортировано пулингов: ${created}`
+            ? `Импортировано пуллингов: ${created}, черновиков: ${draftedCount}`
+            : `Импортировано пуллингов: ${created}`
           : lastError
             ? `Импортировано: ${created}, черновиков: ${draftedCount}, ошибок: ${failed}. Причина: ${lastError}`
             : `Импортировано: ${created}, черновиков: ${draftedCount}, ошибок: ${failed}`;
       addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      addToast(error.message || 'РћС€РёР±РєР° РёРјРїРѕСЂС‚Р° РїСѓР»Р»РёРЅРіРѕРІ', 'error');
+      addToast(error.message || 'Ошибка импорта пуллингов', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -310,35 +311,35 @@ export function Polling() {
   return (
     <div className="card">
       <div className="card-header">
-        <h2 className="text-xl font-semibold">рџ”Ѓ РџСѓР»Р»РёРЅРі</h2>
+        <h2 className="text-xl font-semibold">🔁 Пуллинг</h2>
         <div className="flex items-center gap-2">
           {canEdit && selectedPoll && !editingPollId && (
             <>
               <button
                 onClick={() => handleRunPoll(selectedPoll)}
                 className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)]"
-                title="Р—Р°РїСѓСЃС‚РёС‚СЊ"
+                title="Запустить"
               >
                 <Play className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleEditPoll(selectedPoll)}
                 className="icon-button"
-                title="Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ"
+                title="Редактировать"
               >
                 <Pencil className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDuplicatePoll(selectedPoll)}
                 className="icon-button"
-                title="Р”СѓР±Р»РёСЂРѕРІР°С‚СЊ"
+                title="Дублировать"
               >
                 <Copy className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDeletePoll(selectedPoll)}
                 className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                title="РЈРґР°Р»РёС‚СЊ"
+                title="Удалить"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -348,7 +349,7 @@ export function Polling() {
                   const poll = polls.find(p => p.id === selectedPollId);
                   if (poll) handleTogglePollEnabled(poll);
                 }}
-                title={polls.find(p => p.id === selectedPollId)?.enabled ? 'Р’С‹РєР»СЋС‡РёС‚СЊ РїСѓР»Р»РёРЅРі' : 'Р’РєР»СЋС‡РёС‚СЊ РїСѓР»Р»РёРЅРі'}
+                title={polls.find(p => p.id === selectedPollId)?.enabled ? 'Выключить пуллинг' : 'Включить пуллинг'}
               />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
@@ -356,7 +357,7 @@ export function Polling() {
           <button
             onClick={() => loadPolls()}
             className="icon-button"
-            title="РћР±РЅРѕРІРёС‚СЊ СЃРїРёСЃРѕРє"
+            title="Обновить список"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -373,21 +374,21 @@ export function Polling() {
                 onClick={() => importInputRef.current?.click()}
                 disabled={importing}
                 className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
-                title="РРјРїРѕСЂС‚ РїСѓР»Р»РёРЅРіРѕРІ"
+                title="Импорт пуллингов"
               >
                 <Upload className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setExportModalOpen(true)}
                 className="icon-button"
-                title="Р­РєСЃРїРѕСЂС‚ РїСѓР»Р»РёРЅРіРѕРІ"
+                title="Экспорт пуллингов"
               >
                 <Download className="h-4 w-4" />
               </button>
               <button
                 onClick={handleStartCreate}
                 className="icon-button"
-                title="РЎРѕР·РґР°С‚СЊ РїСѓР»Р»РёРЅРі"
+                title="Создать пуллинг"
               >
                 <Plus className="h-4 w-4" />
               </button>
@@ -401,12 +402,12 @@ export function Polling() {
         <div className="split-left">
           <div className="panel">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">рџ“‹ РЎРїРёСЃРѕРє Р·Р°РґР°С‡</h3>
+              <h3 className="text-sm font-semibold">📋 Список задач</h3>
               <button
                 onClick={() => loadPolls()}
                 className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs"
               >
-                РћР±РЅРѕРІРёС‚СЊ
+                Обновить
               </button>
             </div>
             {loading ? (
@@ -414,15 +415,15 @@ export function Polling() {
                 <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
               </div>
             ) : polls.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Р—Р°РґР°С‡Рё РЅРµ РЅР°Р№РґРµРЅС‹</p>
+              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Задачи не найдены</p>
             ) : (
               <div className="entity-list-scroll scrollbar-thin">
                 <table className="table-basic w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">РќР°Р·РІР°РЅРёРµ</th>
-                      <th className="px-2 py-2">РРЅС‚РµСЂРІР°Р»</th>
-                      <th className="px-2 py-2">РЎС‚Р°С‚СѓСЃ</th>
+                      <th className="px-2 py-2">Название</th>
+                      <th className="px-2 py-2">Интервал</th>
+                      <th className="px-2 py-2">Статус</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -445,7 +446,7 @@ export function Polling() {
                           </span>
                         </td>
                         <td className="px-2 py-2">{poll.intervalSec}s</td>
-                        <td className="px-2 py-2">{poll.enabled ? 'вњ… Р’РєР»' : 'вЏёпёЏ Р’С‹РєР»'}</td>
+                        <td className="px-2 py-2">{poll.enabled ? '✅ Вкл' : '⏸️ Выкл'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -459,12 +460,12 @@ export function Polling() {
           {editingPollId !== null ? (
             <div className="panel entity-edit-panel">
               <h3 className="mb-4 text-lg font-semibold">
-                {editingPollId === -1 ? 'РЎРѕР·РґР°РЅРёРµ Р·Р°РґР°С‡Рё' : 'Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ Р·Р°РґР°С‡Рё'}
+                {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
               <form className="entity-edit-form" onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РќР°Р·РІР°РЅРёРµ
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -477,8 +478,8 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>РЈРЅРёРєР°Р»СЊРЅРѕРµ РёРјСЏ РґР»СЏ РёРґРµРЅС‚РёС„РёРєР°С†РёРё РїСѓР»Р»РёРЅРіР° РІ СЃРїРёСЃРєРµ.</p>
-                            <p>Р РµРєРѕРјРµРЅРґСѓРµС‚СЃСЏ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїРѕРЅСЏС‚РЅС‹Рµ РЅР°Р·РІР°РЅРёСЏ, РЅР°РїСЂРёРјРµСЂ: В«РџСЂРѕРІРµСЂРєР° СЃС‚Р°С‚СѓСЃР° Р·Р°РєР°Р·Р°В» РёР»Рё В«РњРѕРЅРёС‚РѕСЂРёРЅРі СЃРµСЂРІРµСЂР°В».</p>
+                            <p>Уникальное имя для идентификации пуллинга в списке.</p>
+                            <p>Рекомендуется использовать понятные названия, например: «Проверка статуса заказа» или «Мониторинг сервера».</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -488,7 +489,7 @@ export function Polling() {
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="РќР°РїСЂРёРјРµСЂ: РџСЂРѕРІРµСЂРєР° СЃС‚Р°С‚СѓСЃР° Р·Р°РєР°Р·Р°"
+                    placeholder="Например: Проверка статуса заказа"
                   />
                 </div>
                 <div>
@@ -505,8 +506,8 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>РђРґСЂРµСЃ API, РєРѕС‚РѕСЂС‹Р№ Р±СѓРґРµС‚ РѕРїСЂР°С€РёРІР°С‚СЊСЃСЏ РїРѕ Р·Р°РґР°РЅРЅРѕРјСѓ РёРЅС‚РµСЂРІР°Р»Сѓ.</p>
-                            <p>РџРѕРґРґРµСЂР¶РёРІР°СЋС‚СЃСЏ HTTP Рё HTTPS РїСЂРѕС‚РѕРєРѕР»С‹.</p>
+                            <p>Адрес API, который будет опрашиваться по заданному интервалу.</p>
+                            <p>Поддерживаются HTTP и HTTPS протоколы.</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -523,7 +524,7 @@ export function Polling() {
 
                 <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РњРµС‚РѕРґ
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -536,11 +537,11 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>HTTP РјРµС‚РѕРґ РґР»СЏ Р·Р°РїСЂРѕСЃР° Рє API.</p>
-                            <p><strong>GET:</strong> РґР»СЏ РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С…</p>
-                            <p><strong>POST:</strong> РґР»СЏ РѕС‚РїСЂР°РІРєРё РґР°РЅРЅС‹С…</p>
-                            <p><strong>PUT/PATCH:</strong> РґР»СЏ РѕР±РЅРѕРІР»РµРЅРёСЏ РґР°РЅРЅС‹С…</p>
-                            <p><strong>DELETE:</strong> РґР»СЏ СѓРґР°Р»РµРЅРёСЏ РґР°РЅРЅС‹С…</p>
+                            <p>HTTP метод для запроса к API.</p>
+                            <p><strong>GET:</strong> для получения данных</p>
+                            <p><strong>POST:</strong> для отправки данных</p>
+                            <p><strong>PUT/PATCH:</strong> для обновления данных</p>
+                            <p><strong>DELETE:</strong> для удаления данных</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -572,13 +573,13 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>Р§РёСЃР»РѕРІРѕР№ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ С‡Р°С‚Р°/РєР°РЅР°Р»Р° РІ Telegram.</p>
-                            <p><strong>РљР°Рє РїРѕР»СѓС‡РёС‚СЊ:</strong></p>
+                            <p>Числовой идентификатор чата/канала в Telegram.</p>
+                            <p><strong>Как получить:</strong></p>
                             <ul className="list-disc list-inside">
-                              <li>Р”РѕР±Р°РІСЊС‚Рµ Р±РѕС‚Р° <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> РІ С‡Р°С‚</li>
-                              <li>РР»Рё РїРµСЂРµС€Р»РёС‚Рµ СЃРѕРѕР±С‰РµРЅРёРµ Р±РѕС‚Сѓ <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
+                              <li>Добавьте бота <code className="rounded bg-[hsl(var(--muted))] px-1">@userinfobot</code> в чат</li>
+                              <li>Или перешлите сообщение боту <code className="rounded bg-[hsl(var(--muted))] px-1">@getmyid_bot</code></li>
                             </ul>
-                            <p><strong>Р¤РѕСЂРјР°С‚:</strong> РґР»СЏ РіСЂСѓРїРї/РєР°РЅР°Р»РѕРІ ID РЅР°С‡РёРЅР°РµС‚СЃСЏ СЃ <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
+                            <p><strong>Формат:</strong> для групп/каналов ID начинается с <code className="rounded bg-[hsl(var(--muted))] px-1">-100</code></p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -595,7 +596,7 @@ export function Polling() {
 
                 <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РРЅС‚РµСЂРІР°Р» (СЃРµРє)
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -608,9 +609,9 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>РРЅС‚РµСЂРІР°Р» РјРµР¶РґСѓ Р·Р°РїСЂРѕСЃР°РјРё Рє API РІ СЃРµРєСѓРЅРґР°С….</p>
-                            <p><strong>РњРёРЅРёРјР°Р»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ:</strong> 5 СЃРµРєСѓРЅРґ</p>
-                            <p>Р‘РѕР»СЊС€РµРµ Р·РЅР°С‡РµРЅРёРµ СЌРєРѕРЅРѕРјРёС‚ СЂРµСЃСѓСЂСЃС‹, РјРµРЅСЊС€РµРµ - РѕР±РµСЃРїРµС‡РёРІР°РµС‚ Р±РѕР»РµРµ С‡Р°СЃС‚РѕРµ РѕР±РЅРѕРІР»РµРЅРёРµ РґР°РЅРЅС‹С….</p>
+                            <p>Интервал между запросами к API в секундах.</p>
+                            <p><strong>Минимальное значение:</strong> 5 секунд</p>
+                            <p>Большее значение экономит ресурсы, меньшее - обеспечивает более частое обновление данных.</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -625,7 +626,7 @@ export function Polling() {
                   />
                 </div>
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РўР°Р№РјР°СѓС‚ (СЃРµРє)
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -638,9 +639,9 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>Р’СЂРµРјСЏ РѕР¶РёРґР°РЅРёСЏ РѕС‚РІРµС‚Р° РѕС‚ API РІ СЃРµРєСѓРЅРґР°С….</p>
-                            <p><strong>РњРёРЅРёРјР°Р»СЊРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ:</strong> 3 СЃРµРєСѓРЅРґС‹</p>
-                            <p>Р•СЃР»Рё API РЅРµ РѕС‚РІРµС‡Р°РµС‚ РІ С‚РµС‡РµРЅРёРµ СЌС‚РѕРіРѕ РІСЂРµРјРµРЅРё, Р·Р°РїСЂРѕСЃ СЃС‡РёС‚Р°РµС‚СЃСЏ РЅРµСѓРґР°С‡РЅС‹Рј.</p>
+                            <p>Время ожидания ответа от API в секундах.</p>
+                            <p><strong>Минимальное значение:</strong> 3 секунды</p>
+                            <p>Если API не отвечает в течение этого времени, запрос считается неудачным.</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -670,9 +671,9 @@ export function Polling() {
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs text-left">
                         <div className="space-y-2">
-                          <p>Р—Р°РіРѕР»РѕРІРєРё HTTP Р·Р°РїСЂРѕСЃР° РІ С„РѕСЂРјР°С‚Рµ JSON.</p>
-                          <p>РСЃРїРѕР»СЊР·СѓСЋС‚СЃСЏ РґР»СЏ Р°РІС‚РѕСЂРёР·Р°С†РёРё Рё РїРµСЂРµРґР°С‡Рё РјРµС‚Р°РґР°РЅРЅС‹С….</p>
-                          <p><strong>РџСЂРёРјРµСЂ:</strong></p>
+                          <p>Заголовки HTTP запроса в формате JSON.</p>
+                          <p>Используются для авторизации и передачи метаданных.</p>
+                          <p><strong>Пример:</strong></p>
                           <pre className="bg-[hsl(var(--muted))] p-2 rounded text-xs overflow-x-auto">
                             {"{\n  \"Authorization\": \"Bearer your_token_here\",\n  \"Content-Type\": \"application/json\"\n}"}
                           </pre>
@@ -689,7 +690,7 @@ export function Polling() {
                     placeholder='{"Authorization": "Bearer token"}'
                   />
                   <p className="mt-1 text-xs text-[hsl(var(--muted-foreground))]">
-                    РџСЂРёРјРµСЂ: <code>{'{"Authorization":"Bearer <TOKEN>","Content-Type":"application/json"}'}</code>
+                    Пример: <code>{'{"Authorization":"Bearer <TOKEN>","Content-Type":"application/json"}'}</code>
                   </p>
                 </div>
 
@@ -707,9 +708,9 @@ export function Polling() {
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs text-left">
                         <div className="space-y-2">
-                          <p>РўРµР»Рѕ HTTP Р·Р°РїСЂРѕСЃР° РІ С„РѕСЂРјР°С‚Рµ JSON.</p>
-                          <p>РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РґР»СЏ РїРµСЂРµРґР°С‡Рё РґР°РЅРЅС‹С… РІ POST/PUT/PATCH Р·Р°РїСЂРѕСЃР°С….</p>
-                          <p><strong>РџСЂРёРјРµСЂ:</strong></p>
+                          <p>Тело HTTP запроса в формате JSON.</p>
+                          <p>Используется для передачи данных в POST/PUT/PATCH запросах.</p>
+                          <p><strong>Пример:</strong></p>
                           <pre className="bg-[hsl(var(--muted))] p-2 rounded text-xs overflow-x-auto">
                             {"{\n  \"query\": \"status\",\n  \"filters\": {\n    \"active\": true\n  }\n}"}
                           </pre>
@@ -728,7 +729,7 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>РЈСЃР»РѕРІРёСЏ (JSON)
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условия (JSON)
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -741,15 +742,15 @@ export function Polling() {
                       </TooltipTrigger>
                       <TooltipContent side="top" className="max-w-xs text-left">
                         <div className="space-y-2">
-                          <p>РЈСЃР»РѕРІРёСЏ РґР»СЏ РїСЂРѕРІРµСЂРєРё РѕС‚РІРµС‚Р° API РІ С„РѕСЂРјР°С‚Рµ JSON.</p>
-                          <p>РџСѓР»Р»РёРЅРі СЃСЂР°Р±РѕС‚Р°РµС‚, РєРѕРіРґР° СѓСЃР»РѕРІРёСЏ Р±СѓРґСѓС‚ РІС‹РїРѕР»РЅРµРЅС‹.</p>
-                          <p><strong>РџРѕР»СЏ:</strong></p>
+                          <p>Условия для проверки ответа API в формате JSON.</p>
+                          <p>Пуллинг сработает, когда условия будут выполнены.</p>
+                          <p><strong>Поля:</strong></p>
                           <ul className="list-disc list-inside text-xs">
-                            <li><code>logic</code> вЂ” Р»РѕРіРёС‡РµСЃРєРёР№ РѕРїРµСЂР°С‚РѕСЂ (AND/OR)</li>
-                            <li><code>conditions</code> вЂ” РјР°СЃСЃРёРІ СѓСЃР»РѕРІРёР№ РїСЂРѕРІРµСЂРєРё</li>
-                            <li><code>path</code> вЂ” РїСѓС‚СЊ Рє Р·РЅР°С‡РµРЅРёСЋ РІ РѕС‚РІРµС‚Рµ</li>
-                            <li><code>op</code> вЂ” РѕРїРµСЂР°С‚РѕСЂ СЃСЂР°РІРЅРµРЅРёСЏ (==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists)</li>
-                            <li><code>value</code> вЂ” Р·РЅР°С‡РµРЅРёРµ РґР»СЏ СЃСЂР°РІРЅРµРЅРёСЏ</li>
+                            <li><code>logic</code> — логический оператор (AND/OR)</li>
+                            <li><code>conditions</code> — массив условий проверки</li>
+                            <li><code>path</code> — путь к значению в ответе</li>
+                            <li><code>op</code> — оператор сравнения (==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists)</li>
+                            <li><code>value</code> — значение для сравнения</li>
                           </ul>
                         </div>
                       </TooltipContent>
@@ -764,18 +765,18 @@ export function Polling() {
                     placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'
                   />
                   <div style={{ padding: '12px 16px', marginTop: '8px' }} className="rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--muted)_/_0.2)] text-xs">
-                    <div className="mb-1 font-semibold">РџСЂРёРјРµСЂ:</div>
+                    <div className="mb-1 font-semibold">Пример:</div>
                     <pre className="whitespace-pre-wrap">{`{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"},{"path":"data.priority","op":">=","value":3}]}`}</pre>
                     <div className="mt-2 text-[hsl(var(--muted-foreground))]">
-                      <code>logic</code> вЂ” AND/OR. <code>conditions</code> вЂ” РјР°СЃСЃРёРІ РїСЂРѕРІРµСЂРѕРє. <code>path</code> вЂ” РїСѓС‚СЊ Рє
-                      РїРѕР»СЋ. <code>op</code> вЂ” РѕРїРµСЂР°С‚РѕСЂ (==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists).
+                      <code>logic</code> — AND/OR. <code>conditions</code> — массив проверок. <code>path</code> — путь к
+                      полю. <code>op</code> — оператор (==, !=, &gt;, &lt;, &gt;=, &lt;=, includes, exists).
                     </div>
                   </div>
                 </div>
 
                 <div>
                   <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                    РЁР°Р±Р»РѕРЅ СЃРѕРѕР±С‰РµРЅРёСЏ (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)
+                    Шаблон сообщения (опционально)
                     <TemplateHelp context="poll" />
                   </label>
                   <textarea
@@ -783,7 +784,7 @@ export function Polling() {
                     style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                     value={form.messageTemplate}
                     onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
-                    placeholder="${payload.name} вЂ” ${payload.status}"
+                    placeholder="${payload.name} — ${payload.status}"
                   />
                 </div>
 
@@ -802,7 +803,7 @@ export function Polling() {
                       onChange={(e) => setForm({ ...form, onlyOnChange: e.target.checked })}
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
-                    РўРѕР»СЊРєРѕ РїСЂРё РёР·РјРµРЅРµРЅРёРё
+                    Только при изменении
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -815,8 +816,8 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>РћС‚РїСЂР°РІР»СЏС‚СЊ СѓРІРµРґРѕРјР»РµРЅРёРµ С‚РѕР»СЊРєРѕ РїСЂРё РёР·РјРµРЅРµРЅРёРё РґР°РЅРЅС‹С….</p>
-                            <p>Р•СЃР»Рё РІРєР»СЋС‡РµРЅРѕ, СѓРІРµРґРѕРјР»РµРЅРёРµ Р±СѓРґРµС‚ РѕС‚РїСЂР°РІР»РµРЅРѕ С‚РѕР»СЊРєРѕ РїСЂРё РёР·РјРµРЅРµРЅРёРё Р·РЅР°С‡РµРЅРёСЏ РІ РѕС‚РІРµС‚Рµ API.</p>
+                            <p>Отправлять уведомление только при изменении данных.</p>
+                            <p>Если включено, уведомление будет отправлено только при изменении значения в ответе API.</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -829,7 +830,7 @@ export function Polling() {
                       onChange={(e) => setForm({ ...form, continueAfterMatch: e.target.checked })}
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
-                    РџСЂРѕРґРѕР»Р¶Р°С‚СЊ РїРѕСЃР»Рµ СЃРѕРІРїР°РґРµРЅРёСЏ
+                    Продолжать после совпадения
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -842,8 +843,8 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>РџСЂРѕРґРѕР»Р¶Р°С‚СЊ РІС‹РїРѕР»РЅРµРЅРёРµ РїСѓР»Р»РёРЅРіР° РїРѕСЃР»Рµ СЃСЂР°Р±Р°С‚С‹РІР°РЅРёСЏ.</p>
-                            <p>Р•СЃР»Рё РІС‹РєР»СЋС‡РµРЅРѕ, РїСѓР»Р»РёРЅРі РѕСЃС‚Р°РЅРѕРІРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ СЃРѕРІРїР°РґРµРЅРёСЏ.</p>
+                            <p>Продолжать выполнение пуллинга после срабатывания.</p>
+                            <p>Если выключено, пуллинг остановится после первого совпадения.</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -867,7 +868,7 @@ export function Polling() {
                       style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                     />
                     <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
-                      рџ“± Telegram СѓРІРµРґРѕРјР»РµРЅРёРµ
+                      📱 Telegram уведомление
                     </label>
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
@@ -881,8 +882,8 @@ export function Polling() {
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs text-left">
                           <div className="space-y-2">
-                            <p>Р’РєР»СЋС‡РёС‚СЊ РѕС‚РїСЂР°РІРєСѓ СѓРІРµРґРѕРјР»РµРЅРёР№ РІ Telegram.</p>
-                            <p>Р”Р»СЏ СЂР°Р±РѕС‚С‹ СѓРІРµРґРѕРјР»РµРЅРёР№ СѓРєР°Р¶РёС‚Рµ Bot Token. Chat ID Р±РµСЂРµС‚СЃСЏ РёР· РѕСЃРЅРѕРІРЅС‹С… РЅР°СЃС‚СЂРѕРµРє.</p>
+                            <p>Включить отправку уведомлений в Telegram.</p>
+                            <p>Для работы уведомлений укажите Bot Token. Chat ID берется из основных настроек.</p>
                           </div>
                         </TooltipContent>
                       </Tooltip>
@@ -899,16 +900,16 @@ export function Polling() {
                               <TooltipTrigger asChild>
                                 <button
                                   type="button"
-                                  className="ml-1.5 flex h-6 w-6 items-center justify-center rounded-full text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
-                                  aria-label="РџРѕРєР°Р·Р°С‚СЊ РїРѕРґСЃРєР°Р·РєСѓ"
+                                  className="ml-1.5 inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] transition-colors hover:bg-[hsl(var(--accent))] hover:text-[hsl(var(--accent-foreground))]"
+                                  aria-label="Показать подсказку"
                                 >
                                   <Info className="h-4 w-4" />
                                 </button>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-xs text-left">
                                 <div className="space-y-2">
-                                  <p>Р§РёСЃР»РѕРІРѕР№ РёРґРµРЅС‚РёС„РёРєР°С‚РѕСЂ С‡Р°С‚Р°/РєР°РЅР°Р»Р° РІ Telegram (Р±РµСЂРµС‚СЃСЏ РёР· РѕСЃРЅРѕРІРЅС‹С… РЅР°СЃС‚СЂРѕРµРє).</p>
-                                  <p>РСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ РґР»СЏ РѕС‚РїСЂР°РІРєРё СѓРІРµРґРѕРјР»РµРЅРёР№ РїСЂРё СЃСЂР°Р±Р°С‚С‹РІР°РЅРёРё РїСѓР»Р»РёРЅРіР°.</p>
+                                  <p>Числовой идентификатор чата/канала в Telegram (берется из основных настроек).</p>
+                                  <p>Используется для отправки уведомлений при срабатывании пуллинга.</p>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -935,13 +936,13 @@ export function Polling() {
                               </TooltipTrigger>
                               <TooltipContent side="top" className="max-w-xs text-left">
                                 <div className="space-y-2">
-                                  <p>РўРѕРєРµРЅ Telegram Р±РѕС‚Р° РґР»СЏ РѕС‚РїСЂР°РІРєРё СЃРѕРѕР±С‰РµРЅРёР№.</p>
-                                  <p><strong>РљР°Рє РїРѕР»СѓС‡РёС‚СЊ:</strong></p>
+                                  <p>Токен Telegram бота для отправки сообщений.</p>
+                                  <p><strong>Как получить:</strong></p>
                                   <ul className="list-disc list-inside">
-                                    <li>РЎРѕР·РґР°Р№С‚Рµ Р±РѕС‚Р° С‡РµСЂРµР· <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
-                                    <li>РЎРєРѕРїРёСЂСѓР№С‚Рµ С‚РѕРєРµРЅ РёР· СЃРѕРѕР±С‰РµРЅРёСЏ</li>
+                                    <li>Создайте бота через <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
+                                    <li>Скопируйте токен из сообщения</li>
                                   </ul>
-                                  <p>Р¤РѕСЂРјР°С‚: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABCdefGHIjklMNOpqrSTUvwxYZ</code></p>
+                                  <p>Формат: <code className="rounded bg-[hsl(var(--muted))] px-1">123456789:ABCdefGHIjklMNOpqrSTUvwxYZ</code></p>
                                 </div>
                               </TooltipContent>
                             </Tooltip>
@@ -957,7 +958,7 @@ export function Polling() {
                       </div>
                       <div style={{ marginTop: '16px' }}>
                         <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                          РЁР°Р±Р»РѕРЅ СЃРѕРѕР±С‰РµРЅРёСЏ
+                          Шаблон сообщения
                           <TemplateHelp context="poll" />
                         </label>
                         <textarea
@@ -965,7 +966,7 @@ export function Polling() {
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                           value={form.messageTemplate}
                           onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
-                          placeholder="${payload.name} вЂ” ${payload.status}"
+                          placeholder="${payload.name} — ${payload.status}"
                         />
                       </div>
                     </div>
@@ -977,7 +978,7 @@ export function Polling() {
                     type="submit"
                     style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
-                    РЎРѕС…СЂР°РЅРёС‚СЊ
+                    Сохранить
                   </button>
                   <button
                     type="button"
@@ -989,7 +990,7 @@ export function Polling() {
                     }}
                     style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
-                    РћС‚РјРµРЅР°
+                    Отмена
                   </button>
                 </div>
               </form>
@@ -998,16 +999,16 @@ export function Polling() {
             <div>
               <div className="space-y-4">
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РРЅС„РѕСЂРјР°С†РёСЏ Рѕ Р·Р°РґР°С‡Рµ</h4>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о задаче</h4>
                   <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div style={{ marginBottom: '12px' }}>
                       <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.id}</code>
               </div>
                     <div style={{ marginBottom: '12px' }}>
-                  <strong>РќР°Р·РІР°РЅРёРµ:</strong> {selectedPoll.name}
+                  <strong>Название:</strong> {selectedPoll.name}
                 </div>
                     <div style={{ marginBottom: '12px' }}>
-                      <strong>РЎС‚Р°С‚СѓСЃ:</strong>{' '}
+                      <strong>Статус:</strong>{' '}
                       <span
                         style={{ padding: '4px 8px' }}
                         className={`rounded text-xs ${
@@ -1016,7 +1017,7 @@ export function Polling() {
                             : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
                         }`}
                       >
-                        {selectedPoll.enabled ? 'вњ… Р’РєР»СЋС‡РµРЅРѕ' : 'вЏёпёЏ РћС‚РєР»СЋС‡РµРЅРѕ'}
+                        {selectedPoll.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
                     </div>
                   </div>
@@ -1024,23 +1025,23 @@ export function Polling() {
 
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РќР°СЃС‚СЂРѕР№РєРё РѕРїСЂРѕСЃР°</h4>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Настройки опроса</h4>
                   <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div>
                       <strong>URL:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.url}</code>
                     </div>
                     <div>
-                      <strong>РњРµС‚РѕРґ:</strong>{' '}
+                      <strong>Метод:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.method}</code>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <strong>РРЅС‚РµСЂРІР°Р»:</strong>{' '}
+                        <strong>Интервал:</strong>{' '}
                         <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.intervalSec}s</code>
                       </div>
                       <div>
-                        <strong>РўР°Р№РјР°СѓС‚:</strong>{' '}
+                        <strong>Таймаут:</strong>{' '}
                         <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.timeoutSec}s</code>
                       </div>
                     </div>
@@ -1048,10 +1049,10 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">рџ“± Telegram СѓРІРµРґРѕРјР»РµРЅРёРµ</h4>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">📱 Telegram уведомление</h4>
                   <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div>
-                      <strong>РЎС‚Р°С‚СѓСЃ:</strong>{' '}
+                      <strong>Статус:</strong>{' '}
                       <span
                         style={{ padding: '4px 8px' }}
                         className={`rounded text-xs ${
@@ -1060,7 +1061,7 @@ export function Polling() {
                             : 'bg-[hsl(var(--muted)_/_0.3)] text-[hsl(var(--muted-foreground))]'
                         }`}
                       >
-                        {selectedPoll.chatId && selectedPoll.botToken ? 'вњ… Р’РєР»СЋС‡РµРЅРѕ' : 'вЏёпёЏ РћС‚РєР»СЋС‡РµРЅРѕ'}
+                        {selectedPoll.chatId && selectedPoll.botToken ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
                     </div>
                     {selectedPoll.chatId && (
@@ -1072,12 +1073,12 @@ export function Polling() {
                     {selectedPoll.botToken && (
                       <div>
                         <strong>Bot Token:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***РЅР°СЃС‚СЂРѕРµРЅ***</code>
+                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***настроен***</code>
                       </div>
                     )}
                     {selectedPoll.messageTemplate && (
                       <div>
-                        <strong>РЁР°Р±Р»РѕРЅ СЃРѕРѕР±С‰РµРЅРёСЏ:</strong>
+                        <strong>Шаблон сообщения:</strong>
                         <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
                           {selectedPoll.messageTemplate}
                         </div>
@@ -1089,12 +1090,12 @@ export function Polling() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Р’С‹Р±РµСЂРёС‚Рµ Р·Р°РґР°С‡Сѓ СЃР»РµРІР° РёР»Рё СЃРѕР·РґР°Р№С‚Рµ РЅРѕРІСѓСЋ</p>
+              <p className="mb-4">Выберите задачу слева или создайте новую</p>
               <button
                 onClick={handleStartCreate}
                 className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
               >
-                <Plus className="h-4 w-4" /> РЎРѕР·РґР°С‚СЊ Р·Р°РґР°С‡Сѓ
+                <Plus className="h-4 w-4" /> Создать задачу
               </button>
             </div>
           )}
@@ -1105,16 +1106,14 @@ export function Polling() {
       <ExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        title="Р­РєСЃРїРѕСЂС‚ РїСѓР»Р»РёРЅРіРѕРІ"
-        description="Р’С‹Р±РµСЂРёС‚Рµ РїСѓР»Р»РёРЅРіРё РґР»СЏ СЌРєСЃРїРѕСЂС‚Р°"
+        title="Экспорт пуллингов"
+        description="Выберите пуллинги для экспорта"
         items={polls.map((p) => ({ id: p.id, name: p.name, enabled: p.enabled }))}
         loading={loading}
         exportFileName="polls-export.json"
         exportType="polls"
-        onExportSuccess={(count) => addToast(`Р­РєСЃРїРѕСЂС‚РёСЂРѕРІР°РЅРѕ РїСѓР»Р»РёРЅРіРѕРІ: ${count}`, 'success')}
+        onExportSuccess={(count) => addToast(`Экспортировано пуллингов: ${count}`, 'success')}
       />
     </div>
   );
 }
-
-

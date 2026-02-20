@@ -1894,8 +1894,9 @@ app.post('/api/rules', auth, blockAuditorWrite, async (req, res) => {
         const { botToken, messageTemplate = '', ...ruleData } = req.body;
         const trimmedToken = typeof botToken === 'string' ? botToken.trim() : '';
         const resolvedToken = trimmedToken || TELEGRAM_BOT_TOKEN;
+        const isEnabled = req.body.enabled !== false;
 
-        if (!resolvedToken || resolvedToken === 'YOUR_TOKEN') {
+        if (isEnabled && (!resolvedToken || resolvedToken === 'YOUR_TOKEN')) {
             return res.status(400).json({ error: 'Bot token is required' });
         }
 
@@ -1918,7 +1919,7 @@ app.post('/api/rules', auth, blockAuditorWrite, async (req, res) => {
             ...ruleData,
             botToken: trimmedToken,
             messageTemplate: safeMessageTemplate.trim(),
-            enabled: req.body.enabled !== false,
+            enabled: isEnabled,
             encoding: 'utf8',
             authorId: authorId ?? 'vadmin',
             created_at: new Date().toISOString(),
@@ -1983,7 +1984,8 @@ app.put('/api/rules/:id', auth, blockAuditorWrite, async (req, res) => {
             updated_at: new Date().toISOString()
         };
 
-        if (!updated.botToken && (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_TOKEN')) {
+        const updatedEnabled = updated.enabled !== false;
+        if (updatedEnabled && !updated.botToken && (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_TOKEN')) {
             return res.status(400).json({ error: 'Bot token is required' });
         }
 

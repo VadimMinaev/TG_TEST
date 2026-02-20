@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Bot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
@@ -10,8 +10,8 @@ import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { useToast } from '../components/ToastNotification';
 
-const DAY_NAMES = ['Р’СЃ', 'РџРЅ', 'Р’С‚', 'РЎСЂ', 'Р§С‚', 'РџС‚', 'РЎР±'];
-const DAY_NAMES_FULL = ['Р’РѕСЃРєСЂРµСЃРµРЅСЊРµ', 'РџРѕРЅРµРґРµР»СЊРЅРёРє', 'Р’С‚РѕСЂРЅРёРє', 'РЎСЂРµРґР°', 'Р§РµС‚РІРµСЂРі', 'РџСЏС‚РЅРёС†Р°', 'РЎСѓР±Р±РѕС‚Р°'];
+const DAY_NAMES = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
+const DAY_NAMES_FULL = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
 
 const DEFAULT_FORM = {
   name: '',
@@ -20,11 +20,11 @@ const DEFAULT_FORM = {
   messageType: 'poll' as 'text' | 'poll',
   messageText: '',
   pollQuestion: '',
-  pollOptions: '["Р’Р°СЂРёР°РЅС‚ 1", "Р’Р°СЂРёР°РЅС‚ 2", "Р’Р°СЂРёР°РЅС‚ 3"]',
+  pollOptions: '["Вариант 1", "Вариант 2", "Вариант 3"]',
   pollIsAnonymous: true,
   pollAllowsMultipleAnswers: false,
   scheduleType: 'recurring' as 'recurring' | 'once',
-  scheduleDays: [1, 2, 3, 4, 5], // РџРЅ-РџС‚
+  scheduleDays: [1, 2, 3, 4, 5], // Пн-Пт
   scheduleDate: '',
   scheduleTime: '09:00',
   scheduleTimezone: 'Europe/Moscow',
@@ -38,7 +38,7 @@ const normalizeForm = (bot?: Bot) => ({
   messageType: bot?.messageType || 'poll',
   messageText: bot?.messageText || '',
   pollQuestion: bot?.pollQuestion || '',
-  pollOptions: bot?.pollOptions || '["Р’Р°СЂРёР°РЅС‚ 1", "Р’Р°СЂРёР°РЅС‚ 2", "Р’Р°СЂРёР°РЅС‚ 3"]',
+  pollOptions: bot?.pollOptions || '["Вариант 1", "Вариант 2", "Вариант 3"]',
   pollIsAnonymous: bot?.pollIsAnonymous ?? true,
   pollAllowsMultipleAnswers: bot?.pollAllowsMultipleAnswers ?? false,
   scheduleType: bot?.scheduleType || 'recurring',
@@ -96,7 +96,7 @@ export function Bots() {
       const data = await api.getBots();
       setBots(data);
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ Р±РѕС‚РѕРІ', 'error');
+      addToast(error.message || 'Не удалось загрузить ботов', 'error');
     } finally {
       setLoading(false);
     }
@@ -148,27 +148,27 @@ export function Bots() {
     // Clear message is no longer needed with toast system
 
     if (!form.name || !form.chatId) {
-      addToast('РЈРєР°Р¶РёС‚Рµ РЅР°Р·РІР°РЅРёРµ Рё Chat ID', 'error');
+      addToast('Укажите название и Chat ID', 'error');
       return;
     }
 
     if (form.messageType === 'poll' && !form.pollQuestion) {
-      addToast('РЈРєР°Р¶РёС‚Рµ РІРѕРїСЂРѕСЃ РґР»СЏ РіРѕР»РѕСЃРѕРІР°РЅРёСЏ', 'error');
+      addToast('Укажите вопрос для голосования', 'error');
       return;
     }
 
     if (form.messageType === 'text' && !form.messageText) {
-      addToast('РЈРєР°Р¶РёС‚Рµ С‚РµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ', 'error');
+      addToast('Укажите текст сообщения', 'error');
       return;
     }
 
     if (form.scheduleType === 'recurring' && form.scheduleDays.length === 0) {
-      addToast('Р’С‹Р±РµСЂРёС‚Рµ С…РѕС‚СЏ Р±С‹ РѕРґРёРЅ РґРµРЅСЊ РЅРµРґРµР»Рё', 'error');
+      addToast('Выберите хотя бы один день недели', 'error');
       return;
     }
 
     if (form.scheduleType === 'once' && !form.scheduleDate) {
-      addToast('РЈРєР°Р¶РёС‚Рµ РґР°С‚Сѓ Р·Р°РїСѓСЃРєР°', 'error');
+      addToast('Укажите дату запуска', 'error');
       return;
     }
 
@@ -177,11 +177,11 @@ export function Bots() {
       try {
         const opts = JSON.parse(form.pollOptions);
         if (!Array.isArray(opts) || opts.length < 2) {
-          addToast('РќСѓР¶РЅРѕ РјРёРЅРёРјСѓРј 2 РІР°СЂРёР°РЅС‚Р° РѕС‚РІРµС‚Р°', 'error');
+          addToast('Нужно минимум 2 варианта ответа', 'error');
           return;
         }
       } catch {
-        addToast('РќРµРєРѕСЂСЂРµРєС‚РЅС‹Р№ JSON РґР»СЏ РІР°СЂРёР°РЅС‚РѕРІ РѕС‚РІРµС‚Р°', 'error');
+        addToast('Некорректный JSON для вариантов ответа', 'error');
         return;
       }
     }
@@ -196,17 +196,17 @@ export function Bots() {
         const updated = await api.updateBot(editingBotId, payload);
         setEditingBotId(null);
         setSelectedBotId(updated.id);
-        addToast('Р‘РѕС‚ РѕР±РЅРѕРІР»С‘РЅ', 'success');
+        addToast('Бот обновлён', 'success');
         await loadBots();
       } else {
         const created = await api.createBot(payload);
         setEditingBotId(null);
         setSelectedBotId(created.id);
-        addToast('Р‘РѕС‚ СЃРѕР·РґР°РЅ', 'success');
+        addToast('Бот создан', 'success');
         await loadBots();
       }
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СЃРѕС…СЂР°РЅРёС‚СЊ Р±РѕС‚Р°', 'error');
+      addToast(error.message || 'Не удалось сохранить бота', 'error');
     }
   };
 
@@ -214,20 +214,20 @@ export function Bots() {
     try {
       const copyPayload = {
         ...normalizeForm(bot),
-        name: `${bot.name} (РєРѕРїРёСЏ)`,
+        name: `${bot.name} (копия)`,
         enabled: false,
       };
       const created = await api.createBot(copyPayload);
       setBots((prev) => [created, ...prev]);
       setSelectedBotId(created.id);
-        addToast('Р‘РѕС‚ РїСЂРѕРґСѓР±Р»РёСЂРѕРІР°РЅ', 'success');
+      addToast('Бот продублирован', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РґСѓР±Р»РёСЂРѕРІР°С‚СЊ Р±РѕС‚Р°', 'error');
+      addToast(error.message || 'Не удалось дублировать бота', 'error');
     }
   };
 
   const handleDeleteBot = async (bot: Bot) => {
-    if (!confirm(`РЈРґР°Р»РёС‚СЊ Р±РѕС‚Р° "${bot.name}"?`)) return;
+    if (!confirm(`Удалить бота "${bot.name}"?`)) return;
     try {
       await api.deleteBot(bot.id);
       setBots((prev) => prev.filter((b) => b.id !== bot.id));
@@ -235,18 +235,18 @@ export function Bots() {
         setSelectedBotId(null);
         setEditingBotId(null);
       }
-      addToast('Р‘РѕС‚ СѓРґР°Р»С‘РЅ', 'success');
+      addToast('Бот удалён', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ СѓРґР°Р»РёС‚СЊ Р±РѕС‚Р°', 'error');
+      addToast(error.message || 'Не удалось удалить бота', 'error');
     }
   };
 
   const handleRunBot = async (bot: Bot) => {
     try {
       await api.runBot(bot.id);
-      addToast('Р‘РѕС‚ Р·Р°РїСѓС‰РµРЅ РІСЂСѓС‡РЅСѓСЋ', 'success');
+      addToast('Бот запущен вручную', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РїСѓСЃС‚РёС‚СЊ Р±РѕС‚Р°', 'error');
+      addToast(error.message || 'Не удалось запустить бота', 'error');
     }
   };
 
@@ -257,9 +257,9 @@ export function Bots() {
       const updated = await api.updateBot(bot.id, { enabled: nextEnabled });
       const mergedUpdated = { ...bot, ...updated, id: bot.id };
       setBots((prev) => prev.map((b) => (b.id === bot.id ? mergedUpdated : b)));
-      addToast(nextEnabled ? 'Р‘РѕС‚ РІРєР»СЋС‡РµРЅ' : 'Р‘РѕС‚ РІС‹РєР»СЋС‡РµРЅ', 'success');
+      addToast(nextEnabled ? 'Бот включен' : 'Бот выключен', 'success');
     } catch (error: any) {
-      addToast(error.message || 'РќРµ СѓРґР°Р»РѕСЃСЊ РѕР±РЅРѕРІРёС‚СЊ СЃС‚Р°С‚СѓСЃ Р±РѕС‚Р°', 'error');
+      addToast(error.message || 'Не удалось обновить статус бота', 'error');
     } finally {
       setTogglingBotId(null);
     }
@@ -284,10 +284,10 @@ export function Bots() {
 
   const formatSchedule = (bot: Bot) => {
     if (bot.scheduleType === 'once') {
-      return `рџ“† ${bot.scheduleDate || '???'} РІ ${bot.scheduleTime || '??:??'}`;
+      return `📆 ${bot.scheduleDate || '???'} в ${bot.scheduleTime || '??:??'}`;
     }
     const days = (bot.scheduleDays || []).map((d) => DAY_NAMES[d]).join(', ');
-    return `${days} РІ ${bot.scheduleTime || '??:??'}`;
+    return `${days} в ${bot.scheduleTime || '??:??'}`;
   };
 
   // Add/remove poll option helpers
@@ -331,6 +331,7 @@ export function Bots() {
       drafted,
     };
   };
+
   const handleImportBots = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -339,7 +340,7 @@ export function Bots() {
       const text = await file.text();
       const parsed = JSON.parse(text);
       const items = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.bots) ? parsed.bots : [];
-      if (!items.length) throw new Error('Р¤Р°Р№Р» РЅРµ СЃРѕРґРµСЂР¶РёС‚ Р±РѕС‚РѕРІ');
+      if (!items.length) throw new Error('Файл не содержит ботов');
 
       let created = 0;
       let failed = 0;
@@ -368,7 +369,7 @@ export function Bots() {
             : `Импортировано: ${created}, черновиков: ${draftedCount}, ошибок: ${failed}`;
       addToast(messageText, failed === 0 ? 'success' : 'info');
     } catch (error: any) {
-      addToast(error.message || 'РћС€РёР±РєР° РёРјРїРѕСЂС‚Р° Р±РѕС‚РѕРІ', 'error');
+      addToast(error.message || 'Ошибка импорта ботов', 'error');
     } finally {
       setImporting(false);
       if (importInputRef.current) {
@@ -382,12 +383,12 @@ export function Bots() {
       <div className="card-header">
         <div className="flex flex-col gap-2">
           <div>
-            <h2 className="text-xl font-semibold">рџ¤– Р‘РѕС‚С‹</h2>
+            <h2 className="text-xl font-semibold">🤖 Боты</h2>
             <div className="mt-1">
               <Breadcrumb 
                 items={[
-                  { label: 'Р“Р»Р°РІРЅР°СЏ', path: '/' },
-                  { label: 'Р‘РѕС‚С‹', active: true }
+                  { label: 'Главная', path: '/' },
+                  { label: 'Боты', active: true }
                 ]} 
               />
             </div>
@@ -399,28 +400,28 @@ export function Bots() {
               <button
                 onClick={() => handleRunBot(selectedBot)}
                 className="icon-button text-[hsl(var(--success))] hover:bg-[hsl(var(--success)_/_0.1)]"
-                title="Р—Р°РїСѓСЃС‚РёС‚СЊ СЃРµР№С‡Р°СЃ"
+                title="Запустить сейчас"
               >
                 <Play className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleEditBot(selectedBot)}
                 className="icon-button"
-                title="Р РµРґР°РєС‚РёСЂРѕРІР°С‚СЊ"
+                title="Редактировать"
               >
                 <Pencil className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDuplicateBot(selectedBot)}
                 className="icon-button"
-                title="Р”СѓР±Р»РёСЂРѕРІР°С‚СЊ"
+                title="Дублировать"
               >
                 <Copy className="h-4 w-4" />
               </button>
               <button
                 onClick={() => handleDeleteBot(selectedBot)}
                 className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                title="РЈРґР°Р»РёС‚СЊ"
+                title="Удалить"
               >
                 <Trash2 className="h-4 w-4" />
               </button>
@@ -430,12 +431,12 @@ export function Bots() {
                   const bot = bots.find(b => b.id === selectedBotId);
                   if (bot) handleToggleBotEnabled(bot);
                 }}
-                title={bots.find(b => b.id === selectedBotId)?.enabled ? 'Р’С‹РєР»СЋС‡РёС‚СЊ Р±РѕС‚Р°' : 'Р’РєР»СЋС‡РёС‚СЊ Р±РѕС‚Р°'}
+                title={bots.find(b => b.id === selectedBotId)?.enabled ? 'Выключить бота' : 'Включить бота'}
               />
               <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
             </>
           )}
-          <button onClick={() => loadBots()} className="icon-button" title="РћР±РЅРѕРІРёС‚СЊ СЃРїРёСЃРѕРє">
+          <button onClick={() => loadBots()} className="icon-button" title="Обновить список">
             <RefreshCw className="h-4 w-4" />
           </button>
           {canEdit && (
@@ -451,14 +452,14 @@ export function Bots() {
                 onClick={() => importInputRef.current?.click()}
                 disabled={importing}
                 className="icon-button disabled:cursor-not-allowed disabled:opacity-60"
-                title="РРјРїРѕСЂС‚ Р±РѕС‚РѕРІ"
+                title="Импорт ботов"
               >
                 <Upload className="h-4 w-4" />
               </button>
-              <button onClick={() => setExportModalOpen(true)} className="icon-button" title="Р­РєСЃРїРѕСЂС‚ Р±РѕС‚РѕРІ">
+              <button onClick={() => setExportModalOpen(true)} className="icon-button" title="Экспорт ботов">
                 <Download className="h-4 w-4" />
               </button>
-              <button onClick={handleStartCreate} className="icon-button" title="РЎРѕР·РґР°С‚СЊ Р±РѕС‚Р°">
+              <button onClick={handleStartCreate} className="icon-button" title="Создать бота">
                 <Plus className="h-4 w-4" />
               </button>
             </>
@@ -471,12 +472,12 @@ export function Bots() {
         <div className="split-left">
           <div className="panel">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">рџ“‹ РЎРїРёСЃРѕРє Р±РѕС‚РѕРІ</h3>
+              <h3 className="text-sm font-semibold">📋 Список ботов</h3>
               <button
                 onClick={() => loadBots()}
                 className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs"
               >
-                РћР±РЅРѕРІРёС‚СЊ
+                Обновить
               </button>
             </div>
             {loading ? (
@@ -484,16 +485,16 @@ export function Bots() {
                 <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
               </div>
             ) : bots.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Р‘РѕС‚С‹ РЅРµ РЅР°Р№РґРµРЅС‹</p>
+              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Боты не найдены</p>
             ) : (
               <div className="entity-list-scroll scrollbar-thin">
                 <table className="table-basic w-full border-collapse text-sm">
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">РќР°Р·РІР°РЅРёРµ</th>
-                      <th className="px-2 py-2">РўРёРї</th>
-                      <th className="px-2 py-2">Р Р°СЃРїРёСЃР°РЅРёРµ</th>
-                      <th className="px-2 py-2">РЎС‚Р°С‚СѓСЃ</th>
+                      <th className="px-2 py-2">Название</th>
+                      <th className="px-2 py-2">Тип</th>
+                      <th className="px-2 py-2">Расписание</th>
+                      <th className="px-2 py-2">Статус</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -515,9 +516,9 @@ export function Bots() {
                             )}
                           </span>
                         </td>
-                        <td className="px-2 py-2">{bot.messageType === 'poll' ? 'рџ“Љ' : 'рџ’¬'}</td>
+                        <td className="px-2 py-2">{bot.messageType === 'poll' ? '📊' : '💬'}</td>
                         <td className="px-2 py-2 text-xs">{formatSchedule(bot)}</td>
-                        <td className="px-2 py-2">{bot.enabled ? 'вњ…' : 'вЏёпёЏ'}</td>
+                        <td className="px-2 py-2">{bot.enabled ? '✅' : '⏸️'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -531,20 +532,20 @@ export function Bots() {
           {editingBotId !== null ? (
             <div className="panel">
               <h3 className="mb-4 text-lg font-semibold">
-                {editingBotId === -1 ? 'РЎРѕР·РґР°РЅРёРµ Р±РѕС‚Р°' : 'Р РµРґР°РєС‚РёСЂРѕРІР°РЅРёРµ Р±РѕС‚Р°'}
+                {editingBotId === -1 ? 'Создание бота' : 'Редактирование бота'}
               </h3>
               <form onSubmit={handleSaveBot} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* РќР°Р·РІР°РЅРёРµ Рё Chat ID */}
+                {/* Название и Chat ID */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                      РќР°Р·РІР°РЅРёРµ
+                      Название
                     </label>
                     <input
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
-                      placeholder="Р“РѕР»РѕСЃРѕРІР°РЅРёРµ РІ С€РєРѕР»СЊРЅС‹Р№ С‡Р°С‚"
+                      placeholder="Голосование в школьный чат"
                     />
                   </div>
                   <div>
@@ -560,10 +561,10 @@ export function Bots() {
                   </div>
                 </div>
 
-                {/* РўРёРї СЃРѕРѕР±С‰РµРЅРёСЏ */}
+                {/* Тип сообщения */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                    РўРёРї СЃРѕРѕР±С‰РµРЅРёСЏ
+                    Тип сообщения
                   </label>
                   <div style={{ display: 'flex', gap: '12px' }}>
                     <label
@@ -585,7 +586,7 @@ export function Bots() {
                         onChange={() => setForm({ ...form, messageType: 'poll' })}
                         style={{ width: '18px', height: '18px' }}
                       />
-                      <span>рџ“Љ Р“РѕР»РѕСЃРѕРІР°РЅРёРµ</span>
+                      <span>📊 Голосование</span>
                     </label>
                     <label
                       style={{
@@ -606,7 +607,7 @@ export function Bots() {
                         onChange={() => setForm({ ...form, messageType: 'text' })}
                         style={{ width: '18px', height: '18px' }}
                       />
-                      <span>рџ’¬ РўРµРєСЃС‚РѕРІРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ</span>
+                      <span>💬 Текстовое сообщение</span>
                     </label>
                   </div>
                 </div>
@@ -616,19 +617,19 @@ export function Bots() {
                   <>
                     <div>
                       <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                        Р’РѕРїСЂРѕСЃ РіРѕР»РѕСЃРѕРІР°РЅРёСЏ
+                        Вопрос голосования
                       </label>
                       <input
                         style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                         value={form.pollQuestion}
                         onChange={(e) => setForm({ ...form, pollQuestion: e.target.value })}
-                        placeholder="РљС‚Рѕ СЃРµРіРѕРґРЅСЏ Р·Р°Р±РёСЂР°РµС‚ СЂРµР±С‘РЅРєР° РёР· С€РєРѕР»С‹?"
+                        placeholder="Кто сегодня забирает ребёнка из школы?"
                       />
                     </div>
 
                     <div>
                       <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                        Р’Р°СЂРёР°РЅС‚С‹ РѕС‚РІРµС‚Р°
+                        Варианты ответа
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {getPollOptionsArray().map((opt, idx) => (
@@ -642,7 +643,7 @@ export function Bots() {
                                 opts[idx] = e.target.value;
                                 setPollOptionsArray(opts);
                               }}
-                              placeholder={`Р’Р°СЂРёР°РЅС‚ ${idx + 1}`}
+                              placeholder={`Вариант ${idx + 1}`}
                             />
                             {getPollOptionsArray().length > 2 && (
                               <button
@@ -654,7 +655,7 @@ export function Bots() {
                                 }}
                                 style={{ padding: '8px', borderRadius: '6px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', color: 'hsl(var(--destructive))' }}
                               >
-                                вњ•
+                                ✕
                               </button>
                             )}
                           </div>
@@ -669,7 +670,7 @@ export function Bots() {
                             }}
                             style={{ padding: '10px 14px', borderRadius: '8px', border: '1px dashed hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '14px', color: 'hsl(var(--muted-foreground))' }}
                           >
-                            + Р”РѕР±Р°РІРёС‚СЊ РІР°СЂРёР°РЅС‚
+                            + Добавить вариант
                           </button>
                         )}
                       </div>
@@ -683,7 +684,7 @@ export function Bots() {
                           onChange={(e) => setForm({ ...form, pollIsAnonymous: e.target.checked })}
                           style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
-                        РђРЅРѕРЅРёРјРЅРѕРµ
+                        Анонимное
                       </label>
                       <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
                         <input
@@ -692,7 +693,7 @@ export function Bots() {
                           onChange={(e) => setForm({ ...form, pollAllowsMultipleAnswers: e.target.checked })}
                           style={{ width: '18px', height: '18px', cursor: 'pointer' }}
                         />
-                        РњРЅРѕР¶РµСЃС‚РІРµРЅРЅС‹Р№ РІС‹Р±РѕСЂ
+                        Множественный выбор
                       </label>
                     </div>
                   </>
@@ -702,14 +703,14 @@ export function Bots() {
                 {form.messageType === 'text' && (
                   <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                      РўРµРєСЃС‚ СЃРѕРѕР±С‰РµРЅРёСЏ
+                      Текст сообщения
                     </label>
                     <textarea
                       rows={4}
                       style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
                       value={form.messageText}
                       onChange={(e) => setForm({ ...form, messageText: e.target.value })}
-                      placeholder="Р”РѕР±СЂРѕРµ СѓС‚СЂРѕ! рџЊ… РќР°РїРѕРјРёРЅР°РЅРёРµ..."
+                      placeholder="Доброе утро! 🌅 Напоминание..."
                     />
                   </div>
                 )}
@@ -717,7 +718,7 @@ export function Bots() {
                 {/* Schedule section */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                    рџ“… Р Р°СЃРїРёСЃР°РЅРёРµ
+                    📅 Расписание
                   </label>
                   <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}>
                     {/* Schedule type selector */}
@@ -742,7 +743,7 @@ export function Bots() {
                           onChange={() => setForm({ ...form, scheduleType: 'recurring' })}
                           style={{ width: '16px', height: '16px' }}
                         />
-                        рџ”„ РџРѕ РґРЅСЏРј РЅРµРґРµР»Рё
+                        🔄 По дням недели
                       </label>
                       <label
                         style={{
@@ -764,7 +765,7 @@ export function Bots() {
                           onChange={() => setForm({ ...form, scheduleType: 'once' })}
                           style={{ width: '16px', height: '16px' }}
                         />
-                        рџ“† РќР° РєРѕРЅРєСЂРµС‚РЅСѓСЋ РґР°С‚Сѓ
+                        📆 На конкретную дату
                       </label>
                     </div>
 
@@ -772,20 +773,20 @@ export function Bots() {
                     {form.scheduleType === 'recurring' && (
                       <div style={{ marginBottom: '16px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                          <span style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>Р”РЅРё РЅРµРґРµР»Рё:</span>
+                          <span style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>Дни недели:</span>
                           <button
                             type="button"
                             onClick={setWeekdays}
                             style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
                           >
-                            Р‘СѓРґРЅРё
+                            Будни
                           </button>
                           <button
                             type="button"
                             onClick={setAllDays}
                             style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
                           >
-                            Р’СЃРµ РґРЅРё
+                            Все дни
                           </button>
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
@@ -818,7 +819,7 @@ export function Bots() {
                     {form.scheduleType === 'once' && (
                       <div style={{ marginBottom: '16px' }}>
                         <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
-                          Р”Р°С‚Р° Р·Р°РїСѓСЃРєР°
+                          Дата запуска
                         </label>
                         <input
                           type="date"
@@ -833,7 +834,7 @@ export function Bots() {
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
-                          Р’СЂРµРјСЏ РѕС‚РїСЂР°РІРєРё
+                          Время отправки
                         </label>
                         <input
                           type="time"
@@ -844,7 +845,7 @@ export function Bots() {
                       </div>
                       <div>
                         <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
-                          Р§Р°СЃРѕРІРѕР№ РїРѕСЏСЃ
+                          Часовой пояс
                         </label>
                         <select
                           style={{ padding: '10px 14px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
@@ -863,13 +864,13 @@ export function Bots() {
                 {/* Bot token (optional) */}
                 <div>
                   <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                    Bot Token (РѕРїС†РёРѕРЅР°Р»СЊРЅРѕ)
+                    Bot Token (опционально)
                   </label>
                   <input
                     style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                     value={form.botToken}
                     onChange={(e) => setForm({ ...form, botToken: e.target.value })}
-                    placeholder="РћСЃС‚Р°РІСЊС‚Рµ РїСѓСЃС‚С‹Рј РґР»СЏ РіР»РѕР±Р°Р»СЊРЅРѕРіРѕ С‚РѕРєРµРЅР°"
+                    placeholder="Оставьте пустым для глобального токена"
                   />
                 </div>
 
@@ -890,7 +891,7 @@ export function Bots() {
                     type="submit"
                     style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
-                    РЎРѕС…СЂР°РЅРёС‚СЊ
+                    Сохранить
                   </button>
                   <button
                     type="button"
@@ -900,7 +901,7 @@ export function Bots() {
                     }}
                     style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
                   >
-                    РћС‚РјРµРЅР°
+                    Отмена
                   </button>
                 </div>
               </form>
@@ -909,7 +910,7 @@ export function Bots() {
             <div>
               <div className="space-y-4">
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РРЅС„РѕСЂРјР°С†РёСЏ Рѕ Р±РѕС‚Рµ</h4>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о боте</h4>
                   <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div style={{ marginBottom: '12px' }}>
                       <strong>ID:</strong>{' '}
@@ -918,10 +919,10 @@ export function Bots() {
                       </code>
                     </div>
                     <div style={{ marginBottom: '12px' }}>
-                      <strong>РќР°Р·РІР°РЅРёРµ:</strong> {selectedBot.name}
+                      <strong>Название:</strong> {selectedBot.name}
                     </div>
                     <div style={{ marginBottom: '12px' }}>
-                      <strong>РЎС‚Р°С‚СѓСЃ:</strong>{' '}
+                      <strong>Статус:</strong>{' '}
                       <span
                         style={{ padding: '4px 8px' }}
                         className={`rounded text-xs ${
@@ -930,12 +931,12 @@ export function Bots() {
                             : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
                         }`}
                       >
-                        {selectedBot.enabled ? 'вњ… Р’РєР»СЋС‡РµРЅРѕ' : 'вЏёпёЏ РћС‚РєР»СЋС‡РµРЅРѕ'}
+                        {selectedBot.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
                     </div>
                     <div style={{ marginBottom: '12px' }}>
-                      <strong>РўРёРї:</strong>{' '}
-                      {selectedBot.messageType === 'poll' ? 'рџ“Љ Р“РѕР»РѕСЃРѕРІР°РЅРёРµ' : 'рџ’¬ РўРµРєСЃС‚'}
+                      <strong>Тип:</strong>{' '}
+                      {selectedBot.messageType === 'poll' ? '📊 Голосование' : '💬 Текст'}
                     </div>
                   </div>
                 </div>
@@ -943,13 +944,13 @@ export function Bots() {
 
                 {selectedBot.messageType === 'poll' && (
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Р“РѕР»РѕСЃРѕРІР°РЅРёРµ</h4>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Голосование</h4>
                     <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                       <div>
-                        <strong>Р’РѕРїСЂРѕСЃ:</strong> {selectedBot.pollQuestion}
+                        <strong>Вопрос:</strong> {selectedBot.pollQuestion}
                       </div>
                       <div>
-                        <strong>Р’Р°СЂРёР°РЅС‚С‹:</strong>
+                        <strong>Варианты:</strong>
                         <ul style={{ marginTop: '8px', paddingLeft: '20px' }}>
                           {(() => {
                             try {
@@ -957,14 +958,14 @@ export function Bots() {
                                 <li key={i} style={{ marginBottom: '4px' }}>{opt}</li>
                               ));
                             } catch {
-                              return <li>РћС€РёР±РєР° РїР°СЂСЃРёРЅРіР°</li>;
+                              return <li>Ошибка парсинга</li>;
                             }
                           })()}
                         </ul>
                       </div>
                       <div>
-                        <strong>РђРЅРѕРЅРёРјРЅРѕРµ:</strong> {selectedBot.pollIsAnonymous ? 'Р”Р°' : 'РќРµС‚'} |{' '}
-                        <strong>РњРЅРѕР¶РµСЃС‚РІРµРЅРЅС‹Р№ РІС‹Р±РѕСЂ:</strong> {selectedBot.pollAllowsMultipleAnswers ? 'Р”Р°' : 'РќРµС‚'}
+                        <strong>Анонимное:</strong> {selectedBot.pollIsAnonymous ? 'Да' : 'Нет'} |{' '}
+                        <strong>Множественный выбор:</strong> {selectedBot.pollAllowsMultipleAnswers ? 'Да' : 'Нет'}
                       </div>
                     </div>
                   </div>
@@ -972,7 +973,7 @@ export function Bots() {
 
                 {selectedBot.messageType === 'text' && selectedBot.messageText && (
                   <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РЎРѕРѕР±С‰РµРЅРёРµ</h4>
+                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Сообщение</h4>
                     <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                       <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{selectedBot.messageText}</div>
                     </div>
@@ -980,35 +981,35 @@ export function Bots() {
                 )}
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Р Р°СЃРїРёСЃР°РЅРёРµ</h4>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Расписание</h4>
                   <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div>
-                      <strong>Р РµР¶РёРј:</strong>{' '}
+                      <strong>Режим:</strong>{' '}
                       <span style={{ padding: '4px 8px' }} className="rounded bg-[hsl(var(--muted)_/_0.3)] text-xs">
-                        {selectedBot.scheduleType === 'once' ? 'рџ“† РћРґРЅРѕСЂР°Р·РѕРІС‹Р№' : 'рџ”„ РџРѕРІС‚РѕСЂСЏСЋС‰РёР№СЃСЏ'}
+                        {selectedBot.scheduleType === 'once' ? '📆 Одноразовый' : '🔄 Повторяющийся'}
                       </span>
                     </div>
                     {selectedBot.scheduleType === 'once' ? (
                       <div>
-                        <strong>Р”Р°С‚Р°:</strong>{' '}
+                        <strong>Дата:</strong>{' '}
                         <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
-                          {selectedBot.scheduleDate || 'вЂ”'}
+                          {selectedBot.scheduleDate || '—'}
                         </code>
                       </div>
                     ) : (
                       <div>
-                        <strong>Р”РЅРё:</strong>{' '}
+                        <strong>Дни:</strong>{' '}
                         {(selectedBot.scheduleDays || []).map((d) => DAY_NAMES_FULL[d]).join(', ')}
                       </div>
                     )}
                     <div>
-                      <strong>Р’СЂРµРјСЏ:</strong>{' '}
+                      <strong>Время:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
                         {selectedBot.scheduleTime}
                       </code>
                     </div>
                     <div>
-                      <strong>Р§Р°СЃРѕРІРѕР№ РїРѕСЏСЃ:</strong>{' '}
+                      <strong>Часовой пояс:</strong>{' '}
                       <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
                         {selectedBot.scheduleTimezone}
                       </code>
@@ -1017,7 +1018,7 @@ export function Bots() {
                 </div>
 
                 <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">РћС‚РїСЂР°РІРєР°</h4>
+                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Отправка</h4>
                   <div style={{ padding: '16px' }} className="space-y-3 rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
                     <div>
                       <strong>Chat ID:</strong>{' '}
@@ -1027,13 +1028,13 @@ export function Bots() {
                     </div>
                     {selectedBot.lastRunAt && (
                       <div>
-                        <strong>РџРѕСЃР»РµРґРЅРёР№ Р·Р°РїСѓСЃРє:</strong>{' '}
+                        <strong>Последний запуск:</strong>{' '}
                         {new Date(selectedBot.lastRunAt).toLocaleString('ru-RU')}
                       </div>
                     )}
                     {selectedBot.lastError && (
                       <div className="text-[hsl(var(--destructive))]">
-                        <strong>РџРѕСЃР»РµРґРЅСЏСЏ РѕС€РёР±РєР°:</strong> {selectedBot.lastError}
+                        <strong>Последняя ошибка:</strong> {selectedBot.lastError}
                       </div>
                     )}
                   </div>
@@ -1042,12 +1043,12 @@ export function Bots() {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Р’С‹Р±РµСЂРёС‚Рµ Р±РѕС‚Р° СЃР»РµРІР° РёР»Рё СЃРѕР·РґР°Р№С‚Рµ РЅРѕРІРѕРіРѕ</p>
+              <p className="mb-4">Выберите бота слева или создайте нового</p>
               <button
                 onClick={handleStartCreate}
                 className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
               >
-                <Plus className="h-4 w-4" /> РЎРѕР·РґР°С‚СЊ Р±РѕС‚Р°
+                <Plus className="h-4 w-4" /> Создать бота
               </button>
             </div>
           )}
@@ -1058,16 +1059,14 @@ export function Bots() {
       <ExportModal
         isOpen={exportModalOpen}
         onClose={() => setExportModalOpen(false)}
-        title="Р­РєСЃРїРѕСЂС‚ Р±РѕС‚РѕРІ"
-        description="Р’С‹Р±РµСЂРёС‚Рµ Р±РѕС‚РѕРІ РґР»СЏ СЌРєСЃРїРѕСЂС‚Р°"
+        title="Экспорт ботов"
+        description="Выберите ботов для экспорта"
         items={bots.map((b) => ({ id: b.id, name: b.name, enabled: b.enabled }))}
         loading={loading}
         exportFileName="bots-export.json"
         exportType="bots"
-        onExportSuccess={(count) => addToast(`Р­РєСЃРїРѕСЂС‚РёСЂРѕРІР°РЅРѕ Р±РѕС‚РѕРІ: ${count}`, 'success')}
+        onExportSuccess={(count) => addToast(`Экспортировано ботов: ${count}`, 'success')}
       />
     </div>
   );
 }
-
-
