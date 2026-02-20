@@ -383,7 +383,6 @@ body {
   border-bottom: 1px solid hsl(var(--border));
 }
 
-.app-page .card > .card-header,
 .entity-page-header-sticky {
   position: sticky;
   top: 74px;
@@ -754,7 +753,6 @@ body {
     padding: 14px 16px;
   }
 
-  .app-page .card > .card-header,
   .entity-page-header-sticky {
     top: 50px;
   }
