@@ -14,6 +14,7 @@ import {
   Moon,
   Plus,
   Repeat2,
+  Settings,
   Sun,
   Users,
   MessageSquare,
@@ -23,15 +24,24 @@ import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { GlobalSearch } from '../components/GlobalSearch';
 import { Breadcrumb } from '../components/Breadcrumb';
 import { Operations } from './Operations';
+import { api } from '../lib/api';
+import { useToast } from '../components/ToastNotification';
 
 export function Dashboard() {
   const { user, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [, setSearchParams] = useSearchParams();
+  const { addToast } = useToast();
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showVersionPanel, setShowVersionPanel] = useState(false);
+  const [accountTokenModalOpen, setAccountTokenModalOpen] = useState(false);
+  const [accountTokenValue, setAccountTokenValue] = useState('');
+  const [accountTokenMasked, setAccountTokenMasked] = useState('');
+  const [accountTokenIsSet, setAccountTokenIsSet] = useState(false);
+  const [accountTokenLoading, setAccountTokenLoading] = useState(false);
+  const [accountTokenSaving, setAccountTokenSaving] = useState(false);
   const versionRef = useRef<HTMLDivElement>(null);
   const appVersion = __APP_VERSION__;
 
@@ -115,6 +125,40 @@ export function Dashboard() {
     await logout();
     navigate('/login');
   };
+
+  const loadAccountBotToken = async () => {
+    try {
+      setAccountTokenLoading(true);
+      const data = await api.getAccountBotToken();
+      setAccountTokenMasked(data.botToken || '');
+      setAccountTokenIsSet(Boolean(data.isSet));
+      setAccountTokenValue('');
+    } catch (error: any) {
+      addToast(error.message || 'Не удалось загрузить токен аккаунта', 'error');
+    } finally {
+      setAccountTokenLoading(false);
+    }
+  };
+
+  const handleSaveAccountBotToken = async () => {
+    try {
+      setAccountTokenSaving(true);
+      await api.saveAccountBotToken(accountTokenValue.trim());
+      addToast(accountTokenValue.trim() ? 'Токен аккаунта сохранен' : 'Токен аккаунта очищен', 'success');
+      await loadAccountBotToken();
+      setAccountTokenModalOpen(false);
+    } catch (error: any) {
+      addToast(error.message || 'Не удалось сохранить токен аккаунта', 'error');
+    } finally {
+      setAccountTokenSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (accountTokenModalOpen) {
+      loadAccountBotToken();
+    }
+  }, [accountTokenModalOpen]);
 
   if (isLoading || !user) {
     return (
@@ -216,6 +260,17 @@ export function Dashboard() {
               <Moon className="hidden h-4 w-4 dark-theme:block" />
             </button>
 
+            {canEdit && (
+              <button
+                onClick={() => setAccountTokenModalOpen(true)}
+                className="icon-button"
+                title="Account Telegram token"
+                aria-label="Account Telegram token"
+              >
+                <Settings className="h-4 w-4" />
+              </button>
+            )}
+
             <button onClick={() => setShowPasswordModal(true)} className="icon-button mobile-only-btn" title="Пароль">
               <Lock className="h-4 w-4" />
             </button>
@@ -237,6 +292,67 @@ export function Dashboard() {
       </div>
 
       {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
+
+      {accountTokenModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            paddingTop: '100px',
+            zIndex: 9999,
+          }}
+          onClick={() => setAccountTokenModalOpen(false)}
+        >
+          <div
+            style={{
+              backgroundColor: 'hsl(var(--card))',
+              borderRadius: '12px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '520px',
+              border: '1px solid hsl(var(--border))',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2 text-lg font-semibold">Telegram token for account</h3>
+            <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
+              Used by default for rules, polling, integrations and bots if local token is empty.
+            </p>
+            <div className="mb-4 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.2)] p-3 text-sm">
+              {accountTokenLoading ? 'Loading...' : (accountTokenIsSet ? `Current: ${accountTokenMasked}` : 'Not set')}
+            </div>
+            <label className="mb-2 block text-sm font-medium">New token (empty = clear)</label>
+            <input
+              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+              value={accountTokenValue}
+              onChange={(e) => setAccountTokenValue(e.target.value)}
+              placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+            />
+            <div className="mt-5 flex gap-2">
+              <button
+                type="button"
+                onClick={handleSaveAccountBotToken}
+                disabled={accountTokenSaving}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, opacity: accountTokenSaving ? 0.7 : 1 }}
+              >
+                {accountTokenSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAccountTokenModalOpen(false)}
+                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

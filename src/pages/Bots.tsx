@@ -77,6 +77,8 @@ export function Bots() {
   const [selectedBotId, setSelectedBotId] = useState<number | null>(null);
   const [editingBotId, setEditingBotId] = useState<number | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
+  const [globalBotToken, setGlobalBotToken] = useState<string | null>(null);
+  const [globalBotTokenLoading, setGlobalBotTokenLoading] = useState(true);
   const { addToast } = useToast();
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
@@ -103,6 +105,17 @@ export function Bots() {
 
   useEffect(() => {
     loadBots();
+    // Load global bot token
+    api.getAccountBotToken()
+      .then(data => {
+        setGlobalBotToken(data.isSet ? data.botToken : null);
+      })
+      .catch(() => {
+        setGlobalBotToken(null);
+      })
+      .finally(() => {
+        setGlobalBotTokenLoading(false);
+      });
   }, []);
 
   // URL params
@@ -188,7 +201,7 @@ export function Bots() {
     try {
       const payload = {
         ...form,
-        botToken: form.botToken || undefined,
+        botToken: form.botToken.trim() ? form.botToken : undefined,
       };
 
       if (editingBotId && editingBotId !== -1) {
@@ -860,8 +873,19 @@ export function Bots() {
                     style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                     value={form.botToken}
                     onChange={(e) => setForm({ ...form, botToken: e.target.value })}
-                    placeholder="Оставьте пустым для глобального токена"
+                    placeholder={globalBotTokenLoading ? 'Загрузка...' : (globalBotToken ? 'Используется глобальный токен' : 'Оставьте пустым для глобального токена')}
+                    disabled={globalBotTokenLoading}
                   />
+                  {!globalBotTokenLoading && globalBotToken && (
+                    <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                      ✓ Глобальный токен установлен. Оставьте поле пустым для его использования или введите локальный токен.
+                    </div>
+                  )}
+                  {!globalBotTokenLoading && !globalBotToken && (
+                    <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                      ⚠ Глобальный токен не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
+                    </div>
+                  )}
                 </div>
 
                 {/* Enabled toggle */}

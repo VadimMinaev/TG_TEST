@@ -49,10 +49,26 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
   const [condition, setCondition] = useState('payload.category === "incident"');
   const [chatId, setChatId] = useState('');
   const [botToken, setBotToken] = useState('');
+  const [globalBotToken, setGlobalBotToken] = useState<string | null>(null);
+  const [globalBotTokenLoading, setGlobalBotTokenLoading] = useState(true);
   const [messageTemplate, setMessageTemplate] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    // Load global bot token
+    api.getAccountBotToken()
+      .then(data => {
+        setGlobalBotToken(data.isSet ? data.botToken : null);
+      })
+      .catch(() => {
+        setGlobalBotToken(null);
+      })
+      .finally(() => {
+        setGlobalBotTokenLoading(false);
+      });
+  }, []);
 
   // Пример payload для предварительного просмотра
   const payloadExample = {
@@ -114,7 +130,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         name,
         condition,
         chatId,
-        botToken: botToken || undefined,
+        botToken: botToken.trim() ? botToken : undefined,
         messageTemplate: messageTemplate || undefined,
         enabled,
       });
@@ -227,9 +243,20 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           id="botToken"
           value={botToken}
           onChange={(e) => setBotToken(e.target.value)}
-          placeholder="Оставьте пустым для глобального токена"
+          placeholder={globalBotTokenLoading ? 'Загрузка...' : (globalBotToken ? 'Используется глобальный токен' : 'Оставьте пустым для глобального токена')}
+          disabled={globalBotTokenLoading}
           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
+        {!globalBotTokenLoading && globalBotToken && (
+          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+            ✓ Глобальный токен установлен. Оставьте поле пустым для его использования или введите локальный токен.
+          </div>
+        )}
+        {!globalBotTokenLoading && !globalBotToken && (
+          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+            ⚠ Глобальный токен не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
+          </div>
+        )}
       </div>
 
       <div>

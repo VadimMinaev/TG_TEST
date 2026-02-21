@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Settings, Trash2, Upload, Info } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, Info } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
@@ -68,16 +68,12 @@ export function Polling() {
   const [selectedPollId, setSelectedPollId] = useState<number | null>(null);
   const [editingPollId, setEditingPollId] = useState<number | null>(null);
   const [form, setForm] = useState(DEFAULT_FORM);
+  const [globalBotToken, setGlobalBotToken] = useState<string | null>(null);
+  const [globalBotTokenLoading, setGlobalBotTokenLoading] = useState(true);
   const { addToast } = useToast();
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
   const [togglingPollId, setTogglingPollId] = useState<number | null>(null);
-  const [accountTokenModalOpen, setAccountTokenModalOpen] = useState(false);
-  const [accountTokenValue, setAccountTokenValue] = useState('');
-  const [accountTokenMasked, setAccountTokenMasked] = useState('');
-  const [accountTokenIsSet, setAccountTokenIsSet] = useState(false);
-  const [accountTokenLoading, setAccountTokenLoading] = useState(false);
-  const [accountTokenSaving, setAccountTokenSaving] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
@@ -99,43 +95,20 @@ export function Polling() {
     }
   };
 
-  const loadAccountBotToken = async () => {
-    try {
-      setAccountTokenLoading(true);
-      const data = await api.getAccountBotToken();
-      setAccountTokenMasked(data.botToken || '');
-      setAccountTokenIsSet(Boolean(data.isSet));
-      setAccountTokenValue('');
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось загрузить токен аккаунта', 'error');
-    } finally {
-      setAccountTokenLoading(false);
-    }
-  };
-
-  const handleSaveAccountBotToken = async () => {
-    try {
-      setAccountTokenSaving(true);
-      await api.saveAccountBotToken(accountTokenValue.trim());
-      addToast(accountTokenValue.trim() ? 'Токен аккаунта сохранен' : 'Токен аккаунта очищен', 'success');
-      await loadAccountBotToken();
-      setAccountTokenModalOpen(false);
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось сохранить токен аккаунта', 'error');
-    } finally {
-      setAccountTokenSaving(false);
-    }
-  };
-
   useEffect(() => {
     loadPolls();
+    // Load global bot token
+    api.getAccountBotToken()
+      .then(data => {
+        setGlobalBotToken(data.isSet ? data.botToken : null);
+      })
+      .catch(() => {
+        setGlobalBotToken(null);
+      })
+      .finally(() => {
+        setGlobalBotTokenLoading(false);
+      });
   }, []);
-
-  useEffect(() => {
-    if (accountTokenModalOpen) {
-      loadAccountBotToken();
-    }
-  }, [accountTokenModalOpen]);
 
   // Проверяем параметры create и select в URL
   useEffect(() => {
@@ -197,7 +170,7 @@ export function Polling() {
         headersJson: form.headersJson || undefined,
         bodyJson: form.bodyJson || undefined,
         conditionJson: form.conditionJson || undefined,
-        botToken: form.sendToTelegram ? (form.botToken || undefined) : undefined,
+        botToken: form.sendToTelegram && form.botToken?.trim() ? form.botToken : undefined,
         sendToTelegram: form.sendToTelegram,
         messageTemplate: form.sendToTelegram ? (form.messageTemplate || undefined) : undefined,
       };
@@ -403,15 +376,6 @@ export function Polling() {
           >
             <RefreshCw className="h-4 w-4" />
           </button>
-          {canEdit && (
-            <button
-              onClick={() => setAccountTokenModalOpen(true)}
-              className="icon-button"
-              title="Account Telegram token"
-            >
-              <Settings className="h-4 w-4" />
-            </button>
-          )}
           {canEdit && (
             <>
               <input
@@ -925,8 +889,19 @@ export function Polling() {
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
                           value={form.botToken}
                           onChange={(e) => setForm({ ...form, botToken: e.target.value })}
-                          placeholder="Empty = account token"
+                          placeholder={globalBotTokenLoading ? 'Загрузка...' : (globalBotToken ? 'Используется глобальный токен' : 'Оставьте пустым для глобального токена')}
+                          disabled={globalBotTokenLoading}
                         />
+                        {!globalBotTokenLoading && globalBotToken && (
+                          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                            ✓ Глобальный токен установлен. Оставьте поле пустым для его использования или введите локальный токен.
+                          </div>
+                        )}
+                        {!globalBotTokenLoading && !globalBotToken && (
+                          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                            ⚠ Глобальный токен не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
+                          </div>
+                        )}
                         </div>
                       </div>
                       <div style={{ marginTop: '16px' }}>
@@ -1081,68 +1056,6 @@ export function Polling() {
           </div>
         </div>
       </div>
-
-      {/* Export Modal */}
-      {accountTokenModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            paddingTop: '100px',
-            zIndex: 9999,
-          }}
-          onClick={() => setAccountTokenModalOpen(false)}
-        >
-          <div
-            style={{
-              backgroundColor: 'hsl(var(--card))',
-              borderRadius: '12px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '520px',
-              border: '1px solid hsl(var(--border))',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-2 text-lg font-semibold">Telegram token for account</h3>
-            <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
-              Used by default for rules, polling, integrations and bots if local token is empty.
-            </p>
-            <div className="mb-4 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.2)] p-3 text-sm">
-              {accountTokenLoading ? 'Loading...' : (accountTokenIsSet ? `Current: ${accountTokenMasked}` : 'Not set')}
-            </div>
-            <label className="mb-2 block text-sm font-medium">New token (empty = clear)</label>
-            <input
-              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-              value={accountTokenValue}
-              onChange={(e) => setAccountTokenValue(e.target.value)}
-              placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-            />
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                onClick={handleSaveAccountBotToken}
-                disabled={accountTokenSaving}
-                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, opacity: accountTokenSaving ? 0.7 : 1 }}
-              >
-                {accountTokenSaving ? 'Saving...' : 'Save'}
-              </button>
-              <button
-                type="button"
-                onClick={() => setAccountTokenModalOpen(false)}
-                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       <ExportModal
         isOpen={exportModalOpen}
