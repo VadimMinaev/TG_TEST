@@ -3,6 +3,8 @@ import { api } from './api';
 
 interface AuthUser {
   username: string;
+  name?: string | null;
+  photo_data?: string | null;
   userId: number | string | null;
   accountId: number | null;
   accountSlug: string | null;
@@ -56,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setIsAuthenticated(true);
         setUser({
           username: userData.username,
+          name: userData.name ?? null,
+          photo_data: userData.photo_data ?? null,
           userId: userData.userId ?? null,
           accountId: userData.accountId ?? null,
           accountSlug: userData.accountSlug ?? null,
@@ -86,6 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsAuthenticated(true);
     setUser({
       username: userData.username,
+      name: userData.name ?? null,
+      photo_data: userData.photo_data ?? null,
       userId: userData.userId ?? null,
       accountId: userData.accountId ?? null,
       accountSlug: userData.accountSlug ?? null,

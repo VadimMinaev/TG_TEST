@@ -65,6 +65,8 @@ export interface AccountCloneOptions {
 export interface User {
   id: number;
   username: string;
+  name?: string | null;
+  photo_data?: string | null;
   created_at?: string;
   updated_at?: string;
   account_id?: number;
@@ -615,11 +617,18 @@ export const api = {
     return res.json();
   },
 
-  createUser: async (username: string, password: string, accountId: number, role: 'administrator' | 'auditor') => {
+  createUser: async (
+    username: string,
+    password: string,
+    accountId: number,
+    role: 'administrator' | 'auditor',
+    name?: string,
+    photo_data?: string | null
+  ) => {
     const res = await fetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ username, password, account_id: accountId, role }),
+      body: JSON.stringify({ username, password, account_id: accountId, role, name, photo_data }),
     });
     if (!res.ok) {
       const error = await res.json();
@@ -628,7 +637,7 @@ export const api = {
     return res.json();
   },
 
-  updateMe: async (data: { username?: string; password?: string; oldPassword?: string }) => {
+  updateMe: async (data: { username?: string; password?: string; oldPassword?: string; name?: string; photo_data?: string | null }) => {
     const res = await fetch(`${API_BASE}/users/me`, {
       method: 'PUT',
       headers: getHeaders(),
@@ -637,6 +646,29 @@ export const api = {
     if (!res.ok) {
       const error = await res.json();
       throw new Error(error.error || 'Failed to update profile');
+    }
+    return res.json();
+  },
+
+  updateUser: async (
+    id: number,
+    data: {
+      username?: string;
+      password?: string;
+      role?: 'administrator' | 'auditor';
+      account_id?: number;
+      name?: string;
+      photo_data?: string | null;
+    }
+  ) => {
+    const res = await fetch(`${API_BASE}/users/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to update user');
     }
     return res.json();
   },

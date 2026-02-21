@@ -29,3 +29,6 @@ docker compose up -d app
 
 4) Проверить логи 
 docker compose logs -f app
+
+5. Доступ к БД
+ssh -L 5432:localhost:5432 root@77.239.123.15
