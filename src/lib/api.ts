@@ -66,7 +66,6 @@ export interface User {
   id: number;
   username: string;
   name?: string | null;
-  photo_data?: string | null;
   created_at?: string;
   updated_at?: string;
   account_id?: number;
@@ -622,13 +621,12 @@ export const api = {
     password: string,
     accountId: number,
     role: 'administrator' | 'auditor',
-    name?: string,
-    photo_data?: string | null
+    name?: string
   ) => {
     const res = await fetch(`${API_BASE}/users`, {
       method: 'POST',
       headers: getHeaders(),
-      body: JSON.stringify({ username, password, account_id: accountId, role, name, photo_data }),
+      body: JSON.stringify({ username, password, account_id: accountId, role, name }),
     });
     if (!res.ok) {
       const error = await res.json();
@@ -637,7 +635,7 @@ export const api = {
     return res.json();
   },
 
-  updateMe: async (data: { username?: string; password?: string; oldPassword?: string; name?: string; photo_data?: string | null }) => {
+  updateMe: async (data: { username?: string; password?: string; oldPassword?: string; name?: string }) => {
     const res = await fetch(`${API_BASE}/users/me`, {
       method: 'PUT',
       headers: getHeaders(),
@@ -658,7 +656,6 @@ export const api = {
       role?: 'administrator' | 'auditor';
       account_id?: number;
       name?: string;
-      photo_data?: string | null;
     }
   ) => {
     const res = await fetch(`${API_BASE}/users/${id}`, {

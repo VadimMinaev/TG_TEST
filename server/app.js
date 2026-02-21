@@ -215,7 +215,6 @@ if (process.env.DATABASE_URL) {
             await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
             await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR(20) DEFAULT 'administrator'`);
             await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(255)`);
-            await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS photo_data TEXT`);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS settings (
                     key VARCHAR(255) PRIMARY KEY,
@@ -1366,7 +1365,6 @@ app.post('/api/logout', auth, (req, res) => {
 app.get('/api/me', auth, async (req, res) => {
     const isVadmin = req.user.username === 'vadmin';
     let accountSlug = null;
-    let profile = null;
     if (req.user.accountId && process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             const acc = await db.query('SELECT slug FROM accounts WHERE id = $1', [req.user.accountId]);
@@ -1375,16 +1373,16 @@ app.get('/api/me', auth, async (req, res) => {
             accountSlug = 'account_' + req.user.accountId;
         }
     }
+    let profile = null;
     if (!isVadmin && req.user.userId && process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
-            const me = await db.query('SELECT name, photo_data FROM users WHERE id = $1', [req.user.userId]);
+            const me = await db.query('SELECT name FROM users WHERE id = $1', [req.user.userId]);
             profile = me.rows[0] || null;
         } catch (e) {}
     }
     res.json({
         username: req.user.username,
         name: profile?.name || null,
-        photo_data: profile?.photo_data || null,
         userId: req.user.userId || null,
         accountId: req.user.accountId ?? null,
         accountSlug: accountSlug || null,
@@ -1636,7 +1634,7 @@ app.get('/api/users', auth, async (req, res) => {
         try {
             if (req.user.username === 'vadmin') {
                 const result = await db.query(
-                    `SELECT u.id, u.username, u.name, u.photo_data, u.created_at, u.updated_at, u.account_id, u.role, a.name as account_name
+                    `SELECT u.id, u.username, u.name, u.created_at, u.updated_at, u.account_id, u.role, a.name as account_name
                      FROM users u LEFT JOIN accounts a ON u.account_id = a.id ORDER BY u.created_at DESC`
                 );
                 return res.json(result.rows);
@@ -1644,7 +1642,7 @@ app.get('/api/users', auth, async (req, res) => {
             const accountId = req.user.accountId;
             if (accountId == null) return res.json([]);
             const result = await db.query(
-                'SELECT id, username, name, photo_data, created_at, updated_at, account_id, role FROM users WHERE account_id = $1 ORDER BY created_at DESC',
+                'SELECT id, username, name, created_at, updated_at, account_id, role FROM users WHERE account_id = $1 ORDER BY created_at DESC',
                 [accountId]
             );
             res.json(result.rows);
@@ -1658,7 +1656,7 @@ app.get('/api/users', auth, async (req, res) => {
 });
 
 app.post('/api/users', auth, async (req, res) => {
-    const { username, password, account_id, role, name, photo_data } = req.body;
+    const { username, password, account_id, role, name } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
     if (username === 'vadmin') return res.status(400).json({ error: 'Cannot create vadmin user' });
     const isVadmin = req.user.username === 'vadmin';
@@ -1672,7 +1670,6 @@ app.post('/api/users', auth, async (req, res) => {
     }
     const roleVal = role === 'auditor' ? 'auditor' : 'administrator';
     const displayName = name != null && String(name).trim() ? String(name).trim().slice(0, 255) : null;
-    const photoData = photo_data != null && String(photo_data).trim() ? String(photo_data).trim() : null;
 
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
@@ -1683,8 +1680,8 @@ app.post('/api/users', auth, async (req, res) => {
 
             const passwordHash = await bcrypt.hash(password, 10);
             const result = await db.query(
-                'INSERT INTO users (username, password_hash, account_id, role, name, photo_data) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id, username, name, photo_data, created_at, updated_at, account_id, role',
-                [username, passwordHash, accountId, roleVal, displayName, photoData]
+                'INSERT INTO users (username, password_hash, account_id, role, name) VALUES ($1, $2, $3, $4, $5) RETURNING id, username, name, created_at, updated_at, account_id, role',
+                [username, passwordHash, accountId, roleVal, displayName]
             );
             res.status(201).json(result.rows[0]);
         } catch (err) {
@@ -1702,7 +1699,7 @@ app.put('/api/users/me', auth, async (req, res) => {
     if (req.user.username === 'vadmin') return res.status(400).json({ error: 'vadmin profile cannot be changed here' });
     const userId = req.user.userId;
     if (!userId) return res.status(401).json({ error: 'User not found' });
-    const { username, password, oldPassword, name, photo_data } = req.body;
+    const { username, password, oldPassword, name } = req.body;
 
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
@@ -1720,11 +1717,6 @@ app.put('/api/users/me', auth, async (req, res) => {
                 const nextName = String(name || '').trim().slice(0, 255);
                 updates.push(`name = $${idx++}`);
                 values.push(nextName || null);
-            }
-            if (photo_data !== undefined) {
-                const nextPhoto = String(photo_data || '').trim();
-                updates.push(`photo_data = $${idx++}`);
-                values.push(nextPhoto || null);
             }
             if (password !== undefined && password !== '') {
                 const userRow = await db.query('SELECT password_hash FROM users WHERE id = $1', [userId]);
@@ -1764,7 +1756,6 @@ app.put('/api/users/:id', auth, async (req, res) => {
         role,
         account_id,
         name,
-        photo_data,
     } = req.body || {};
 
     const isVadmin = req.user.username === 'vadmin';
@@ -1803,12 +1794,6 @@ app.put('/api/users/:id', auth, async (req, res) => {
             values.push(nextName || null);
         }
 
-        if (photo_data !== undefined) {
-            const nextPhoto = String(photo_data || '').trim();
-            updates.push(`photo_data = $${idx++}`);
-            values.push(nextPhoto || null);
-        }
-
         if (password !== undefined && String(password) !== '') {
             updates.push(`password_hash = $${idx++}`);
             values.push(await bcrypt.hash(String(password), 10));
@@ -1834,7 +1819,7 @@ app.put('/api/users/:id', auth, async (req, res) => {
         values.push(targetId);
         const result = await db.query(
             `UPDATE users SET ${updates.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $${idx}
-             RETURNING id, username, name, photo_data, created_at, updated_at, account_id, role`,
+             RETURNING id, username, name, created_at, updated_at, account_id, role`,
             values
         );
         res.json(result.rows[0]);
