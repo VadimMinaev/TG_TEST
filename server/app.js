@@ -16,7 +16,7 @@ if (isProduction) {
 }
 
 const PORT = process.env.PORT || 3000;
-let TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || 'YOUR_TOKEN';
+const TELEGRAM_BOT_TOKEN = 'YOUR_TOKEN';
 
 const LOGS_FILE = path.join(__dirname, '../data/logs.json');
 const RULES_FILE = path.join(__dirname, '../data/rules.json');
@@ -365,17 +365,6 @@ if (process.env.DATABASE_URL) {
             `);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_reminder_parse_fail_logs_user_id ON reminder_parse_fail_logs(telegram_user_id, created_at DESC)`);
 
-            // Загружаем глобальный токен из БД
-            try {
-                const result = await client.query('SELECT value FROM settings WHERE key = $1', ['global_bot_token']);
-                if (result.rows.length > 0 && result.rows[0].value && result.rows[0].value !== 'YOUR_TOKEN') {
-                    TELEGRAM_BOT_TOKEN = result.rows[0].value;
-                    console.log('Global bot token loaded from database');
-                }
-            } catch (err) {
-                console.error('Error loading global bot token from database:', err);
-            }
-
             db = client;
             dbConnected = true;
             console.log('DB connected and tables created');
@@ -577,17 +566,6 @@ async function loadPollsCache() {
     }
 }
 
-function saveSettings() {
-    if (!process.env.DATABASE_URL) {
-        try {
-            const settings = { global_bot_token: TELEGRAM_BOT_TOKEN };
-            fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf8');
-        } catch (e) {
-            console.error('Error saving settings to file:', e);
-        }
-    }
-}
-
 const dataDir = path.join(__dirname, '../data');
 if (!fs.existsSync(dataDir)) {
     fs.mkdirSync(dataDir, { recursive: true });
@@ -694,7 +672,6 @@ async function resolveBotToken(localToken, accountId = null) {
     const accountToken = await getAccountToken(accountId);
     if (accountToken && accountToken !== 'YOUR_TOKEN') return accountToken;
 
-    if (TELEGRAM_BOT_TOKEN && TELEGRAM_BOT_TOKEN !== 'YOUR_TOKEN') return TELEGRAM_BOT_TOKEN;
     return '';
 }
 
@@ -1892,44 +1869,8 @@ app.delete('/api/users/:id', auth, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// ТОКЕН БОТА
+// ТОКЕН БОТА (Account level)
 // ────────────────────────────────────────────────────────────────
-
-app.post('/api/bot-token', auth, async (req, res) => {
-    const newToken = req.body.botToken;
-    if (!newToken || newToken === 'YOUR_TOKEN') return res.status(400).json({ error: 'Invalid token' });
-
-    try {
-        const response = await axios.get(`https://api.telegram.org/bot${newToken}/getMe`);
-        if (!response.data.ok) return res.status(400).json({ error: 'Invalid bot token' });
-    } catch {
-        return res.status(400).json({ error: 'Invalid bot token' });
-    }
-
-    TELEGRAM_BOT_TOKEN = newToken;
-
-    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
-        try {
-            await db.query(
-                'INSERT INTO settings (key, value, updated_at) VALUES ($1, $2, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP',
-                ['global_bot_token', newToken]
-            );
-            console.log('Global bot token saved to database');
-        } catch (err) {
-            console.error('Error saving bot token to database:', err);
-        }
-    } else {
-        saveSettings();
-        console.log('Global bot token saved to file');
-    }
-
-    res.json({ status: 'ok' });
-});
-
-app.get('/api/bot-token', auth, (req, res) => {
-    const masked = TELEGRAM_BOT_TOKEN.substring(0, 5) + '***';
-    res.json({ botToken: masked, isSet: TELEGRAM_BOT_TOKEN !== 'YOUR_TOKEN' });
-});
 
 app.get('/api/account-bot-token', auth, async (req, res) => {
     try {
@@ -5219,7 +5160,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
     return { ok: true };
 }
 
-// Получить токен бота напоминаний (из settings или глобальный)
+// Получить токен бота напоминаний (из settings)
 async function getReminderBotToken() {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
@@ -5231,7 +5172,7 @@ async function getReminderBotToken() {
             console.error('[Reminder] Error getting bot token:', e);
         }
     }
-    return TELEGRAM_BOT_TOKEN;
+    return '';
 }
 
 async function sendTelegramMessage(botToken, chatId, text, options = {}) {
@@ -6585,8 +6526,8 @@ app.post('/api/reminders/settings/token', auth, async (req, res) => {
 
 // Установить webhook для напоминаний
 app.post('/api/reminders/settings/webhook', auth, async (req, res) => {
-    let botToken = TELEGRAM_BOT_TOKEN;
-    
+    let botToken = '';
+
     // Проверяем, есть ли отдельный токен для напоминаний
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
@@ -6626,8 +6567,8 @@ app.post('/api/reminders/settings/webhook', auth, async (req, res) => {
 
 // Удалить webhook
 app.delete('/api/reminders/settings/webhook', auth, async (req, res) => {
-    let botToken = TELEGRAM_BOT_TOKEN;
-    
+    let botToken = '';
+
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             const result = await db.query('SELECT value FROM settings WHERE key = $1', ['reminder_bot_token']);
@@ -6638,7 +6579,7 @@ app.delete('/api/reminders/settings/webhook', auth, async (req, res) => {
             console.error('[Reminder] Error getting bot token:', err);
         }
     }
-    
+
     if (!botToken || botToken === 'YOUR_TOKEN') {
         return res.status(400).json({ error: 'Bot token not configured' });
     }

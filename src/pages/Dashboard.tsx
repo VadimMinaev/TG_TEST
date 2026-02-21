@@ -34,6 +34,8 @@ export function Dashboard() {
   const [, setSearchParams] = useSearchParams();
   const { addToast } = useToast();
 
+  const canEdit = user?.role !== 'auditor';
+
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showVersionPanel, setShowVersionPanel] = useState(false);
   const [accountTokenModalOpen, setAccountTokenModalOpen] = useState(false);

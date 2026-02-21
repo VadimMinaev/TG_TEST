@@ -164,7 +164,7 @@ export function Testing() {
           <button
             onClick={handleSaveToken}
                   style={{ padding: '10px 12px', borderRadius: '6px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))', cursor: 'pointer', fontSize: '12px', whiteSpace: 'nowrap' }}
-                  title="Сохранить как глобальный токен"
+                  title="Сохранить как токен аккаунта"
           >
                   💾
           </button>

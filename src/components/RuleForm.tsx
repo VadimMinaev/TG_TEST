@@ -49,24 +49,24 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
   const [condition, setCondition] = useState('payload.category === "incident"');
   const [chatId, setChatId] = useState('');
   const [botToken, setBotToken] = useState('');
-  const [globalBotToken, setGlobalBotToken] = useState<string | null>(null);
-  const [globalBotTokenLoading, setGlobalBotTokenLoading] = useState(true);
+  const [accountBotToken, setAccountBotToken] = useState<string | null>(null);
+  const [accountBotTokenLoading, setAccountBotTokenLoading] = useState(true);
   const [messageTemplate, setMessageTemplate] = useState('');
   const [enabled, setEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    // Load global bot token
+    // Load account bot token
     api.getAccountBotToken()
       .then(data => {
-        setGlobalBotToken(data.isSet ? data.botToken : null);
+        setAccountBotToken(data.isSet ? data.botToken : null);
       })
       .catch(() => {
-        setGlobalBotToken(null);
+        setAccountBotToken(null);
       })
       .finally(() => {
-        setGlobalBotTokenLoading(false);
+        setAccountBotTokenLoading(false);
       });
   }, []);
 
@@ -228,7 +228,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           Токен Telegram бота
           <InfoTooltip>
             <div className="space-y-2">
-              <p>Токен бота для отправки сообщений. Если оставить пустым — используется глобальный токен из настроек.</p>
+              <p>Токен бота для отправки сообщений. Если оставить пустым — используется токен аккаунта из настроек.</p>
               <p><strong>Как получить:</strong></p>
               <ul className="list-inside list-disc">
                 <li>Создайте бота через <code className="rounded bg-[hsl(var(--muted))] px-1">@BotFather</code></li>
@@ -243,18 +243,18 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           id="botToken"
           value={botToken}
           onChange={(e) => setBotToken(e.target.value)}
-          placeholder={globalBotTokenLoading ? 'Загрузка...' : (globalBotToken ? 'Используется глобальный токен' : 'Оставьте пустым для глобального токена')}
-          disabled={globalBotTokenLoading}
+          placeholder={accountBotTokenLoading ? 'Загрузка...' : (accountBotToken ? 'Используется токен аккаунта' : 'Оставьте пустым для использования токена аккаунта')}
+          disabled={accountBotTokenLoading}
           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
         />
-        {!globalBotTokenLoading && globalBotToken && (
+        {!accountBotTokenLoading && accountBotToken && (
           <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
-            ✓ Глобальный токен установлен. Оставьте поле пустым для его использования или введите локальный токен.
+            ✓ Токен аккаунта установлен. Оставьте поле пустым для его использования или введите локальный токен.
           </div>
         )}
-        {!globalBotTokenLoading && !globalBotToken && (
+        {!accountBotTokenLoading && !accountBotToken && (
           <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
-            ⚠ Глобальный токен не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
+            ⚠ Токен аккаунта не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
           </div>
         )}
       </div>
