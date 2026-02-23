@@ -139,7 +139,7 @@ export interface AiBot {
   id: number;
   name: string;
   enabled: boolean;
-  provider: 'gemini' | 'groq';
+  provider: 'gemini' | 'groq' | 'openai';
   telegramBotToken: string;
   apiKey: string;
   model: string;

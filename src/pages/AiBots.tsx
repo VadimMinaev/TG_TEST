@@ -9,9 +9,10 @@ import { EntityStateSwitch } from '../components/StateToggle';
 
 type AiBotForm = Omit<AiBot, 'id'>;
 
-const PROVIDER_MODELS: Record<'gemini' | 'groq', string> = {
+const PROVIDER_MODELS: Record<'gemini' | 'groq' | 'openai', string> = {
   gemini: 'gemini-2.0-flash',
   groq: 'llama-3.3-70b-versatile',
+  openai: 'gpt-4o-mini',
 };
 
 const DEFAULT_FORM: AiBotForm = {
@@ -157,7 +158,7 @@ export function AiBots() {
     const payload = {
       name: form.name.trim(),
       enabled: !!form.enabled,
-      provider: (form.provider || 'gemini') as 'gemini' | 'groq',
+      provider: (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai',
       telegramBotToken: form.telegramBotToken.trim(),
       apiKey: form.apiKey.trim(),
       model: form.model.trim(),
@@ -379,7 +380,7 @@ export function AiBots() {
                     value={form.provider || 'gemini'}
                     onChange={(event) =>
                       setForm((prev) => {
-                        const nextProvider = (event.target.value as 'gemini' | 'groq') || 'gemini';
+                        const nextProvider = (event.target.value as 'gemini' | 'groq' | 'openai') || 'gemini';
                         return {
                           ...prev,
                           provider: nextProvider,
@@ -391,6 +392,7 @@ export function AiBots() {
                   >
                     <option value="gemini">Gemini</option>
                     <option value="groq">Groq</option>
+                    <option value="openai">OpenAI</option>
                   </select>
                 </div>
 
@@ -405,12 +407,14 @@ export function AiBots() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">API Key ({form.provider === 'groq' ? 'Groq' : 'Gemini'})</label>
+                  <label className="mb-2 block text-sm font-medium">
+                    API Key ({form.provider === 'groq' ? 'Groq' : form.provider === 'openai' ? 'OpenAI' : 'Gemini'})
+                  </label>
                   <input
                     value={form.apiKey}
                     onChange={(event) => setForm((prev) => ({ ...prev, apiKey: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
-                    placeholder={form.provider === 'groq' ? 'gsk_...' : 'AIza...'}
+                    placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : 'AIza...'}
                   />
                 </div>
 
@@ -420,7 +424,13 @@ export function AiBots() {
                     value={form.model}
                     onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                    placeholder={form.provider === 'groq' ? PROVIDER_MODELS.groq : PROVIDER_MODELS.gemini}
+                    placeholder={
+                      form.provider === 'groq'
+                        ? PROVIDER_MODELS.groq
+                        : form.provider === 'openai'
+                          ? PROVIDER_MODELS.openai
+                          : PROVIDER_MODELS.gemini
+                    }
                   />
                 </div>
 

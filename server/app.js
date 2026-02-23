@@ -3189,9 +3189,14 @@ async function loadAiBotsCache() {
 }
 
 function normalizeAiBot(input = {}) {
-    const provider = String(input.provider || 'gemini').toLowerCase() === 'groq' ? 'groq' : 'gemini';
+    const providerRaw = String(input.provider || 'gemini').toLowerCase();
+    const provider = providerRaw === 'groq' ? 'groq' : (providerRaw === 'openai' ? 'openai' : 'gemini');
     const apiKey = String(input.apiKey || input.geminiApiKey || '').trim();
-    const model = String(input.model || input.geminiModel || (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.0-flash')).trim();
+    const defaultModel =
+        provider === 'groq'
+            ? 'llama-3.3-70b-versatile'
+            : (provider === 'openai' ? 'gpt-4o-mini' : 'gemini-2.0-flash');
+    const model = String(input.model || input.geminiModel || defaultModel).trim();
     return {
         id: input.id,
         name: String(input.name || '').trim(),
@@ -3409,10 +3414,66 @@ async function runGroqForAiBot(aiBot, chatId, text, audioData) {
     return outputText;
 }
 
+async function runOpenAiForAiBot(aiBot, chatId, text, audioData) {
+    const apiKey = String(aiBot.apiKey || '').trim();
+    const model = String(aiBot.model || 'gpt-4o-mini').trim();
+    if (!apiKey) throw new Error('OpenAI API key is missing');
+    if (!model) throw new Error('OpenAI model is missing');
+    if (audioData?.base64) {
+        throw new Error('OpenAI chat completions mode does not support Telegram audio in this path');
+    }
+
+    const history = getAiBotSessionMessages(aiBot.id, chatId);
+    const messages = [];
+
+    const systemPrompt = String(aiBot.systemPrompt || '').trim();
+    if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    for (const item of history) {
+        messages.push({
+            role: item.role === 'assistant' ? 'assistant' : 'user',
+            content: item.text
+        });
+    }
+
+    messages.push({
+        role: 'user',
+        content: String(text || '').trim() || 'Empty request'
+    });
+
+    const response = await axios.post(
+        'https://api.openai.com/v1/chat/completions',
+        {
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 1024
+        },
+        {
+            timeout: 90000,
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+
+    const outputText = String(response.data?.choices?.[0]?.message?.content || '').trim();
+    if (!outputText) {
+        throw new Error('OpenAI returned empty response');
+    }
+    return outputText;
+}
+
 async function runAiProviderForAiBot(aiBot, chatId, text, audioData) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
     if (provider === 'groq') {
         return runGroqForAiBot(aiBot, chatId, text, audioData);
+    }
+    if (provider === 'openai') {
+        return runOpenAiForAiBot(aiBot, chatId, text, audioData);
     }
     return runGeminiForAiBot(aiBot, chatId, text, audioData);
 }
