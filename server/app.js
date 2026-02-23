@@ -32,7 +32,7 @@ const CRED_PASS = 'vadmin';
 
 let sessions = new Map();
 
-// Р—P°РіCЂСѓP¶P°PµРј CЃPµCЃCЃРёРё РёP· C„P°Р№P»P°
+// Загружаем сессии из файла
 if (fs.existsSync(SESSIONS_FILE)) {
     try {
         const sessionsData = JSON.parse(fs.readFileSync(SESSIONS_FILE, 'utf8'));
@@ -53,34 +53,34 @@ function saveSessions() {
 
 const fieldTranslations = {
     id: 'ID',
-    subject: 'РўPµРјP°',
-    status: 'РЎC‚P°C‚СѓCЃ',
-    team: 'РљРѕРјP°РЅРґP°',
-    category: 'РљP°C‚PµРіРѕCЂРёCЏ',
-    impact: 'Р’P»РёCЏРЅРёPµ',
-    priority: 'РџCЂРёРѕCЂРёC‚PµC‚',
-    urgency: 'РЎCЂРѕC‡РЅРѕCЃC‚CЊ',
-    response_target_at: 'РљCЂP°Р№РЅРёР№ CЃCЂРѕРє РѕC‚РІPµC‚P°',
-    resolution_target_at: 'РљCЂP°Р№РЅРёР№ CЃCЂРѕРє CЂPµC€PµРЅРёCЏ',
-    created_at: 'РЎРѕP·РґP°РЅ',
-    updated_at: 'РћP±РЅРѕРІP»PµРЅ',
+    subject: 'Тема',
+    status: 'Статус',
+    team: 'Команда',
+    category: 'Категория',
+    impact: 'Влияние',
+    priority: 'Приоритет',
+    urgency: 'Срочность',
+    response_target_at: 'Крайний срок ответа',
+    resolution_target_at: 'Крайний срок решения',
+    created_at: 'Создан',
+    updated_at: 'Обновлен',
     requested_by: {
-        name: 'РРЅРёC†РёP°C‚РѕCЂ P·P°РїCЂРѕCЃP°',
-        account: { name: 'РћCЂРіP°РЅРёP·P°C†РёCЏ' }
+        name: 'Рнициатор запроса',
+        account: { name: 'Организация' }
     },
     person: {
-        name: 'РђРІC‚РѕCЂ',
-        account: { name: 'РћCЂРіP°РЅРёP·P°C†РёCЏ' }
+        name: 'Автор',
+        account: { name: 'Организация' }
     },
-    note: 'РљРѕРјРјPµРЅC‚P°CЂРёР№',
-    text: 'РўPµРєCЃC‚',
-    message: 'РЎРѕРѕP±C‰PµРЅРёPµ',
-    command: 'РљРѕРјP°РЅРґP°',
-    comment: 'РљРѕРјРјPµРЅC‚P°CЂРёР№',
-    event: 'РЎРѕP±C‹C‚РёPµ',
-    object_id: 'ID РѕP±CЉPµРєC‚P°',
-    account: 'РђРєРєP°СѓРЅC‚',
-    payload: 'Р”P°РЅРЅC‹Pµ'
+    note: 'Комментарий',
+    text: 'Текст',
+    message: 'Сообщение',
+    command: 'Команда',
+    comment: 'Комментарий',
+    event: 'Событие',
+    object_id: 'ID объекта',
+    account: 'Аккаунт',
+    payload: 'Данные'
 };
 
 function getFieldTranslation(path) {
@@ -245,7 +245,7 @@ if (process.env.DATABASE_URL) {
             await client.query(`CREATE INDEX IF NOT EXISTS idx_message_queue_chat_id ON message_queue(chat_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_poll_runs_poll_id ON poll_runs(poll_id, created_at)`);
 
-            // Р‘РѕC‚C‹ (scheduled bots)
+            // Боты (scheduled bots)
             await client.query(`
                 CREATE TABLE IF NOT EXISTS bots (
                     id BIGINT PRIMARY KEY,
@@ -273,7 +273,7 @@ if (process.env.DATABASE_URL) {
             `);
             await client.query(`ALTER TABLE ai_bots ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
 
-            // РРЅC‚PµРіCЂP°C†РёРё
+            // Рнтеграции
             await client.query(`
                 CREATE TABLE IF NOT EXISTS integrations (
                     id BIGINT PRIMARY KEY,
@@ -300,7 +300,7 @@ if (process.env.DATABASE_URL) {
             await client.query(`CREATE INDEX IF NOT EXISTS idx_integration_runs_integration_id ON integration_runs(integration_id, created_at)`);
 
             // ========== REMINDER ENGINE TABLES ==========
-            // РџРѕP»CЊP·РѕРІP°C‚PµP»Рё Telegram
+            // Пользователи Telegram
             await client.query(`
                 CREATE TABLE IF NOT EXISTS telegram_users (
                     id BIGSERIAL PRIMARY KEY,
@@ -327,7 +327,7 @@ if (process.env.DATABASE_URL) {
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_telegram_id ON telegram_users(telegram_id)`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_users_username ON telegram_users(username) WHERE username IS NOT NULL`);
 
-            // РќP°РїРѕРјРёРЅP°РЅРёCЏ
+            // Напоминания
             await client.query(`
                 CREATE TABLE IF NOT EXISTS telegram_reminders (
                     id BIGSERIAL PRIMARY KEY,
@@ -335,7 +335,7 @@ if (process.env.DATABASE_URL) {
                     message TEXT NOT NULL,
                     run_at TIMESTAMP NOT NULL,
                     repeat_type VARCHAR(20) DEFAULT 'none',  -- none, interval, cron
-                    repeat_config JSONB,  -- { interval_seconds: N } РёP»Рё { cron: "* * * * *" }
+                    repeat_config JSONB,  -- { interval_seconds: N } или { cron: "* * * * *" }
                     is_active BOOLEAN DEFAULT true,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -346,7 +346,7 @@ if (process.env.DATABASE_URL) {
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_reminders_next_run_at ON telegram_reminders(next_run_at) WHERE is_active = true`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_telegram_reminders_run_at ON telegram_reminders(run_at)`);
 
-            // Р›РѕРіРё РѕC‚РїCЂP°РІРєРё РЅP°РїРѕРјРёРЅP°РЅРёР№
+            // Логи отправки напоминаний
             await client.query(`
                 CREATE TABLE IF NOT EXISTS reminder_logs (
                     id BIGSERIAL PRIMARY KEY,
@@ -696,33 +696,33 @@ function requireAccountOrVadmin(req, res, next) {
 /** Auditor can only read (GET); block write methods */
 function blockAuditorWrite(req, res, next) {
     if (req.user.role === 'auditor' && !['GET', 'HEAD'].includes(req.method)) {
-        return res.status(403).json({ error: 'РђСѓРґРёC‚РѕCЂ РјРѕP¶PµC‚ C‚РѕP»CЊРєРѕ РїCЂРѕCЃРјP°C‚CЂРёРІP°C‚CЊ РґP°РЅРЅC‹Pµ' });
+        return res.status(403).json({ error: 'Аудитор может только просматривать данные' });
     }
     next();
 }
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// РќРћР’РђРЇ Р¤РЈРќРљР¦РРЇ Р¤РћР РњРђРўРР РћР’РђРќРРЇ РЎРћРћР‘Р©Р•РќРРЇ
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// НОВАЯ Р¤РЈРќРљР¦РЯ Р¤РћР РњРђРўРР РћР’РђРќРЯ РЎРћРћР‘Р©Р•РќРЯ
+// ────────────────────────────────────────────────────────────────
 function formatMessage(fullBody, payload, rule = {}) {
-    // РџРѕP»CЊP·РѕРІP°C‚PµP»CЊCЃРєРёР№ C€P°P±P»РѕРЅ, PµCЃP»Рё СѓРєP°P·P°РЅ
+    // Пользовательский шаблон, если указан
     if (rule.messageTemplate && typeof rule.messageTemplate === 'string' && rule.messageTemplate.trim()) {
         try {
             const templateFn = new Function('payload', `
                 try {
                     return \`${rule.messageTemplate.replace(/`/g, '\\`')}\`;
                 } catch (e) {
-                    return '[РћC€РёP±РєP° C€P°P±P»РѕРЅP°]: ' + e.message;
+                    return '[Ошибка шаблона]: ' + e.message;
                 }
             `);
             return templateFn(payload);
         } catch (e) {
             console.error('Template rendering error:', e);
-            return `вќЊ РћC€РёP±РєP° РѕP±CЂP°P±РѕC‚РєРё C€P°P±P»РѕРЅP°: ${e.message}\n\nР”P°РЅРЅC‹Pµ:\n\`\`\`json\n${JSON.stringify(payload, null, 2).slice(0, 4000)}\n\`\`\``;
+            return `❌ Ошибка обработки шаблона: ${e.message}\n\nДанные:\n\`\`\`json\n${JSON.stringify(payload, null, 2).slice(0, 4000)}\n\`\`\``;
         }
     }
 
-    // РЎC‚P°CЂC‹Р№ РЅP°РґC‘P¶РЅC‹Р№ fallback
+    // Старый надёжный fallback
     try {
         const messageParts = [];
 
@@ -816,18 +816,18 @@ function formatMessage(fullBody, payload, rule = {}) {
                 ? payloadJson.slice(0, 3797) + '...' 
                 : payloadJson;
     
-            messageParts.push(`tg“¦ РџРѕP»РЅC‹Pµ РґP°РЅРЅC‹Pµ (JSON):\n${truncated}`);
+            messageParts.push(`Полные данные (JSON):\n${truncated}`);
        }
         return messageParts.join('\n');
     } catch (e) {
         console.error('Format message error:', e.message);
-        return `вќЊ РћC€РёP±РєP° C„РѕCЂРјP°C‚РёCЂРѕРІP°РЅРёCЏ CЃРѕРѕP±C‰PµРЅРёCЏ: ${e.message}\ntg“¦ Р”P°РЅРЅC‹Pµ:\n${JSON.stringify(payload || fullBody).slice(0, 4000)}`;
+        return `❌ Ошибка форматирования сообщения: ${e.message}\nДанные:\n${JSON.stringify(payload || fullBody).slice(0, 4000)}`;
     }
 }
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// Р¤СѓРЅРєC†РёРё РѕC‡PµCЂPµРґРё CЃРѕРѕP±C‰PµРЅРёР№ (P±PµP· РёP·РјPµРЅPµРЅРёР№)
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// Функции очереди сообщений (без изменений)
+// ────────────────────────────────────────────────────────────────
 
 async function addMessageToQueue(botToken, chatId, messageText, priority = 0, webhookLogId = null, accountId = null) {
     if (!process.env.DATABASE_URL || !db || typeof db.query !== 'function') {
@@ -1009,9 +1009,9 @@ function startMessageQueueWorker() {
     }, 3600000);
 }
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
 // POLLING WORKER
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
 
 function normalizePoll(poll) {
     const intervalSec = Math.max(5, parseInt(poll.intervalSec, 10) || 60);
@@ -1303,9 +1303,9 @@ async function refreshPollWorkers() {
     startPollWorkers();
 }
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// РђР’РўРћР РР—РђР¦РРЇ Р РЈРџР РђР’Р›Р•РќРР• РџРћР›Р¬Р—РћР’РђРўР•Р›РЇРњР
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// РђР’РўРћР РР—РђР¦РЯ Р РЈРџР РђР’Р›Р•РќРЕ РџРћР›Р¬Р—РћР’РђРўР•Р›РЇРњР
+// ────────────────────────────────────────────────────────────────
 
 app.post('/api/login', async (req, res) => {
     const { username, password } = req.body;
@@ -1397,9 +1397,9 @@ app.get('/api/auth-status', (req, res) => {
     });
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// РђРљРљРђРЈРќРўР« (C‚РѕP»CЊРєРѕ vadmin)
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// АККАУНТЫ (только vadmin)
+// ────────────────────────────────────────────────────────────────
 
 app.get('/api/accounts', auth, vadminOnly, async (req, res) => {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
@@ -1613,9 +1613,9 @@ app.delete('/api/accounts/:id', auth, vadminOnly, async (req, res) => {
     }
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// РЈРџР РђР’Р›Р•РќРР• РџРћР›Р¬Р—РћР’РђРўР•Р›РЇРњР
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// РЈРџР РђР’Р›Р•РќРЕ РџРћР›Р¬Р—РћР’РђРўР•Р›РЇРњР
+// ────────────────────────────────────────────────────────────────
 
 app.get('/api/users', auth, async (req, res) => {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
@@ -1879,9 +1879,9 @@ app.delete('/api/users/:id', auth, async (req, res) => {
     }
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// РўРћРљР•Рќ Р‘РћРўРђ (Account level)
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// ТОКЕН БОТА (Account level)
+// ────────────────────────────────────────────────────────────────
 
 app.get('/api/account-bot-token', auth, async (req, res) => {
     try {
@@ -1943,10 +1943,10 @@ app.post('/api/test-send', auth, async (req, res) => {
         res.json({ success: true, response: response.data });
     } catch (error) {
         console.error('Telegram send error:', error.response?.data || error.message);
-        let errorMessage = 'РќPµРёP·РІPµCЃC‚РЅP°CЏ РѕC€РёP±РєP°';
+        let errorMessage = 'Неизвестная ошибка';
         if (error.response?.data) {
             const telegramError = error.response.data;
-            errorMessage = telegramError.description || `РћC€РёP±РєP° ${telegramError.error_code || 'РЅPµРёP·РІPµCЃC‚РЅP°CЏ'}`;
+            errorMessage = telegramError.description || `Ошибка ${telegramError.error_code || 'неизвестная'}`;
         } else {
             errorMessage = error.message;
         }
@@ -1954,9 +1954,9 @@ app.post('/api/test-send', auth, async (req, res) => {
     }
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// РЈРџР РђР’Р›Р•РќРР• РџР РђР’РР›РђРњР
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// РЈРџР РђР’Р›Р•РќРЕ РџР РђР’РР›РђРњР
+// ────────────────────────────────────────────────────────────────
 
 app.get('/api/rules', auth, async (req, res) => {
     let rules = [];
@@ -2164,9 +2164,9 @@ app.delete('/api/rules/:id', auth, blockAuditorWrite, async (req, res) => {
     }
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
 // POLLING CONFIG
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
 
 app.get('/api/polls', auth, async (req, res) => {
     const accountId = getAccountId(req);
@@ -2399,9 +2399,9 @@ app.delete('/api/polls/history', auth, blockAuditorWrite, async (req, res) => {
     }
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// WEBHOOK вЂ” РџРћ РђРљРљРђРЈРќРўРЈ: /webhook/:accountSlug
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// WEBHOOK — ПО АККАУНТУ: /webhook/:accountSlug
+// ────────────────────────────────────────────────────────────────
 
 app.post('/webhook/:accountSlug', async (req, res) => {
     const accountSlug = (req.params.accountSlug || '').trim().toLowerCase();
@@ -2468,37 +2468,37 @@ app.post('/webhook/:accountSlug', async (req, res) => {
             }
             const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
             if (chatIds.length === 0) {
-                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: null, success: false, error: 'No chatId configured' });
+                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: null, success: false, error: 'No chatId configured' });
                 continue;
             }
             for (const chat of chatIds) {
                 try {
                     const queueResult = await addMessageToQueue(token, chat, messageText, 0, null, accountId);
                     if (queueResult.queued) {
-                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
                     } else if (queueResult.success) {
-                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: true, response: queueResult.response });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, response: queueResult.response });
                     } else {
-                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: false, error: queueResult.error });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: queueResult.error });
                     }
                 } catch (error) {
                     const errDetail = error.response?.data || error.message;
-                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: false, error: errDetail });
+                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: errDetail });
                 }
             }
         }
     }
 
-    // Р’C‹РїРѕP»РЅРёC‚CЊ РёРЅC‚PµРіCЂP°C†РёРё, CЃРѕРѕC‚РІPµC‚CЃC‚РІСѓCЋC‰РёPµ CЌC‚РѕРјСѓ РІPµP±C…СѓРєСѓ
+    // Выполнить интеграции, соответствующие этому РІPµP±C…уку
     await executeMatchingIntegrations(incomingPayload, 'webhook', accountId);
 
     logWebhook(req.body, matched, rules.length, telegram_results, accountId);
     res.json({ matched, telegram_results });
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// WEBHOOK вЂ” РћР‘Р©РР™ (РІCЃPµ РїCЂP°РІРёP»P°, РґP»CЏ РѕP±CЂP°C‚РЅРѕР№ CЃРѕРІРјPµCЃC‚РёРјРѕCЃC‚Рё)
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// WEBHOOK — РћР‘Р©РЙ (все правила, для обратной совместимости)
+// ────────────────────────────────────────────────────────────────
 
 app.post('/webhook', async (req, res) => {
     if (req.body.event === 'webhook.verify') {
@@ -2565,7 +2565,7 @@ app.post('/webhook', async (req, res) => {
             }
             const chatIds = Array.isArray(rule.chatIds) ? rule.chatIds : (rule.chatId ? [rule.chatId] : []);
             if (chatIds.length === 0) {
-                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: null, success: false, error: 'No chatId configured' });
+                telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: null, success: false, error: 'No chatId configured' });
                 continue;
             }
 
@@ -2573,31 +2573,31 @@ app.post('/webhook', async (req, res) => {
                 try {
                     const queueResult = await addMessageToQueue(token, chat, messageText, 0, null, rule.account_id);
                     if (queueResult.queued) {
-                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, queued: true, queueId: queueResult.id });
                     } else if (queueResult.success) {
-                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: true, response: queueResult.response });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: true, response: queueResult.response });
                     } else {
-                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: false, error: queueResult.error });
+                        telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: queueResult.error });
                     }
                 } catch (error) {
                     const errDetail = error.response?.data || error.message;
                     console.error('Error queuing message for chat', chat, errDetail);
-                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `РџCЂP°РІРёP»Рѕ #${rule.id}`, chatId: chat, success: false, error: errDetail });
+                    telegram_results.push({ ruleId: rule.id, ruleName: rule.name || `Правило #${rule.id}`, chatId: chat, success: false, error: errDetail });
                 }
             }
         }
     }
 
-    // Р’C‹РїРѕP»РЅРёC‚CЊ РёРЅC‚PµРіCЂP°C†РёРё, CЃРѕРѕC‚РІPµC‚CЃC‚РІСѓCЋC‰РёPµ CЌC‚РѕРјСѓ РІPµP±C…СѓРєСѓ
+    // Выполнить интеграции, соответствующие этому РІPµP±C…уку
     await executeMatchingIntegrations(incomingPayload, 'webhook', firstMatchedAccountId);
 
     logWebhook(req.body, matched, rules.length, telegram_results, firstMatchedAccountId);
     res.json({ matched, telegram_results });
 });
 
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
-// Р”Р РЈР“РР• Р РћРЈРўР« (P»РѕРіРё, P·РґРѕCЂРѕРІCЊPµ, РѕC‡PµCЂPµРґCЊ)
-// в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ
+// ────────────────────────────────────────────────────────────────
+// Р”Р РЈР“РЕ РОУТЫ (логи, здоровье, очередь)
+// ────────────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => res.json({ ok: true }));
 
@@ -2953,7 +2953,7 @@ function startBotScheduler() {
     console.log('Bot scheduler started (checking every 30s)');
 }
 
-// CRUD РґP»CЏ P±РѕC‚РѕРІ
+// CRUD для ботов
 app.get('/api/bots', auth, async (req, res) => {
     const accountId = getAccountId(req);
     try {
@@ -2972,7 +2972,7 @@ app.get('/api/bots', auth, async (req, res) => {
     }
 });
 
-// РCЃC‚РѕCЂРёCЏ P±РѕC‚РѕРІ (MUST be before /api/bots/:id to avoid param capture)
+// Рстория ботов (MUST be before /api/bots/:id to avoid param capture)
 app.get('/api/bots/history', auth, async (req, res) => {
     const accountId = getAccountId(req);
     try {
@@ -3048,7 +3048,7 @@ app.post('/api/bots', auth, blockAuditorWrite, async (req, res) => {
 
         const newBot = {
             id: Date.now(),
-            name: req.body.name || 'РќРѕРІC‹Р№ P±РѕC‚',
+            name: req.body.name || 'Новый бот',
             enabled: req.body.enabled ?? true,
             chatId: req.body.chatId || '',
             botToken: req.body.botToken || '',
@@ -3147,7 +3147,7 @@ app.delete('/api/bots/:id', auth, blockAuditorWrite, async (req, res) => {
     }
 });
 
-// Р СѓC‡РЅРѕР№ P·P°РїСѓCЃРє P±РѕC‚P°
+// Ручной запуск бота
 app.post('/api/bots/:id/run', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
     const accountId = getAccountId(req);
@@ -3737,7 +3737,7 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
 
         const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, audioPayload);
         const prepared = escapeTelegramHtml(aiResponse).slice(0, 3900);
-        await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared || 'РџСѓCЃC‚РѕР№ РѕC‚РІPµC‚ РјРѕРґPµP»Рё.');
+        await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared || 'Пустой ответ модели.');
         res.json({ ok: true });
     } catch (error) {
         const statusCode = Number(error?.response?.status || 0);
@@ -4080,15 +4080,15 @@ function getWeekdayInTimeZone(date, timeZone) {
 
 function parseReminderCommand(args, timeZone = 'UTC') {
     // Supported formats:
-    // /remind 10m РљСѓРїРёC‚CЊ РјРѕP»РѕРєРѕ
-    // /remind 1h Р’CЃC‚CЂPµC‡P°
-    // /remind 1d РџРѕP·РІРѕРЅРёC‚CЊ
-    // /remind 2025-02-20 14:00 РЎРѕРІPµC‰P°РЅРёPµ
-    // /remind every 1h РџCЂРёРЅCЏC‚CЊ P»PµРєP°CЂCЃC‚РІРѕ
-    // /remind cron 0 9 * * * РЈC‚CЂPµРЅРЅCЏCЏ P·P°CЂCЏРґРєP°
+    // /remind 10m Купить молоко
+    // /remind 1h Встреча
+    // /remind 1d Позвонить
+    // /remind 2025-02-20 14:00 Совещание
+    // /remind every 1h Принять лекарство
+    // /remind cron 0 9 * * * Утренняя зарядка
     
     if (!args || args.length === 0) {
-        return { error: 'РЈРєP°P¶РёC‚Pµ РІCЂPµРјCЏ Рё C‚PµРєCЃC‚. РџCЂРёРјPµCЂ: /remind 10m РљСѓРїРёC‚CЊ РјРѕP»РѕРєРѕ' };
+        return { error: 'Укажите время и текст. Пример: /remind 10m Купить молоко' };
     }
     
     const result = {
@@ -4106,11 +4106,11 @@ function parseReminderCommand(args, timeZone = 'UTC') {
         result.repeatType = 'interval';
         const interval = parseInterval(args[1]);
         if (!interval) {
-            return { error: 'РќPµРІPµCЂРЅC‹Р№ C„РѕCЂРјP°C‚ РёРЅC‚PµCЂРІP°P»P°. РџCЂРёРјPµCЂ: 10m, 1h, 1d' };
+            return { error: 'Неверный формат интервала. Пример: 10m, 1h, 1d' };
         }
         result.repeatConfig = { interval_seconds: interval };
         result.runAt = new Date(Date.now() + interval * 1000);
-        result.message = args.slice(2).join(' ') || 'РќP°РїРѕРјРёРЅP°РЅРёPµ';
+        result.message = args.slice(2).join(' ') || 'Напоминание';
         return result;
     }
     
@@ -4118,7 +4118,7 @@ function parseReminderCommand(args, timeZone = 'UTC') {
         result.repeatType = 'cron';
         const cronExpr = args.slice(1, 6).join(' ');
         result.repeatConfig = { cron: cronExpr };
-        result.message = args.slice(6).join(' ') || 'РќP°РїРѕРјРёРЅP°РЅРёPµ';
+        result.message = args.slice(6).join(' ') || 'Напоминание';
         // For cron, calculate next run
         const nextRun = parseCronNextRun(cronExpr);
         result.runAt = nextRun || new Date(Date.now() + 60000);
@@ -4134,10 +4134,10 @@ function parseReminderCommand(args, timeZone = 'UTC') {
             const [hh, mm] = args[1].split(':').map((v) => parseInt(v, 10));
             const dateTime = zonedDateTimeToUtc(y, m, d, hh, mm, timeZone);
             if (isNaN(dateTime.getTime())) {
-                return { error: 'РќPµРІPµCЂРЅP°CЏ РґP°C‚P° РёP»Рё РІCЂPµРјCЏ' };
+                return { error: 'Неверная дата или время' };
             }
             result.runAt = dateTime;
-            result.message = args.slice(2).join(' ') || 'РќP°РїРѕРјРёРЅP°РЅРёPµ';
+            result.message = args.slice(2).join(' ') || 'Напоминание';
             return result;
         }
     }
@@ -4146,32 +4146,32 @@ function parseReminderCommand(args, timeZone = 'UTC') {
     const interval = parseInterval(args[0]);
     if (interval) {
         result.runAt = new Date(Date.now() + interval * 1000);
-        result.message = args.slice(1).join(' ') || 'РќP°РїРѕРјРёРЅP°РЅРёPµ';
+        result.message = args.slice(1).join(' ') || 'Напоминание';
         return result;
     }
     
     // Natural language fallback:
-    // "РїРѕP·РІРѕРЅРёC‚CЊ РІ РѕC„РёCЃ C‡PµCЂPµP· 20 РјРёРЅСѓC‚", "РїРѕP·РІРѕРЅРёC‚CЊ P·P°РІC‚CЂP° РІ 10", "call mom tomorrow at 10"
+    // "позвонить в офис через 20 минут", "позвонить завтра в 10", "call mom tomorrow at 10"
     const naturalParsed = parseNaturalLanguageReminder(args.join(' '), timeZone);
     if (!naturalParsed.error) {
         return naturalParsed;
     }
 
-    return { error: 'РќPµРІPµCЂРЅC‹Р№ C„РѕCЂРјP°C‚. РџCЂРёРјPµCЂC‹:\n/remind 10m РљСѓРїРёC‚CЊ РјРѕP»РѕРєРѕ\n/remind 1h Р’CЃC‚CЂPµC‡P°\n/remind 2026-02-21 10:00 РЎРѕРІPµC‰P°РЅРёPµ\n/remind every 1h РџCЂРёРЅCЏC‚CЊ P»PµРєP°CЂCЃC‚РІРѕ\nРёP»Рё: РџРѕP·РІРѕРЅРёC‚CЊ P·P°РІC‚CЂP° РІ 10\nРёP»Рё: Р’CЃC‚CЂPµC‡P° 28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00' };
+    return { error: 'Неверный формат. Примеры:\n/remind 10m Купить молоко\n/remind 1h Встреча\n/remind 2026-02-21 10:00 Совещание\n/remind every 1h Принять лекарство\nили: Позвонить завтра в 10\nили: Встреча 28 февраля 2026 года в 12:00' };
 }
 
 function parseReminderTextInput(text, timeZone = 'UTC') {
     if (!text || typeof text !== 'string') {
-        return { error: 'РџСѓCЃC‚РѕPµ CЃРѕРѕP±C‰PµРЅРёPµ' };
+        return { error: 'Пустое сообщение' };
     }
 
     const trimmed = text.trim();
     if (!trimmed) {
-        return { error: 'РџСѓCЃC‚РѕPµ CЃРѕРѕP±C‰PµРЅРёPµ' };
+        return { error: 'Пустое сообщение' };
     }
 
-    // Format: "<C‚PµРєCЃC‚> | <РІCЂPµРјCЏ>"
-    // Example: "РџРѕP·РІРѕРЅРёC‚CЊ РјP°РјPµ | 2026-02-21 10:00"
+    // Format: "<текст> | <время>"
+    // Example: "Позвонить маме | 2026-02-21 10:00"
     const parts = trimmed.split('|').map((p) => p.trim()).filter(Boolean);
     if (parts.length === 2) {
         const message = parts[0];
@@ -4185,7 +4185,7 @@ function parseReminderTextInput(text, timeZone = 'UTC') {
 
         const parsedNatural = parseNaturalLanguageReminder(`${message} ${timePart}`, timeZone);
         if (!parsedNatural.error) {
-            parsedNatural.message = message || parsedNatural.message || 'РќP°РїРѕРјРёРЅP°РЅРёPµ';
+            parsedNatural.message = message || parsedNatural.message || 'Напоминание';
             return parsedNatural;
         }
 
@@ -4286,8 +4286,8 @@ function parseExplicitDateTimeReminder(text, timeZone = 'UTC') {
     const normalized = String(text || '').trim();
     if (!normalized) return null;
 
-    // Date first: "20 C„PµРІ 2026 РІ 11:57 Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№"
-    // Also supports separators and typo "C‹" instead of "РІ".
+    // Date first: "20 фев 2026 в 11:57 Встреча с командой"
+    // Also supports separators and typo "ы" instead of "в".
     let m = normalized.match(
         /^(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})(?:\s+(?:г|г\.|год|year))?\s*(?:в|at)?\s*([0-9:]{1,5})\s+(.+)$/i
     );
@@ -4295,7 +4295,7 @@ function parseExplicitDateTimeReminder(text, timeZone = 'UTC') {
         return buildExplicitDateReminder(m[5], m[1], m[2], m[3], m[4], timeZone);
     }
 
-    // Message first: "Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№ 20 02 26 C‹ 1145"
+    // Message first: "Встреча с командой 20 02 26 ы 1145"
     m = normalized.match(
         /^(.+?)\s+(\d{1,2})[\s./-]+([a-zа-яё]{1,12}|\d{1,2})[\s./-]+(\d{2,4})(?:\s+(?:г|г\.|год|year))?\s*(?:в|at)?\s*([0-9:]{1,5})$/i
     );
@@ -4311,33 +4311,33 @@ function parseColloquialTime(hourRaw, minuteRaw, periodWordRaw) {
     let minute = minuteRaw != null ? parseInt(String(minuteRaw), 10) : 0;
     if (!Number.isInteger(hour) || !Number.isInteger(minute)) return null;
     const period = String(periodWordRaw || '').toLowerCase();
-    if (['РІPµC‡PµCЂP°', 'pm', 'p.m.', 'РІPµC‡PµCЂРѕРј'].includes(period) && hour < 12) hour += 12;
-    if (['РЅРѕC‡Рё'].includes(period) && hour === 12) hour = 0;
-    if (['СѓC‚CЂP°', 'am', 'a.m.'].includes(period) && hour === 12) hour = 0;
+    if (['вечера', 'pm', 'p.m.', 'вечером'].includes(period) && hour < 12) hour += 12;
+    if (['ночи'].includes(period) && hour === 12) hour = 0;
+    if (['утра', 'am', 'a.m.'].includes(period) && hour === 12) hour = 0;
     return isValidHourMinute(hour, minute) ? { hour, minute } : null;
 }
 
 function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
     if (!rawText || typeof rawText !== 'string') {
-        return { error: 'РџСѓCЃC‚РѕPµ CЃРѕРѕP±C‰PµРЅРёPµ' };
+        return { error: 'Пустое сообщение' };
     }
 
     const text = rawText.trim().replace(/\s+/g, ' ');
     if (!text) {
-        return { error: 'РџСѓCЃC‚РѕPµ CЃРѕРѕP±C‰PµРЅРёPµ' };
+        return { error: 'Пустое сообщение' };
     }
 
     // 0) Explicit date/time in RU/EN month formats:
-    // "20 C„PµРІ 2026 РІ 11:57 Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№"
-    // "Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№ 20 02 26 C‹ 1145"
+    // "20 фев 2026 в 11:57 Встреча с командой"
+    // "Встреча с командой 20 02 26 ы 1145"
     const explicitDateTime = parseExplicitDateTimeReminder(text, timeZone);
     if (explicitDateTime) {
         return explicitDateTime;
     }
 
-    // 0.1) "C‡PµCЂPµP· РїРѕP»C‡P°CЃP°" / "in half an hour"
+    // 0.1) "через полчаса" / "in half an hour"
     {
-        const m = text.match(/^(.*)\s+(?:C‡PµCЂPµP·\s+РїРѕP»C‡P°CЃP°|in\s+half\s+an?\s+hour)$/i);
+        const m = text.match(/^(.*)\s+(?:через\s+полчаса|in\s+half\s+an?\s+hour)$/i);
         if (m) {
             const message = (m[1] || '').trim();
             if (message) {
@@ -4352,9 +4352,9 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    // 0.2) "РїРѕP»РґPµРЅCЊ / midday"
+    // 0.2) "полдень / midday"
     {
-        const m = text.match(/^(.*)\s+(?:CЃPµРіРѕРґРЅCЏ|today|P·P°РІC‚CЂP°|tomorrow)?\s*(?:РІ|at)?\s*(РїРѕP»РґPµРЅCЊ|midday|noon)$/i);
+        const m = text.match(/^(.*)\s+(?:сегодня|today|завтра|tomorrow)?\s*(?:в|at)?\s*(полдень|midday|noon)$/i);
         if (m) {
             const message = (m[1] || '').trim();
             if (message) {
@@ -4375,9 +4375,9 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    // 1) "<message> C‡PµCЂPµP· 20 РјРёРЅСѓC‚" / "<message> in 20 minutes"
+    // 1) "<message> через 20 минут" / "<message> in 20 minutes"
     {
-        const m = text.match(/^(.*)\s+(?:C‡PµCЂPµP·|in)\s+(\d+)\s*(РјРёРЅСѓC‚[P°СѓC‹]?|РјРёРЅ|minute|minutes|C‡P°CЃ|C‡P°CЃP°|C‡P°CЃРѕРІ|hour|hours|РґPµРЅCЊ|РґРЅCЏ|РґРЅPµР№|day|days|РЅPµРґPµP»[CЏРёCЋCЊ]|week|weeks)$/i);
+        const m = text.match(/^(.*)\s+(?:через|in)\s+(\d+)\s*(минут[ауы]?|мин|minute|minutes|час|часа|часов|hour|hours|день|дня|дней|day|days|недел[яиюь]|week|weeks)$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const value = parseInt(m[2], 10);
@@ -4395,9 +4395,9 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    // 2) "<message> РєP°P¶РґC‹Pµ 10 РјРёРЅСѓC‚" / "<message> every 10 minutes"
+    // 2) "<message> каждые 10 минут" / "<message> every 10 minutes"
     {
-        const m = text.match(/^(.*)\s+(?:РєP°P¶РґC‹Pµ|РєP°P¶РґC‹Р№|every)\s+(\d+)\s*(РјРёРЅСѓC‚[P°СѓC‹]?|РјРёРЅ|minute|minutes|C‡P°CЃ|C‡P°CЃP°|C‡P°CЃРѕРІ|hour|hours|РґPµРЅCЊ|РґРЅCЏ|РґРЅPµР№|day|days|РЅPµРґPµP»[CЏРёCЋCЊ]|week|weeks)$/i);
+        const m = text.match(/^(.*)\s+(?:каждые|каждый|every)\s+(\d+)\s*(минут[ауы]?|мин|minute|minutes|час|часа|часов|hour|hours|день|дня|дней|day|days|недел[яиюь]|week|weeks)$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const value = parseInt(m[2], 10);
@@ -4415,20 +4415,20 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    // 3) "<message> P·P°РІC‚CЂP° РІ 10[:30]" / "tomorrow at 10[:30]"
+    // 3) "<message> завтра в 10[:30]" / "tomorrow at 10[:30]"
     {
-        const m = text.match(/^(.*)\s+(CЃPµРіРѕРґРЅCЏ|today|P·P°РІC‚CЂP°|tomorrow|РїРѕCЃP»PµP·P°РІC‚CЂP°|day after tomorrow)(?:\s+(?:РІ|at|C‹)\s+([0-9:]{1,5}))?$/i);
+        const m = text.match(/^(.*)\s+(сегодня|today|завтра|tomorrow|послезавтра|day after tomorrow)(?:\s+(?:в|at|ы)\s+([0-9:]{1,5}))?$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const dayWord = String(m[2] || '').toLowerCase();
             const parsedTime = m[3] != null ? parseFlexibleTimeToken(m[3]) : { hour: 9, minute: 0 };
             if (!message || !parsedTime || !isValidHourMinute(parsedTime.hour, parsedTime.minute)) {
-                return { error: 'РќPµРІPµCЂРЅРѕPµ РІCЂPµРјCЏ. РCЃРїРѕP»CЊP·СѓР№C‚Pµ C‡P°CЃC‹ 0-23 Рё РјРёРЅСѓC‚C‹ 0-59' };
+                return { error: 'Неверное время. Рспользуйте часы 0-23 и минуты 0-59' };
             }
 
             let offsetDays = 0;
-            if (dayWord === 'P·P°РІC‚CЂP°' || dayWord === 'tomorrow') offsetDays = 1;
-            if (dayWord === 'РїРѕCЃP»PµP·P°РІC‚CЂP°' || dayWord === 'day after tomorrow') offsetDays = 2;
+            if (dayWord === 'завтра' || dayWord === 'tomorrow') offsetDays = 1;
+            if (dayWord === 'послезавтра' || dayWord === 'day after tomorrow') offsetDays = 2;
 
             const nowInTz = getTimeZoneParts(new Date(), timeZone);
             const localDay = new Date(Date.UTC(nowInTz.year, nowInTz.month - 1, nowInTz.day + offsetDays, 0, 0, 0));
@@ -4463,9 +4463,9 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    // 3.1) "<message> РІ 9 РІPµC‡PµCЂP°" / "at 9 pm"
+    // 3.1) "<message> в 9 вечера" / "at 9 pm"
     {
-        const m = text.match(/^(.*)\s+(?:CЃPµРіРѕРґРЅCЏ|today|P·P°РІC‚CЂP°|tomorrow)?\s*(?:РІ|at)\s+(\d{1,2})(?::(\d{2}))?\s*(СѓC‚CЂP°|РґРЅCЏ|РІPµC‡PµCЂP°|РЅРѕC‡Рё|am|pm|a\.m\.|p\.m\.)$/i);
+        const m = text.match(/^(.*)\s+(?:сегодня|today|завтра|tomorrow)?\s*(?:в|at)\s+(\d{1,2})(?::(\d{2}))?\s*(утра|дня|вечера|ночи|am|pm|a\.m\.|p\.m\.)$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const parsedTime = parseColloquialTime(m[2], m[3], m[4]);
@@ -4481,16 +4481,16 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    // 4) "<message> РІ РїРѕРЅPµРґPµP»CЊРЅРёРє РІ 10" / "<message> on monday at 10"
+    // 4) "<message> в понедельник в 10" / "<message> on monday at 10"
     {
-        const m = text.match(/^(.*)\s+(?:РІ|on)\s+(РїРѕРЅPµРґPµP»CЊРЅРёРє|РІC‚РѕCЂРЅРёРє|CЃCЂPµРґP°|CЃCЂPµРґСѓ|C‡PµC‚РІPµCЂРі|РїCЏC‚РЅРёC†P°|РїCЏC‚РЅРёC†Сѓ|CЃСѓP±P±РѕC‚P°|CЃСѓP±P±РѕC‚Сѓ|РІРѕCЃРєCЂPµCЃPµРЅCЊPµ|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:РІ|at|C‹)?\s*([0-9:]{1,5}))?$/i);
+        const m = text.match(/^(.*)\s+(?:в|on)\s+(понедельник|вторник|среда|среду|четверг|пятница|пятницу|суббота|субботу|воскресенье|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:в|at|ы)?\s*([0-9:]{1,5}))?$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const weekdayWord = String(m[2] || '').toLowerCase();
             const parsedTime = m[3] != null ? parseFlexibleTimeToken(m[3]) : { hour: 9, minute: 0 };
             const weekday = parseWeekday(weekdayWord);
             if (!message || weekday == null || !parsedTime || !isValidHourMinute(parsedTime.hour, parsedTime.minute)) {
-                return { error: 'РќPµРІPµCЂРЅC‹Р№ C„РѕCЂРјP°C‚ РґРЅCЏ РЅPµРґPµP»Рё РёP»Рё РІCЂPµРјPµРЅРё' };
+                return { error: 'Неверный формат дня недели или времени' };
             }
 
             const runAt = nextWeekdayAt(weekday, parsedTime.hour, parsedTime.minute, timeZone);
@@ -4504,9 +4504,9 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    // 5) "РїРѕ P±СѓРґРЅCЏРј РІ 9" / "on weekdays at 9"
+    // 5) "по будням в 9" / "on weekdays at 9"
     {
-        const m = text.match(/^(.*)\s+(?:РїРѕ\s+P±СѓРґРЅCЏРј|on\s+weekdays)\s+(?:РІ|at)\s+(\d{1,2})(?::(\d{2}))?$/i);
+        const m = text.match(/^(.*)\s+(?:по\s+будням|on\s+weekdays)\s+(?:в|at)\s+(\d{1,2})(?::(\d{2}))?$/i);
         if (m) {
             const message = (m[1] || '').trim();
             const hour = parseInt(m[2], 10);
@@ -4525,15 +4525,15 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
         }
     }
 
-    return { error: 'РќPµ СѓРґP°P»РѕCЃCЊ CЂP°CЃРїРѕP·РЅP°C‚CЊ PµCЃC‚PµCЃC‚РІPµРЅРЅC‹Р№ C„РѕCЂРјP°C‚' };
+    return { error: 'Не удалось распознать естественный формат' };
 }
 
 function normalizeNaturalUnit(unitRaw) {
     const unit = String(unitRaw || '').toLowerCase();
-    if (['РјРёРЅ', 'РјРёРЅСѓC‚P°', 'РјРёРЅСѓC‚', 'РјРёРЅСѓC‚C‹', 'minute', 'minutes'].includes(unit)) return 'm';
-    if (['C‡P°CЃ', 'C‡P°CЃP°', 'C‡P°CЃРѕРІ', 'hour', 'hours'].includes(unit)) return 'h';
-    if (['РґPµРЅCЊ', 'РґРЅCЏ', 'РґРЅPµР№', 'day', 'days'].includes(unit)) return 'd';
-    if (['РЅPµРґPµP»CЏ', 'РЅPµРґPµP»Рё', 'РЅPµРґPµP»CЋ', 'РЅPµРґPµP»CЊ', 'week', 'weeks'].includes(unit)) return 'w';
+    if (['мин', 'минута', 'минут', 'минуты', 'minute', 'minutes'].includes(unit)) return 'm';
+    if (['час', 'часа', 'часов', 'hour', 'hours'].includes(unit)) return 'h';
+    if (['день', 'дня', 'дней', 'day', 'days'].includes(unit)) return 'd';
+    if (['неделя', 'недели', 'неделю', 'недель', 'week', 'weeks'].includes(unit)) return 'w';
     return null;
 }
 
@@ -4555,22 +4555,22 @@ function isValidHourMinute(hour, minute) {
 function parseWeekday(wordRaw) {
     const word = String(wordRaw || '').toLowerCase();
     const map = {
-        'РІРѕCЃРєCЂPµCЃPµРЅCЊPµ': 0,
+        'воскресенье': 0,
         'monday': 1,
-        'РїРѕРЅPµРґPµP»CЊРЅРёРє': 1,
+        'понедельник': 1,
         'tuesday': 2,
-        'РІC‚РѕCЂРЅРёРє': 2,
+        'вторник': 2,
         'wednesday': 3,
-        'CЃCЂPµРґP°': 3,
-        'CЃCЂPµРґСѓ': 3,
+        'среда': 3,
+        'среду': 3,
         'thursday': 4,
-        'C‡PµC‚РІPµCЂРі': 4,
+        'четверг': 4,
         'friday': 5,
-        'РїCЏC‚РЅРёC†P°': 5,
-        'РїCЏC‚РЅРёC†Сѓ': 5,
+        'пятница': 5,
+        'пятницу': 5,
         'saturday': 6,
-        'CЃСѓP±P±РѕC‚P°': 6,
-        'CЃСѓP±P±РѕC‚Сѓ': 6,
+        'суббота': 6,
+        'субботу': 6,
         'sunday': 0,
     };
     return map[word];
@@ -4647,8 +4647,8 @@ function nextAllowedTimeAfterQuiet(date, timeZone, quietStart, quietEnd) {
 function normalizeLanguageInput(input) {
     const value = String(input || '').trim().toLowerCase();
     if (!value) return null;
-    if (['ru', 'CЂСѓCЃCЃРєРёР№', 'russian', 'CЂСѓCЃ'].includes(value)) return 'ru';
-    if (['en', 'english', 'P°РЅРіP»РёР№CЃРєРёР№', 'P°РЅРіP»'].includes(value)) return 'en';
+    if (['ru', 'русский', 'russian', 'рус'].includes(value)) return 'ru';
+    if (['en', 'english', 'английский', 'англ'].includes(value)) return 'en';
     return null;
 }
 
@@ -4702,10 +4702,10 @@ function parseCronNextRun(cronExpr) {
 
 function runReminderParserSelfTests() {
     const cases = [
-        { text: 'РџРѕP·РІРѕРЅРёC‚CЊ P·P°РІC‚CЂP° РІ 10', tz: 'Europe/Moscow' },
-        { text: '20 C„PµРІ 2026 РІ 11:57 Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№', tz: 'Europe/Moscow' },
-        { text: 'Р’CЃC‚CЂPµC‡P° 28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00', tz: 'Europe/Moscow' },
-        { text: 'Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№ 20 02 26 C‹ 1145', tz: 'Europe/Moscow' },
+        { text: 'Позвонить завтра в 10', tz: 'Europe/Moscow' },
+        { text: '20 фев 2026 в 11:57 Встреча с командой', tz: 'Europe/Moscow' },
+        { text: 'Встреча 28 февраля 2026 года в 12:00', tz: 'Europe/Moscow' },
+        { text: 'Встреча с командой 20 02 26 ы 1145', tz: 'Europe/Moscow' },
         { text: 'check report in half an hour', tz: 'America/New_York' },
         { text: 'drink water every 2 hours', tz: 'Asia/Almaty' },
         { text: 'review roadmap on weekdays at 9', tz: 'Europe/Berlin' },
@@ -4735,34 +4735,34 @@ function formatReminderDate(date, timeZone = 'UTC') {
 
 function formatReminderList(reminders, timeZone = 'UTC') {
     if (!reminders || reminders.length === 0) {
-        return 'tg“­ РЈ РІP°CЃ РЅPµC‚ P°РєC‚РёРІРЅC‹C… РЅP°РїРѕРјРёРЅP°РЅРёР№';
+        return 'У вас нет активных напоминаний';
     }
     
-    const lines = [`tg“‹ РќP°РїРѕРјРёРЅP°РЅРёCЏ (${reminders.length})`, ''];
+    const lines = [`Напоминания (${reminders.length})`, ''];
     reminders.forEach((r, i) => {
         const runAt = new Date(r.run_at);
         const dateStr = formatReminderDate(runAt, timeZone);
         const isPast = runAt.getTime() < Date.now();
         const repeatInfo = r.repeat_type === 'interval'
-            ? ` вЂў tg”Ѓ РєP°P¶РґC‹Pµ ${Math.max(1, Math.round((r.repeat_config?.interval_seconds || 0) / 60))} РјРёРЅ`
+            ? ` • каждые ${Math.max(1, Math.round((r.repeat_config?.interval_seconds || 0) / 60))} мин`
             : r.repeat_type === 'cron'
-                ? ` вЂў tg”Ѓ ${r.repeat_config?.cron || 'РїРѕ CЂP°CЃРїРёCЃP°РЅРёCЋ'}`
+                ? ` • ${r.repeat_config?.cron || 'по расписанию'}`
                 : '';
-        const activeInfo = r.is_active ? '' : ' вЂў v?ёпёЏ';
-        const pastInfo = isPast ? ' вЂў вљ пёЏ РїCЂРѕCЃCЂРѕC‡PµРЅРѕ' : '';
+        const activeInfo = r.is_active ? '' : ' • отключено';
+        const pastInfo = isPast ? ' • просрочено' : '';
         const message = String(r.message || '').trim();
         const shortMessage = message.length > 90 ? `${message.slice(0, 90).trimEnd()}...` : message;
 
-        lines.push(`#${i + 1} ${isPast ? 'tg”ґ' : 'tg“ќ'} ${shortMessage}`);
-        lines.push(`v?° ${dateStr}${pastInfo}${repeatInfo}${activeInfo}`);
+        lines.push(`#${i + 1} ${shortMessage}`);
+        lines.push(`${dateStr}${pastInfo}${repeatInfo}${activeInfo}`);
         if (i < reminders.length - 1) {
-            lines.push('в”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђв”Ђ');
+            lines.push('----------------');
             lines.push('');
         }
     });
 
     lines.push('');
-    lines.push('РЈРґP°P»РёC‚CЊ: /delete РЅРѕРјPµCЂ');
+    lines.push('Удалить: /delete номер');
     
     return lines.join('\n');
 }
@@ -4837,7 +4837,7 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
         await sendLanguageSelectionPrompt(
             botToken,
             chatId,
-            'вљ пёЏ РџPµCЂPµРґ РёCЃРїРѕP»CЊP·РѕРІP°РЅРёPµРј P±РѕC‚P° РЅСѓP¶РЅРѕ РІC‹P±CЂP°C‚CЊ CЏP·C‹Рє.\n\nРћC‚РїCЂP°РІCЊC‚Pµ:\nru\nРёP»Рё\nen\n\nРP»Рё РєРѕРјP°РЅРґРѕР№:\n/settings language ru'
+            '⚠️ Перед использованием бота нужно выбрать язык.\n\nОтправьте:\nru\nили\nen\n\nРли командой:\n/settings language ru'
         );
         return { ok: true };
     }
@@ -4848,7 +4848,7 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
         await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
-            'вљ пёЏ РџPµCЂPµРґ РёCЃРїРѕP»CЊP·РѕРІP°РЅРёPµРј P±РѕC‚P° РЅСѓP¶РЅРѕ РІC‹P±CЂP°C‚CЊ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ.\n\nРћC‚РїCЂP°РІCЊC‚Pµ, РЅP°РїCЂРёРјPµCЂ:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York\n\nРP»Рё РєРѕРјP°РЅРґРѕР№:\n/settings timezone Europe/Moscow'
+            '⚠️ Перед использованием бота нужно выбрать часовой пояс.\n\nОтправьте, например:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York\n\nРли командой:\n/settings timezone Europe/Moscow'
         );
         return { ok: true };
     }
@@ -4893,16 +4893,16 @@ async function handleStartCommand(chatId, telegramUser) {
 
     if (!isLanguageSelectedForUser(telegramUser)) {
         pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        const message = `tg‘‹ РџCЂРёРІPµC‚, ${telegramUser.first_name || 'РїРѕP»CЊP·РѕРІP°C‚PµP»CЊ'}!
+        const message = `Привет, ${telegramUser.first_name || 'пользователь'}!
 
-РџPµCЂPµРґ РЅP°C‡P°P»РѕРј CЂP°P±РѕC‚C‹ РЅСѓP¶РЅРѕ РІC‹P±CЂP°C‚CЊ CЏP·C‹Рє.
+Перед началом работы нужно выбрать язык.
 
-РћC‚РїCЂP°РІCЊC‚Pµ РѕРґРЅРёРј CЃРѕРѕP±C‰PµРЅРёPµРј:
+Отправьте одним сообщением:
 ru
-РёP»Рё
+или
 en
 
-РP»Рё РєРѕРјP°РЅРґРѕР№:
+Или командой:
 /settings language ru`;
         await sendLanguageSelectionPrompt(botToken, chatId, message);
         return { ok: true };
@@ -4910,76 +4910,71 @@ en
 
     if (!isTimezoneSelectedForUser(telegramUser)) {
         pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        const message = `tg‘‹ РџCЂРёРІPµC‚, ${telegramUser.first_name || 'РїРѕP»CЊP·РѕРІP°C‚PµP»CЊ'}!
+        const message = `Привет, ${telegramUser.first_name || 'пользователь'}!
 
-РџPµCЂPµРґ РЅP°C‡P°P»РѕРј CЂP°P±РѕC‚C‹ РЅСѓP¶РЅРѕ РІC‹P±CЂP°C‚CЊ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ.
+Перед началом работы нужно выбрать часовой пояс.
 
-РћC‚РїCЂP°РІCЊC‚Pµ РѕРґРЅРёРј CЃРѕРѕP±C‰PµРЅРёPµРј, РЅP°РїCЂРёРјPµCЂ:
+Отправьте одним сообщением, например:
 Europe/Moscow
 Asia/Almaty
 America/New_York
 
-РP»Рё РєРѕРјP°РЅРґРѕР№:
+Или командой:
 /settings timezone Europe/Moscow`;
         await sendTimeZoneSelectionPrompt(botToken, chatId, message);
         return { ok: true };
     }
 
-    const message = `tg‘‹ РџCЂРёРІPµC‚, ${telegramUser.first_name || 'РїРѕP»CЊP·РѕРІP°C‚PµP»CЊ'}!
+    const message = `Привет, ${telegramUser.first_name || 'пользователь'}!
 
-РЇ РјРѕРіСѓ РїРѕРјРѕC‡CЊ РІP°Рј CЃРѕP·РґP°РІP°C‚CЊ Рё СѓРїCЂP°РІP»CЏC‚CЊ РІP°C€РёРјРё РЅP°РїРѕРјРёРЅP°РЅРёCЏРјРё, РєРѕC‚РѕCЂC‹Pµ РїРѕC‚РѕРј CЏ P±СѓРґСѓ РїCЂРёCЃC‹P»P°C‚CЊ РІP°Рј C‡PµCЂPµP· Telegram РІ СѓРєP°P·P°РЅРЅРѕPµ РІP°РјРё РІCЂPµРјCЏ.
+Я помогу создавать и отправлять вам напоминания в Telegram.
 
-Р’РѕC‚ CЃРїРёCЃРѕРє РјРѕРёC… РѕCЃРЅРѕРІРЅC‹C… РІРѕP·РјРѕP¶РЅРѕCЃC‚PµР№:
+Основные возможности:
+- Добавление напоминаний: /add или /remind
+- Разовые и повторяющиеся напоминания
+- Настройка языка: /settings language ru|en
+- Настройка часового пояса: /settings timezone Europe/Moscow
+- Просмотр списка: /list
 
-вЂў РџРѕ СѓРјРѕP»C‡P°РЅРёCЋ CЏ РїРѕРЅРёРјP°CЋ CЂСѓCЃCЃРєРёР№ Рё P°РЅРіP»РёР№CЃРєРёР№
-вЂў Р’C‹ РјРѕP¶PµC‚Pµ CЃРѕP·РґP°РІP°C‚CЊ РЅP°РїРѕРјРёРЅP°РЅРёCЏ РєРѕРјP°РЅРґРѕР№ /add РёP»Рё /remind
-вЂў РџРѕРґРґPµCЂP¶РёРІP°CЋC‚CЃCЏ РѕРґРЅРѕCЂP°P·РѕРІC‹Pµ Рё РїРѕРІC‚РѕCЂCЏCЋC‰РёPµCЃCЏ РЅP°РїРѕРјРёРЅP°РЅРёCЏ
-вЂў РЇP·C‹Рє РјРѕP¶РЅРѕ РёP·РјPµРЅРёC‚CЊ: /settings language ru|en
-вЂў Р§P°CЃРѕРІРѕР№ РїРѕCЏCЃ РјРѕP¶РЅРѕ РЅP°CЃC‚CЂРѕРёC‚CЊ: /settings timezone Europe/Moscow
-вЂў РЇ РїРѕРєP°P¶Сѓ CЃРїРёCЃРѕРє РІP°C€РёC… РЅP°РїРѕРјРёРЅP°РЅРёР№ РїРѕ РєРѕРјP°РЅРґPµ /list
-
-РџРѕP»РЅP°CЏ CЃРїCЂP°РІРєP° Рё CЃРїРёCЃРѕРє РєРѕРјP°РЅРґ: /help`;
+Полная справка и список команд: /help`;
 
     await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
-
 async function handleHelpCommand(chatId) {
     const botToken = await getReminderBotToken();
-    const message = `tg“– РЎРїCЂP°РІРєP° РїРѕ РЅP°РїРѕРјРёРЅP°РЅРёCЏРј
+    const message = `Справка по напоминаниям
 
-РЇ РїРѕРјРѕРіСѓ CЃРѕP·РґP°РІP°C‚CЊ Рё РїРѕP»СѓC‡P°C‚CЊ РЅP°РїРѕРјРёРЅP°РЅРёCЏ РІ Telegram.
+Как добавить напоминание:
+- Пошагово: /add (текст -> время -> подтверждение)
+- Одной строкой: /remind ...
 
-РљP°Рє РґРѕP±P°РІРёC‚CЊ РЅP°РїРѕРјРёРЅP°РЅРёPµ:
-вЂў РџРѕC€P°РіРѕРІРѕ: /add (C‚PµРєCЃC‚ в†’ РІCЂPµРјCЏ в†’ РїРѕРґC‚РІPµCЂP¶РґPµРЅРёPµ)
-вЂў РћРґРЅРѕР№ CЃC‚CЂРѕРєРѕР№: /remind ...
+Поддерживаемые форматы времени:
+- Интервал: "через 20 минут", "10m", "1h"
+- Дата/время: "2026-02-21 10:00", "20 фев 2026 в 11:57"
+- Естественный язык: "завтра в 10", "в понедельник 1200"
+- Повтор: "каждые 10 минут", "по будням в 9", "/remind cron 0 9 * * 1-5 ..."
 
-РџРѕРґРґPµCЂP¶РёРІP°PµРјC‹Pµ РІP°CЂРёP°РЅC‚C‹ РІCЂPµРјPµРЅРё:
-вЂў РРЅC‚PµCЂРІP°P»: "C‡PµCЂPµP· 20 РјРёРЅСѓC‚", "10m", "1h"
-вЂў Р”P°C‚P°/РІCЂPµРјCЏ: "2026-02-21 10:00", "20 C„PµРІ 2026 РІ 11:57", "28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00", "20 02 26 РІ 1145"
-вЂў Р•CЃC‚PµCЃC‚РІPµРЅРЅРѕ: "P·P°РІC‚CЂP° РІ 10", "РІ РїРѕРЅPµРґPµP»CЊРЅРёРє 1200", "C‡PµCЂPµP· РїРѕP»C‡P°CЃP°"
-вЂў РџРѕРІC‚РѕCЂ: "РєP°P¶РґC‹Pµ 10 РјРёРЅСѓC‚", "РїРѕ P±СѓРґРЅCЏРј РІ 9", "/remind cron 0 9 * * 1-5 ..."
+Управление:
+- /list - список напоминаний
+- /delete - удалить напоминание по номеру
+- /settings - язык, часовой пояс, тихий режим
+- /cancel - отменить текущий шаг
 
-РЈРїCЂP°РІP»PµРЅРёPµ:
-вЂў /list вЂ” CЃРїРёCЃРѕРє РЅP°РїРѕРјРёРЅP°РЅРёР№ (C„РёP»CЊC‚CЂC‹: today, week, all, q=..., page=...)
-вЂў /delete вЂ” РґPµP°РєC‚РёРІРёCЂРѕРІP°C‚CЊ РЅP°РїРѕРјРёРЅP°РЅРёPµ
-вЂў /settings вЂ” CЏP·C‹Рє, C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ, C‚РёC…РёР№ CЂPµP¶РёРј
-вЂў /cancel вЂ” РѕC‚РјPµРЅРёC‚CЊ C‚PµРєСѓC‰РёР№ C€P°Рі
-
-Рђ РІРѕC‚ РїРѕP»РЅC‹Р№ CЃРїРёCЃРѕРє РјРѕРёC… РєРѕРјP°РЅРґ:
-
-/start - РЅP°C‡P°C‚CЊ РёCЃРїРѕP»CЊP·РѕРІP°C‚CЊ P±РѕC‚P°/РїPµCЂPµC…РѕРґ РІ РіP»P°РІРЅРѕPµ РјPµРЅCЋ
-/help - РѕC‚РєCЂC‹C‚CЊ CЃРїCЂP°РІРєСѓ
-/add - РґРѕP±P°РІРёC‚CЊ РЅP°РїРѕРјРёРЅP°РЅРёPµ
-/list - РїРѕРєP°P·P°C‚CЊ CЃРїРёCЃРѕРє РЅP°РїРѕРјРёРЅP°РЅРёР№
-/formats - РїРѕРєP°P·P°C‚CЊ CЃРїРёCЃРѕРє РїРѕРґРґPµCЂP¶РёРІP°PµРјC‹C… C„РѕCЂРјP°C‚РѕРІ РґP°C‚C‹ Рё РІCЂPµРјPµРЅРё
-/settings - РЅP°CЃC‚CЂРѕР№РєРё (CЏP·C‹Рє Рё C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ)
-/cancel - РѕC‚РјPµРЅРёC‚CЊ C‚PµРєСѓC‰СѓCЋ РѕРїPµCЂP°C†РёCЋ`;
+Команды:
+/start
+/help
+/add
+/remind
+/list
+/delete
+/formats
+/settings
+/cancel`;
 
     await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
-
 async function handleAddCommand(args, chatId, telegramUser) {
     const botToken = await getReminderBotToken();
 
@@ -4988,7 +4983,7 @@ async function handleAddCommand(args, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            'РЁP°Рі 1/2: РІРІPµРґРёC‚Pµ C‚PµРєCЃC‚ РЅP°РїРѕРјРёРЅP°РЅРёCЏ.\n\nРџCЂРёРјPµCЂ:\nР’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№\n\nР”P»CЏ РѕC‚РјPµРЅC‹: /cancel'
+            'Шаг 1/2: введите текст напоминания.\n\nПример:\nВстреча с командой\n\nДля отмены: /cancel'
         );
         return { ok: true };
     }
@@ -4998,33 +4993,41 @@ async function handleAddCommand(args, chatId, telegramUser) {
 
 async function handleFormatsCommand(chatId) {
     const botToken = await getReminderBotToken();
-    const message = `tg“… РџРѕРґРґPµCЂP¶РёРІP°PµРјC‹Pµ C„РѕCЂРјP°C‚C‹ РґP°C‚C‹ Рё РІCЂPµРјPµРЅРё:
+    const message = `Поддерживаемые форматы даты и времени:
 
-1) Р§PµCЂPµP· РёРЅC‚PµCЂРІP°P»:
-/remind 10m РўPµРєCЃC‚
-/remind 2h РўPµРєCЃC‚
-/remind 1d РўPµРєCЃC‚
-/remind C‡PµCЂPµP· 20 РјРёРЅСѓC‚ РўPµРєCЃC‚
-/remind 1w РўPµРєCЃC‚
+1) Через интервал:
+/remind 10m Текст
+/remind 2h Текст
+/remind 1d Текст
+/remind через 20 минут Текст
+/remind 1w Текст
 
-2) РљРѕРЅРєCЂPµC‚РЅP°CЏ РґP°C‚P° Рё РІCЂPµРјCЏ:
-/remind 2026-02-20 14:00 РўPµРєCЃC‚
-/add -> 20 C„PµРІ 2026 РІ 11:57 Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№
-/add -> 28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00 Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№
-/add -> Р’CЃC‚CЂPµC‡P° CЃ РєРѕРјP°РЅРґРѕР№ 20 02 26 РІ 1145
-/add -> РІ РїРѕРЅPµРґPµP»CЊРЅРёРє 1200
+2) Конкретная дата и время:
+/remind 2026-02-20 14:00 Текст
+/add -> 20 фев 2026 в 11:57 Встреча с командой
+/add -> 28 февраля 2026 года в 12:00 Встреча с командой
+/add -> Встреча с командой 20 02 26 в 1145
+/add -> в понедельник 1200
 
-3) РџРѕРІC‚РѕCЂ:
-/remind every 10m РўPµРєCЃC‚
-/remind РєP°P¶РґC‹Pµ 10 РјРёРЅСѓC‚ РўPµРєCЃC‚
-/remind every 1d РўPµРєCЃC‚
-/remind cron 0 9 * * * РўPµРєCЃC‚
-/remind РџCЂРѕРІPµCЂРёC‚CЊ P·P°РґP°C‡Рё РїРѕ P±СѓРґРЅCЏРј РІ 9`;
+3) Повтор:
+/remind every 10m Текст
+/remind каждые 10 минут Текст
+/remind every 1d Текст
+/remind cron 0 9 * * * Текст
+
+4) Естественный язык:
+/add -> Позвонить завтра в 10
+/add -> Встреча 28 февраля 2026 года в 12:00
+/add -> Встреча с командой 20 02 26 в 1145
+/add -> check report in half an hour
+
+Примечание:
+- Часовой пояс берется из /settings
+- Для отмены текущего шага: /cancel`;
 
     await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
 }
-
 async function handleSettingsCommand(args, chatId, telegramUser) {
     const botToken = await getReminderBotToken();
     const currentTimeZone = await getUserTimeZone(telegramUser.id);
@@ -5034,13 +5037,13 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
 
     if (!command && !isLanguageSelectedForUser(telegramUser)) {
         pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        await sendLanguageSelectionPrompt(botToken, chatId, 'Р’C‹P±PµCЂРёC‚Pµ CЏP·C‹Рє:');
+        await sendLanguageSelectionPrompt(botToken, chatId, 'Выберите язык:');
         return { ok: true };
     }
 
     if (!command && isLanguageSelectedForUser(telegramUser) && !isTimezoneSelectedForUser(telegramUser)) {
         pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        await sendTimeZoneSelectionPrompt(botToken, chatId, 'Р’C‹P±PµCЂРёC‚Pµ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ:');
+        await sendTimeZoneSelectionPrompt(botToken, chatId, 'Выберите часовой пояс:');
         return { ok: true };
     }
 
@@ -5050,14 +5053,14 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
             await sendLanguageSelectionPrompt(
                 botToken,
                 chatId,
-                `вќЊ РќPµРІPµCЂРЅC‹Р№ CЏP·C‹Рє: ${value}\n\nРџCЂРёРјPµCЂ:\n/settings language ru\n/settings language en`
+                `Неверный язык: ${value}\n\nПример:\n/settings language ru\n/settings language en`
             );
             return { ok: true };
         }
 
         const saveResult = await setUserLanguage(telegramUser.id, normalizedLanguage);
         if (!saveResult.success) {
-            await sendTelegramMessage(botToken, chatId, `вќЊ РќPµ СѓРґP°P»РѕCЃCЊ CЃРѕC…CЂP°РЅРёC‚CЊ CЏP·C‹Рє: ${saveResult.error}`);
+            await sendTelegramMessage(botToken, chatId, `Не удалось сохранить язык: ${saveResult.error}`);
             return { ok: true };
         }
 
@@ -5070,7 +5073,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
             await sendTimeZoneSelectionPrompt(
                 botToken,
                 chatId,
-                `v?… РЇP·C‹Рє РѕP±РЅРѕРІP»PµРЅ: ${normalizedLanguage}\n\nРўPµРїPµCЂCЊ РІC‹P±PµCЂРёC‚Pµ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ, РЅP°РїCЂРёРјPµCЂ:\nEurope/Moscow`
+                `Язык обновлен: ${normalizedLanguage}\n\nТеперь выберите часовой пояс, например:\nEurope/Moscow`
             );
             return { ok: true };
         }
@@ -5085,7 +5088,7 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
             await sendLanguageSelectionPrompt(
                 botToken,
                 chatId,
-                'вљ пёЏ РЎРЅP°C‡P°P»P° РІC‹P±PµCЂРёC‚Pµ CЏP·C‹Рє.\nР’РІPµРґРёC‚Pµ: ru РёP»Рё en\nРёP»Рё /settings language ru'
+                'Сначала выберите язык.\nВведите: ru или en\nили /settings language ru'
             );
             return { ok: true };
         }
@@ -5094,14 +5097,14 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
             await sendTimeZoneSelectionPrompt(
                 botToken,
                 chatId,
-                `вќЊ РќPµРІPµCЂРЅC‹Р№ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ: ${value}\n\nРџCЂРёРјPµCЂ:\n/settings timezone Europe/Moscow\n/settings timezone Asia/Almaty\n/settings timezone America/New_York`
+                `Неверный часовой пояс: ${value}\n\nПример:\n/settings timezone Europe/Moscow\n/settings timezone Asia/Almaty\n/settings timezone America/New_York`
             );
             return { ok: true };
         }
 
         const saveResult = await setUserTimeZone(telegramUser.id, value);
         if (!saveResult.success) {
-            await sendTelegramMessage(botToken, chatId, `вќЊ РќPµ СѓРґP°P»РѕCЃCЊ CЃРѕC…CЂP°РЅРёC‚CЊ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ: ${saveResult.error}`);
+            await sendTelegramMessage(botToken, chatId, `Не удалось сохранить часовой пояс: ${saveResult.error}`);
             return { ok: true };
         }
 
@@ -5115,43 +5118,42 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
     if ((command === 'quiet' || command === 'sleep') && value && value2) {
         const saveResult = await setUserQuietHours(telegramUser.id, value, value2);
         if (!saveResult.success) {
-            await sendTelegramMessage(botToken, chatId, `вќЊ РќPµ СѓРґP°P»РѕCЃCЊ CЃРѕC…CЂP°РЅРёC‚CЊ quiet hours: ${saveResult.error}`);
+            await sendTelegramMessage(botToken, chatId, `Не удалось сохранить quiet hours: ${saveResult.error}`);
             return { ok: true };
         }
         telegramUser.quiet_hours_start = parseInt(value, 10);
         telegramUser.quiet_hours_end = parseInt(value2, 10);
-        await sendTelegramMessage(botToken, chatId, `v?… РўРёC…РёР№ CЂPµP¶РёРј РѕP±РЅРѕРІP»PµРЅ: ${value}:00 - ${value2}:00`);
+        await sendTelegramMessage(botToken, chatId, `Тихий режим обновлен: ${value}:00 - ${value2}:00`);
         return { ok: true };
     }
 
-    const message = `вљ™пёЏ РќP°CЃC‚CЂРѕР№РєРё РЅP°РїРѕРјРёРЅP°РЅРёР№
+    const message = `Настройки напоминаний
 
-РўPµРєСѓC‰РёР№ CЏP·C‹Рє: ${telegramUser.language_code || 'ru'}
-РўPµРєСѓC‰РёР№ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ: ${currentTimeZone}
-РўРёC…РёР№ CЂPµP¶РёРј: ${telegramUser.quiet_hours_start ?? 23}:00 - ${telegramUser.quiet_hours_end ?? 7}:00
+Текущий язык: ${telegramUser.language_code || 'ru'}
+Текущий часовой пояс: ${currentTimeZone}
+Тихий режим: ${telegramUser.quiet_hours_start ?? 23}:00 - ${telegramUser.quiet_hours_end ?? 7}:00
 
-Р§C‚РѕP±C‹ РёP·РјPµРЅРёC‚CЊ CЏP·C‹Рє:
+Чтобы изменить язык:
 /settings language ru
 /settings language en
 
-Р§C‚РѕP±C‹ РёP·РјPµРЅРёC‚CЊ РїРѕCЏCЃ:
+Чтобы изменить пояс:
 /settings timezone Europe/Moscow
 /settings timezone Asia/Almaty
 /settings timezone America/New_York
 
-РўРёC…РёР№ CЂPµP¶РёРј (РЅPµ РїCЂРёCЃC‹P»P°C‚CЊ РІ CЌC‚Рё C‡P°CЃC‹):
+Тихий режим:
 /settings quiet 23 7
-
 `;
     await sendTelegramMessage(botToken, chatId, message, {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: 'tgЊђ РЇP·C‹Рє', callback_data: 'open:settings:language' },
-                    { text: 'tg•’ Р§P°CЃРѕРІРѕР№ РїРѕCЏCЃ', callback_data: 'open:settings:timezone' }
+                    { text: 'Язык', callback_data: 'open:settings:language' },
+                    { text: 'Часовой пояс', callback_data: 'open:settings:timezone' }
                 ],
                 [
-                    { text: 'tgЊ™ РўРёC…РёР№ CЂPµP¶РёРј', callback_data: 'open:settings:quiet' }
+                    { text: 'Тихий режим', callback_data: 'open:settings:quiet' }
                 ]
             ]
         }
@@ -5167,7 +5169,7 @@ async function handleCancelCommand(chatId, telegramUser) {
         await sendLanguageSelectionPrompt(
             botToken,
             chatId,
-            'вљ пёЏ Р’C‹P±РѕCЂ CЏP·C‹РєP° РѕP±CЏP·P°C‚PµP»PµРЅ.\nР’РІPµРґРёC‚Pµ: ru РёP»Рё en'
+            'Выбор языка обязателен.\nВведите: ru или en'
         );
         return { ok: true };
     }
@@ -5175,11 +5177,11 @@ async function handleCancelCommand(chatId, telegramUser) {
         await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
-            'вљ пёЏ Р’C‹P±РѕCЂ C‡P°CЃРѕРІРѕРіРѕ РїРѕCЏCЃP° РѕP±CЏP·P°C‚PµP»PµРЅ.\nР’РІPµРґРёC‚Pµ, РЅP°РїCЂРёРјPµCЂ: Europe/Moscow'
+            'Выбор часового пояса обязателен.\nВведите, например: Europe/Moscow'
         );
         return { ok: true };
     }
-    await sendTelegramMessage(botToken, chatId, 'v?… РўPµРєСѓC‰P°CЏ РѕРїPµCЂP°C†РёCЏ РѕC‚РјPµРЅPµРЅP°.');
+    await sendTelegramMessage(botToken, chatId, 'Текущая операция отменена.');
     return { ok: true };
 }
 
@@ -5190,14 +5192,14 @@ async function handlePendingLanguageInput(text, chatId, telegramUser) {
         await sendLanguageSelectionPrompt(
             botToken,
             chatId,
-            `вќЊ РќPµРІPµCЂРЅC‹Р№ CЏP·C‹Рє: ${text}\n\nР’РІPµРґРёC‚Pµ: ru РёP»Рё en`
+            `❌ Неверный язык: ${text}\n\nВведите: ru или en`
         );
         return { ok: true };
     }
 
     const saveResult = await setUserLanguage(telegramUser.id, normalizedLanguage);
     if (!saveResult.success) {
-        await sendTelegramMessage(botToken, chatId, `вќЊ РќPµ СѓРґP°P»РѕCЃCЊ CЃРѕC…CЂP°РЅРёC‚CЊ CЏP·C‹Рє: ${saveResult.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ Не удалось CЃРѕC…ранить язык: ${saveResult.error}`);
         return { ok: true };
     }
 
@@ -5210,7 +5212,7 @@ async function handlePendingLanguageInput(text, chatId, telegramUser) {
         await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
-            `v?… РЇP·C‹Рє CЃРѕC…CЂP°РЅPµРЅ: ${normalizedLanguage}\nРўPµРїPµCЂCЊ РІC‹P±PµCЂРёC‚Pµ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ, РЅP°РїCЂРёРјPµCЂ: Europe/Moscow`
+            `Язык сохранен: ${normalizedLanguage}\nТеперь выберите часовой пояс, например: Europe/Moscow`
         );
         return { ok: true };
     }
@@ -5226,14 +5228,14 @@ async function handlePendingTimezoneInput(text, chatId, telegramUser) {
         await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
-            `вќЊ РќPµРІPµCЂРЅC‹Р№ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ: ${candidate}\n\nРџCЂРёРјPµCЂC‹ РєРѕCЂCЂPµРєC‚РЅC‹C… P·РЅP°C‡PµРЅРёР№:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York`
+            `❌ Неверный часовой пояс: ${candidate}\n\nПримеры РєРѕCЂCЂPµРєC‚РЅC‹C… значений:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York`
         );
         return { ok: true };
     }
 
     const saveResult = await setUserTimeZone(telegramUser.id, candidate);
     if (!saveResult.success) {
-        await sendTelegramMessage(botToken, chatId, `вќЊ РќPµ СѓРґP°P»РѕCЃCЊ CЃРѕC…CЂP°РЅРёC‚CЊ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ: ${saveResult.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ Не удалось CЃРѕC…ранить часовой пояс: ${saveResult.error}`);
         return { ok: true };
     }
 
@@ -5259,16 +5261,16 @@ async function createReminderFromParsed(parsed, chatId, telegramUser) {
         const runAtDate = new Date(parsed.runAt);
         const dateStr = formatReminderDate(runAtDate, userTimeZone);
         const repeatInfo = parsed.repeatType === 'interval'
-            ? ` (РїРѕРІC‚РѕCЂ РєP°P¶РґC‹Pµ ${Math.round(parsed.repeatConfig.interval_seconds / 60)} РјРёРЅ)`
-            : parsed.repeatType === 'cron' ? ' (РїРѕ CЂP°CЃРїРёCЃP°РЅРёCЋ)' : '';
+            ? ` (повтор каждые ${Math.round(parsed.repeatConfig.interval_seconds / 60)} мин)`
+            : parsed.repeatType === 'cron' ? ' (по расписанию)' : '';
 
         await sendTelegramMessage(
             botToken,
             chatId,
-            `v?… РќP°РїРѕРјРёРЅP°РЅРёPµ CЃРѕP·РґP°РЅРѕ!\n\nv?° ${dateStr}${repeatInfo}\ntgЊЌ ${userTimeZone}\ntg“ќ ${parsed.message}`
+            `Напоминание создано!\n\n${dateStr}${repeatInfo}\n${userTimeZone}\n${parsed.message}`
         );
     } else {
-        await sendTelegramMessage(botToken, chatId, `вќЊ РћC€РёP±РєP°: ${result.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ Ошибка: ${result.error}`);
     }
 }
 
@@ -5276,12 +5278,12 @@ function buildReminderConfirmationText(parsed, userTimeZone) {
     const runAtDate = new Date(parsed.runAt);
     const dateStr = formatReminderDate(runAtDate, userTimeZone);
     const repeatInfo = parsed.repeatType === 'interval'
-        ? `\ntg”Ѓ РџРѕРІC‚РѕCЂ: РєP°P¶РґC‹Pµ ${Math.round(parsed.repeatConfig.interval_seconds / 60)} РјРёРЅ`
+        ? `\nПовтор: каждые ${Math.round(parsed.repeatConfig.interval_seconds / 60)} мин`
         : parsed.repeatType === 'cron'
-            ? `\ntg”Ѓ РџРѕРІC‚РѕCЂ: cron (${parsed.repeatConfig?.cron || ''})`
+            ? `\nПовтор: cron (${parsed.repeatConfig?.cron || ''})`
             : '';
 
-    return `РџCЂРѕРІPµCЂCЊC‚Pµ РґP°РЅРЅC‹Pµ РїPµCЂPµРґ CЃРѕC…CЂP°РЅPµРЅРёPµРј:
+    return `Проверьте данные перед CЃРѕC…ранением:
 
 tg“ќ ${parsed.message}
 v?° ${dateStr}
@@ -5304,13 +5306,13 @@ async function maybeConfirmOrCreateReminder(parsed, chatId, telegramUser, source
         await sendTelegramMessage(
             botToken,
             chatId,
-            `вљ пёЏ РЈРєP°P·P°РЅРЅРѕPµ РІCЂPµРјCЏ СѓP¶Pµ РїCЂРѕC€P»Рѕ:\nv?° ${formatReminderDate(parsedRunAt, userTimeZone)}\n\nРџPµCЂPµРЅPµCЃC‚Рё РЅP° P·P°РІC‚CЂP° РІ CЌC‚Рѕ P¶Pµ РІCЂPµРјCЏ?`,
+            `⚠️ Указанное время уже прошло:\n${formatReminderDate(parsedRunAt, userTimeZone)}\n\nПеренести на завтра в это же время?`,
             {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: 'Р”P°, РЅP° P·P°РІC‚CЂP°', callback_data: 'confirm:past:tomorrow' },
-                            { text: 'РќPµC‚, РёP·РјPµРЅРёC‚CЊ', callback_data: 'confirm:edit' }
+                            { text: 'Да, на завтра', callback_data: 'confirm:past:tomorrow' },
+                            { text: 'Нет, изменить', callback_data: 'confirm:edit' }
                         ]
                     ]
                 }
@@ -5334,8 +5336,8 @@ async function maybeConfirmOrCreateReminder(parsed, chatId, telegramUser, source
             reply_markup: {
                 inline_keyboard: [
                     [
-                        { text: 'v?… РЎРѕC…CЂP°РЅРёC‚CЊ', callback_data: 'confirm:create' },
-                        { text: 'v?ЏпёЏ РP·РјPµРЅРёC‚CЊ', callback_data: 'confirm:edit' }
+                        { text: 'Сохранить', callback_data: 'confirm:create' },
+                        { text: 'Изменить', callback_data: 'confirm:edit' }
                     ]
                 ]
             }
@@ -5356,7 +5358,7 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
     if (pending.mode === 'wizard' && pending.step === 'text') {
         const reminderText = String(text || '').trim();
         if (!reminderText) {
-            await sendTelegramMessage(botToken, chatId, 'вќЊ РўPµРєCЃC‚ РЅPµ РјРѕP¶PµC‚ P±C‹C‚CЊ РїСѓCЃC‚C‹Рј. Р’РІPµРґРёC‚Pµ C‚PµРєCЃC‚ РЅP°РїРѕРјРёРЅP°РЅРёCЏ.');
+            await sendTelegramMessage(botToken, chatId, '❌ Текст не может быть пустым. Введите текст напоминания.');
             return { ok: true };
         }
         pendingReminderInput.set(telegramUser.id, {
@@ -5367,17 +5369,17 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            `РЁP°Рі 2/2: СѓРєP°P¶РёC‚Pµ РґP°C‚Сѓ/РІCЂPµРјCЏ.\n\nРџCЂРёРјPµCЂC‹:\nP·P°РІC‚CЂP° РІ 10\nРІ РїРѕРЅPµРґPµP»CЊРЅРёРє 1200\n20 C„PµРІ 2026 РІ 11:57\n28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00\n20 02 26 РІ 1145`,
+            `Шаг 2/2: укажите дату/время.\n\nПримеры:\nзавтра в 10\nв понедельник 1200\n20 фев 2026 в 11:57\n28 февраля 2026 года в 12:00\n20 02 26 в 1145`,
             {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: 'РЎPµРіРѕРґРЅCЏ 18:00', callback_data: 'addwhen:today18' },
-                            { text: 'Р—P°РІC‚CЂP° 10:00', callback_data: 'addwhen:tomorrow10' }
+                            { text: 'Сегодня 18:00', callback_data: 'addwhen:today18' },
+                            { text: 'Завтра 10:00', callback_data: 'addwhen:tomorrow10' }
                         ],
                         [
-                            { text: '+1 C‡P°CЃ', callback_data: 'addwhen:plus1h' },
-                            { text: '+1 РґPµРЅCЊ', callback_data: 'addwhen:plus1d' }
+                            { text: '+1 час', callback_data: 'addwhen:plus1h' },
+                            { text: '+1 день', callback_data: 'addwhen:plus1d' }
                         ]
                     ]
                 }
@@ -5396,11 +5398,11 @@ async function handlePendingReminderInput(text, chatId, telegramUser) {
 
     if (parsed.error) {
         await logReminderParseFailure(telegramUser.id, chatId, text, parsed.error);
-        const smartHints = `\n\nР’P°CЂРёP°РЅC‚C‹:\nвЂў P·P°РІC‚CЂP° РІ 10\nвЂў ${new Date().getHours() + 1}00\nвЂў 20 C„PµРІ 2026 РІ 11:57\nвЂў 28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00`;
+        const smartHints = `\n\nВарианты:\n• завтра в 10\n• ${new Date().getHours() + 1}00\n• 20 фев 2026 в 11:57\n• 28 февраля 2026 года в 12:00`;
         await sendTelegramMessage(
             botToken,
             chatId,
-            `вќЊ ${parsed.error}${smartHints}\n\nРџРѕРїCЂРѕP±СѓР№C‚Pµ CЃРЅРѕРІP°.\nРџCЂРёРјPµCЂC‹:\n10m РљСѓРїРёC‚CЊ РјРѕP»РѕРєРѕ\n2026-02-21 10:00 РџРѕP·РІРѕРЅРёC‚CЊ РІ РѕC„РёCЃ\nРљСѓРїРёC‚CЊ РїCЂРѕРґСѓРєC‚C‹ | 2026-02-21 19:00\nРџРѕРґРіРѕC‚РѕРІРёC‚CЊ РѕC‚C‡C‘C‚ P·P°РІC‚CЂP° РІ 10\nРџРѕP·РІРѕРЅРёC‚CЊ РєP»РёPµРЅC‚Сѓ РІ РїРѕРЅPµРґPµP»CЊРЅРёРє 1200\nРџРѕP·РІРѕРЅРёC‚CЊ РєP»РёPµРЅC‚Сѓ 28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00\nCall team tomorrow at 10\n\nР”P»CЏ РѕC‚РјPµРЅC‹: /cancel`
+            `❌ ${parsed.error}${smartHints}\n\nПопробуйте снова.\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nПозвонить клиенту 28 февраля 2026 года в 12:00\nCall team tomorrow at 10\n\nДля отмены: /cancel`
         );
         return { ok: true };
     }
@@ -5416,7 +5418,7 @@ async function handleRemindCommand(args, chatId, telegramUser) {
         await sendTelegramMessage(
             botToken,
             chatId,
-            'Р’РІPµРґРёC‚Pµ РЅP°РїРѕРјРёРЅP°РЅРёPµ Рё РІCЂPµРјCЏ РѕРґРЅРёРј CЃРѕРѕP±C‰PµРЅРёPµРј.\n\nРџCЂРёРјPµCЂC‹:\n10m РљСѓРїРёC‚CЊ РјРѕP»РѕРєРѕ\n2026-02-21 10:00 РџРѕP·РІРѕРЅРёC‚CЊ РІ РѕC„РёCЃ\nРљСѓРїРёC‚CЊ РїCЂРѕРґСѓРєC‚C‹ | 2026-02-21 19:00\nРџРѕРґРіРѕC‚РѕРІРёC‚CЊ РѕC‚C‡C‘C‚ P·P°РІC‚CЂP° РІ 10\nРџРѕP·РІРѕРЅРёC‚CЊ РєP»РёPµРЅC‚Сѓ РІ РїРѕРЅPµРґPµP»CЊРЅРёРє 1200\nРџРѕP·РІРѕРЅРёC‚CЊ РєP»РёPµРЅC‚Сѓ 28 C„PµРІCЂP°P»CЏ 2026 РіРѕРґP° РІ 12:00\nCall team tomorrow at 10\n\nР”P»CЏ РѕC‚РјPµРЅC‹: /cancel'
+            'Введите напоминание и время одним сообщением.\n\nПримеры:\n10m Купить молоко\n2026-02-21 10:00 Позвонить в офис\nКупить продукты | 2026-02-21 19:00\nПодготовить отчёт завтра в 10\nПозвонить клиенту в понедельник 1200\nПозвонить клиенту 28 февраля 2026 года в 12:00\nCall team tomorrow at 10\n\nДля отмены: /cancel'
         );
         return { ok: true };
     }
@@ -5426,7 +5428,7 @@ async function handleRemindCommand(args, chatId, telegramUser) {
 
     if (parsed.error) {
         await logReminderParseFailure(telegramUser.id, chatId, args.join(' '), parsed.error);
-        await sendTelegramMessage(botToken, chatId, `вќЊ ${parsed.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ ${parsed.error}`);
         return { ok: true };
     }
 
@@ -5470,7 +5472,7 @@ async function handleMyRemindersCommand(args, chatId, telegramUser) {
 
     let message = formatReminderList(paged, userTimeZone);
     if (filtered.length > perPage) {
-        message += `\n\nРЎC‚CЂP°РЅРёC†P° ${page}/${totalPages}. РљРѕРјP°РЅРґP°: /list page=${Math.min(totalPages, page + 1)}`;
+        message += `\n\nСтраница ${page}/${totalPages}. Команда: /list page=${Math.min(totalPages, page + 1)}`;
     }
     await sendTelegramMessage(botToken, chatId, message);
     return { ok: true };
@@ -5484,12 +5486,12 @@ async function handleDeleteCommand(args, chatId, telegramUser) {
         const reminders = await getUserReminders(telegramUser.id, true);
         const userTimeZone = await getUserTimeZone(telegramUser.id);
         if (reminders.length === 0) {
-            await sendTelegramMessage(botToken, chatId, 'tg“­ РЈ РІP°CЃ РЅPµC‚ РЅP°РїРѕРјРёРЅP°РЅРёР№ РґP»CЏ СѓРґP°P»PµРЅРёCЏ');
+            await sendTelegramMessage(botToken, chatId, 'У вас нет напоминаний для удаления');
             return { ok: true };
         }
 
-        const message = ['tg“‹ Р’C‹P±PµCЂРёC‚Pµ РЅP°РїРѕРјРёРЅP°РЅРёPµ РґP»CЏ СѓРґP°P»PµРЅРёCЏ (РѕC‚РїCЂP°РІCЊC‚Pµ РЅРѕРјPµCЂ):'].concat(
-            reminders.map((r, i) => `${i + 1}. v?° ${formatReminderDate(new Date(r.run_at), userTimeZone)} вЂ” ${r.message}`)
+        const message = ['Выберите напоминание для удаления (отправьте номер):'].concat(
+            reminders.map((r, i) => `${i + 1}. ${formatReminderDate(new Date(r.run_at), userTimeZone)} — ${r.message}`)
         ).join('\n');
 
         await sendTelegramMessage(botToken, chatId, message);
@@ -5498,13 +5500,13 @@ async function handleDeleteCommand(args, chatId, telegramUser) {
 
     const reminderNum = parseInt(args[0], 10);
     if (isNaN(reminderNum) || reminderNum < 1) {
-        await sendTelegramMessage(botToken, chatId, 'вќЊ РЈРєP°P¶РёC‚Pµ РЅРѕРјPµCЂ РЅP°РїРѕРјРёРЅP°РЅРёCЏ');
+        await sendTelegramMessage(botToken, chatId, 'Укажите номер напоминания');
         return { ok: true };
     }
 
     const reminders = await getUserReminders(telegramUser.id, true);
     if (reminderNum > reminders.length) {
-        await sendTelegramMessage(botToken, chatId, 'вќЊ РќP°РїРѕРјРёРЅP°РЅРёPµ CЃ C‚P°РєРёРј РЅРѕРјPµCЂРѕРј РЅPµ РЅP°Р№РґPµРЅРѕ');
+        await sendTelegramMessage(botToken, chatId, 'Напоминание с таким номером не найдено');
         return { ok: true };
     }
 
@@ -5512,9 +5514,9 @@ async function handleDeleteCommand(args, chatId, telegramUser) {
     const result = await deactivateReminder(reminder.id, telegramUser.id);
 
     if (result.success) {
-        await sendTelegramMessage(botToken, chatId, `v?… РќP°РїРѕРјРёРЅP°РЅРёPµ "${reminder.message}" СѓРґP°P»PµРЅРѕ`);
+        await sendTelegramMessage(botToken, chatId, `Напоминание "${reminder.message}" удалено`);
     } else {
-        await sendTelegramMessage(botToken, chatId, 'вќЊ РћC€РёP±РєP° РїCЂРё СѓРґP°P»PµРЅРёРё РЅP°РїРѕРјРёРЅP°РЅРёCЏ');
+        await sendTelegramMessage(botToken, chatId, 'Ошибка при удалении напоминания');
     }
 
     return { ok: true };
@@ -5539,12 +5541,12 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         const langValue = data.split(':')[1];
         const normalizedLanguage = normalizeLanguageInput(langValue);
         if (!normalizedLanguage) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РќPµРІPµCЂРЅC‹Р№ CЏP·C‹Рє');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Неверный язык');
             return { ok: true };
         }
         const saveResult = await setUserLanguage(telegramUser.id, normalizedLanguage);
         if (!saveResult.success) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РћC€РёP±РєP° CЃРѕC…CЂP°РЅPµРЅРёCЏ CЏP·C‹РєP°');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Ошибка сохранения языка');
             return { ok: true };
         }
         telegramUser.language_code = normalizedLanguage;
@@ -5552,17 +5554,17 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         pendingLanguageInput.delete(telegramUser.id);
         if (!isTimezoneSelectedForUser(telegramUser)) {
             pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-            await sendTimeZoneSelectionPrompt(botToken, chatId, 'v?… РЇP·C‹Рє CЃРѕC…CЂP°РЅPµРЅ. РўPµРїPµCЂCЊ РІC‹P±PµCЂРёC‚Pµ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ.');
+            await sendTimeZoneSelectionPrompt(botToken, chatId, 'Язык сохранен. Теперь выберите часовой пояс.');
         } else {
             await sendReminderQuickActions(botToken, chatId, 'Language saved. Choose an action:');
         }
-        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РЇP·C‹Рє CЃРѕC…CЂP°РЅPµРЅ');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Язык сохранен');
         return { ok: true };
     }
 
     if (data === 'open:settings:language') {
         pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        await sendLanguageSelectionPrompt(botToken, chatId, 'Р’C‹P±PµCЂРёC‚Pµ CЏP·C‹Рє:');
+        await sendLanguageSelectionPrompt(botToken, chatId, 'Выберите язык:');
         await answerTelegramCallbackQuery(botToken, callbackQuery.id);
         return { ok: true };
     }
@@ -5570,12 +5572,12 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
     if (data === 'open:settings:timezone') {
         if (!isLanguageSelectedForUser(telegramUser)) {
             pendingLanguageInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-            await sendLanguageSelectionPrompt(botToken, chatId, 'РЎРЅP°C‡P°P»P° РІC‹P±PµCЂРёC‚Pµ CЏP·C‹Рє:');
+            await sendLanguageSelectionPrompt(botToken, chatId, 'Сначала выберите язык:');
             await answerTelegramCallbackQuery(botToken, callbackQuery.id);
             return { ok: true };
         }
         pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-        await sendTimeZoneSelectionPrompt(botToken, chatId, 'Р’C‹P±PµCЂРёC‚Pµ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ:');
+        await sendTimeZoneSelectionPrompt(botToken, chatId, 'Выберите часовой пояс:');
         await answerTelegramCallbackQuery(botToken, callbackQuery.id);
         return { ok: true };
     }
@@ -5584,7 +5586,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         await sendQuietHoursSelectionPrompt(
             botToken,
             chatId,
-            `РўPµРєСѓC‰РёР№ C‚РёC…РёР№ CЂPµP¶РёРј: ${telegramUser.quiet_hours_start ?? 23}:00 - ${telegramUser.quiet_hours_end ?? 7}:00\n\nР’C‹P±PµCЂРёC‚Pµ РїCЂPµCЃPµC‚:`
+            `Текущий тихий режим: ${telegramUser.quiet_hours_start ?? 23}:00 - ${telegramUser.quiet_hours_end ?? 7}:00\n\nВыберите пресет:`
         );
         await answerTelegramCallbackQuery(botToken, callbackQuery.id);
         return { ok: true };
@@ -5596,7 +5598,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         const end = parseInt(parts[2], 10);
         const saveResult = await setUserQuietHours(telegramUser.id, start, end);
         if (!saveResult.success) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РћC€РёP±РєP° CЃРѕC…CЂP°РЅPµРЅРёCЏ quiet CЂPµP¶РёРјP°');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Ошибка сохранения тихого режима');
             return { ok: true };
         }
         telegramUser.quiet_hours_start = start;
@@ -5605,10 +5607,10 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
             botToken,
             chatId,
             start === end
-                ? 'v?… РўРёC…РёР№ CЂPµP¶РёРј РѕC‚РєP»CЋC‡PµРЅ'
-                : `v?… РўРёC…РёР№ CЂPµP¶РёРј РѕP±РЅРѕРІP»PµРЅ: ${start}:00 - ${end}:00`
+                ? 'Тихий режим отключен'
+                : `Тихий режим обновлен: ${start}:00 - ${end}:00`
         );
-        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РўРёC…РёР№ CЂPµP¶РёРј CЃРѕC…CЂP°РЅPµРЅ');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Тихий режим сохранен');
         return { ok: true };
     }
 
@@ -5616,49 +5618,49 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         const tzValue = data.substring('settz:'.length);
         if (tzValue === 'manual') {
             pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
-            await sendTelegramMessage(botToken, chatId, 'Р’РІPµРґРёC‚Pµ C‡P°CЃРѕРІРѕР№ РїРѕCЏCЃ РІCЂСѓC‡РЅСѓCЋ, РЅP°РїCЂРёРјPµCЂ: Europe/Moscow');
+            await sendTelegramMessage(botToken, chatId, 'Введите часовой пояс вручную, например: Europe/Moscow');
             await answerTelegramCallbackQuery(botToken, callbackQuery.id);
             return { ok: true };
         }
         if (!isValidTimeZone(tzValue)) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РќPµРІPµCЂРЅC‹Р№ timezone');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Неверный timezone');
             return { ok: true };
         }
         const saveResult = await setUserTimeZone(telegramUser.id, tzValue);
         if (!saveResult.success) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РћC€РёP±РєP° CЃРѕC…CЂP°РЅPµРЅРёCЏ timezone');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Ошибка сохранения timezone');
             return { ok: true };
         }
         telegramUser.timezone = tzValue;
         telegramUser.timezone_is_set = true;
         pendingTimezoneInput.delete(telegramUser.id);
         await sendReminderQuickActions(botToken, chatId, `Timezone saved: ${tzValue}`);
-        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Timezone CЃРѕC…CЂP°РЅPµРЅ');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Timezone сохранен');
         return { ok: true };
     }
 
     if (data.startsWith('addwhen:')) {
         const pending = pendingReminderInput.get(telegramUser.id);
         if (!pending || pending.mode !== 'wizard' || pending.step !== 'when' || !pending.message) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РЎРЅP°C‡P°P»P° РЅP°C‡РЅРёC‚Pµ /add');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Сначала начните /add');
             return { ok: true };
         }
         const key = data.split(':')[1];
         let inputText = '';
-        if (key === 'today18') inputText = `${pending.message} CЃPµРіРѕРґРЅCЏ РІ 18:00`;
-        if (key === 'tomorrow10') inputText = `${pending.message} P·P°РІC‚CЂP° РІ 10:00`;
-        if (key === 'plus1h') inputText = `${pending.message} C‡PµCЂPµP· 1 C‡P°CЃ`;
-        if (key === 'plus1d') inputText = `${pending.message} C‡PµCЂPµP· 1 РґPµРЅCЊ`;
+        if (key === 'today18') inputText = `${pending.message} сегодня в 18:00`;
+        if (key === 'tomorrow10') inputText = `${pending.message} завтра в 10:00`;
+        if (key === 'plus1h') inputText = `${pending.message} через 1 час`;
+        if (key === 'plus1d') inputText = `${pending.message} через 1 день`;
 
         const userTimeZone = await getUserTimeZone(telegramUser.id);
         const parsed = parseNaturalLanguageReminder(inputText, userTimeZone);
         if (parsed.error) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РќPµ СѓРґP°P»РѕCЃCЊ CЂP°CЃРїРѕP·РЅP°C‚CЊ');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Не удалось распознать');
             return { ok: true };
         }
         pendingReminderInput.delete(telegramUser.id);
         await maybeConfirmOrCreateReminder(parsed, chatId, telegramUser);
-        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Р’CЂPµРјCЏ РІC‹P±CЂP°РЅРѕ');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Время выбрано');
         return { ok: true };
     }
 
@@ -5667,7 +5669,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         if (pending?.parsed) {
             await createReminderFromParsed(pending.parsed, chatId, telegramUser);
             pendingReminderConfirmation.delete(telegramUser.id);
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РЎРѕC…CЂP°РЅPµРЅРѕ');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Сохранено');
             return { ok: true };
         }
     }
@@ -5687,17 +5689,17 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
             await sendTelegramMessage(
                 botToken,
                 chatId,
-                `РћРє, РёP·РјPµРЅРёРј РІCЂPµРјCЏ РґP»CЏ:\ntg“ќ ${pending.parsed.message}\n\nРЈРєP°P¶РёC‚Pµ РЅРѕРІСѓCЋ РґP°C‚Сѓ/РІCЂPµРјCЏ.`,
+                `Ок, изменим время для:\n${pending.parsed.message}\n\nУкажите новую дату/время.`,
                 {
                     reply_markup: {
                         inline_keyboard: [
                             [
-                                { text: 'РЎPµРіРѕРґРЅCЏ 18:00', callback_data: 'addwhen:today18' },
-                                { text: 'Р—P°РІC‚CЂP° 10:00', callback_data: 'addwhen:tomorrow10' }
+                                { text: 'Сегодня 18:00', callback_data: 'addwhen:today18' },
+                                { text: 'Завтра 10:00', callback_data: 'addwhen:tomorrow10' }
                             ],
                             [
-                                { text: '+1 C‡P°CЃ', callback_data: 'addwhen:plus1h' },
-                                { text: '+1 РґPµРЅCЊ', callback_data: 'addwhen:plus1d' }
+                                { text: '+1 час', callback_data: 'addwhen:plus1h' },
+                                { text: '+1 день', callback_data: 'addwhen:plus1d' }
                             ]
                         ]
                     }
@@ -5705,9 +5707,9 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
             );
         } else {
             pendingReminderInput.set(telegramUser.id, { mode: 'single', step: 'full', chatId, createdAt: Date.now() });
-            await sendTelegramMessage(botToken, chatId, 'РћРє, РѕC‚РїCЂP°РІCЊC‚Pµ РЅP°РїРѕРјРёРЅP°РЅРёPµ P·P°РЅРѕРІРѕ РѕРґРЅРёРј CЃРѕРѕP±C‰PµРЅРёPµРј.');
+            await sendTelegramMessage(botToken, chatId, 'Ок, отправьте напоминание заново одним сообщением.');
         }
-        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Р’РІPµРґРёC‚Pµ P·P°РЅРѕРІРѕ');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Введите заново');
         return { ok: true };
     }
 
@@ -5719,7 +5721,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
             pending.parsed.runAt = runAt;
             await createReminderFromParsed(pending.parsed, chatId, telegramUser);
             pendingReminderConfirmation.delete(telegramUser.id);
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РџPµCЂPµРЅPµCЃPµРЅРѕ РЅP° P·P°РІC‚CЂP°');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Перенесено на завтра');
             return { ok: true };
         }
     }
@@ -5728,13 +5730,13 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         const [, action, reminderIdRaw] = data.split(':');
         const reminderId = parseInt(reminderIdRaw, 10);
         if (Number.isNaN(reminderId)) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РќPµРєРѕCЂCЂPµРєC‚РЅC‹Р№ reminder');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Некорректный reminder');
             return { ok: true };
         }
         const result = await db.query('SELECT * FROM telegram_reminders WHERE id = $1 AND telegram_user_id = $2', [reminderId, telegramUser.id]);
         const baseReminder = result.rows?.[0];
         if (!baseReminder) {
-            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Reminder РЅPµ РЅP°Р№РґPµРЅ');
+            await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Reminder не найден');
             return { ok: true };
         }
         let nextRun = new Date();
@@ -5746,7 +5748,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
             nextRun.setHours(9, 0, 0, 0);
         }
         await createReminder(telegramUser.id, baseReminder.message, nextRun, 'none', null);
-        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РЎРѕP·РґP°РЅРѕ РїРѕРІC‚РѕCЂРЅРѕPµ РЅP°РїРѕРјРёРЅP°РЅРёPµ');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Создано повторное напоминание');
         return { ok: true };
     }
 
@@ -5755,7 +5757,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         if (!Number.isNaN(reminderId)) {
             await deactivateReminder(reminderId, telegramUser.id);
         }
-        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'РћC‚РєP»CЋC‡PµРЅРѕ');
+        await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Отключено');
         return { ok: true };
     }
 
@@ -5763,7 +5765,7 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
     return { ok: true };
 }
 
-// РџРѕP»СѓC‡РёC‚CЊ C‚РѕРєPµРЅ P±РѕC‚P° РЅP°РїРѕРјРёРЅP°РЅРёР№ (РёP· settings)
+// Получить токен бота напоминаний (из settings)
 async function getReminderBotToken() {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
@@ -5813,7 +5815,7 @@ async function sendLanguageSelectionPrompt(botToken, chatId, text) {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: 'Р СѓCЃCЃРєРёР№', callback_data: 'setlang:ru' },
+                    { text: 'Русский', callback_data: 'setlang:ru' },
                     { text: 'English', callback_data: 'setlang:en' }
                 ]
             ]
@@ -5834,7 +5836,7 @@ async function sendTimeZoneSelectionPrompt(botToken, chatId, text) {
                     { text: 'Asia/Tashkent', callback_data: 'settz:Asia/Tashkent' }
                 ],
                 [
-                    { text: 'v?ЌпёЏ Р’РІPµCЃC‚Рё РІCЂСѓC‡РЅСѓCЋ', callback_data: 'settz:manual' }
+                    { text: 'Ввести вручную', callback_data: 'settz:manual' }
                 ]
             ]
         }
@@ -5846,12 +5848,12 @@ async function sendQuietHoursSelectionPrompt(botToken, chatId, text) {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: 'tgЊ™ 23:00-07:00', callback_data: 'setquiet:23:7' },
-                    { text: 'tgЊ™ 22:00-08:00', callback_data: 'setquiet:22:8' }
+                    { text: '23:00-07:00', callback_data: 'setquiet:23:7' },
+                    { text: '22:00-08:00', callback_data: 'setquiet:22:8' }
                 ],
                 [
-                    { text: 'tgЊ™ 00:00-06:00', callback_data: 'setquiet:0:6' },
-                    { text: 'tg”” Р’C‹РєP»', callback_data: 'setquiet:0:0' }
+                    { text: '00:00-06:00', callback_data: 'setquiet:0:6' },
+                    { text: 'Выкл', callback_data: 'setquiet:0:0' }
                 ]
             ]
         }
@@ -5917,7 +5919,7 @@ async function sendDueReminder(reminder) {
         }
 
         const botToken = await getReminderBotToken();
-        const messageText = `v?° РќP°РїРѕРјРёРЅP°РЅРёPµ\n\ntg“ќ ${reminder.message}`;
+        const messageText = `Напоминание\n\n${reminder.message}`;
         const sendResult = await sendTelegramMessage(
             botToken,
             reminder.telegram_id,
@@ -5926,12 +5928,12 @@ async function sendDueReminder(reminder) {
                 reply_markup: {
                     inline_keyboard: [
                         [
-                            { text: 'v?± +10Рј', callback_data: `snooze:10m:${reminder.id}` },
-                            { text: 'v?± +1C‡', callback_data: `snooze:1h:${reminder.id}` },
-                            { text: 'tg“… Р—P°РІC‚CЂP°', callback_data: `snooze:tomorrow:${reminder.id}` }
+                            { text: '+10м', callback_data: `snooze:10m:${reminder.id}` },
+                            { text: '+1ч', callback_data: `snooze:1h:${reminder.id}` },
+                            { text: 'Завтра', callback_data: `snooze:tomorrow:${reminder.id}` }
                         ],
                         [
-                            { text: 'tg”• РћC‚РєP»CЋC‡РёC‚CЊ', callback_data: `off:${reminder.id}` }
+                            { text: 'Отключить', callback_data: `off:${reminder.id}` }
                         ]
                     ]
                 }
@@ -6340,12 +6342,12 @@ async function executeIntegrationPolling(integration) {
         }
         console.log(`   v?… Executing action...`);
         const runResult = await executeIntegration(integration, responseData, 'polling');
-        // Р•CЃP»Рё РёРЅC‚PµРіCЂP°C†РёCЏ CЃCЂP°P±РѕC‚P°P»P° СѓCЃРїPµC€РЅРѕ Рё pollingContinueAfterMatch CЂP°РІРЅРѕ false, C‚Рѕ РІC‹РєP»CЋC‡P°PµРј РёРЅC‚PµРіCЂP°C†РёCЋ
+        // Если интеграция сработала успешно и pollingContinueAfterMatch равно false, то выключаем интеграцию
         if (
             runResult?.status === 'success' &&
             integration.pollingContinueAfterMatch === false
         ) {
-            console.log(`   вљ™пёЏ Disabling integration ${integration.id} after match (pollingContinueAfterMatch=false)`);
+            console.log(`   ⚙️ Disabling integration ${integration.id} after match (pollingContinueAfterMatch=false)`);
             integration.enabled = false;
             await persistIntegration(integration);
             const timer = integrationTimers.get(integration.id);
@@ -6371,7 +6373,7 @@ function scheduleIntegrationTimers() {
     list.forEach(raw => {
         const integration = normalizeIntegration(raw);
         if (!integration) {
-            console.warn('вљ пёЏ Skipping invalid integration (null after normalize)');
+            console.warn('⚠️ Skipping invalid integration (null after normalize)');
             return;
         }
 
@@ -6388,17 +6390,17 @@ function scheduleIntegrationTimers() {
             return;
         }
         if (!integration.pollingUrl || integration.pollingUrl.trim() === '') {
-            console.warn(`вљ пёЏ Integration ${integration.id} (${integration.name}) has empty pollingUrl`);
+            console.warn(`⚠️ Integration ${integration.id} (${integration.name}) has empty pollingUrl`);
             return;
         }
 
         const intervalMs = Math.max(1, integration.pollingInterval || 60) * 1000;
         
-        console.log(`вљЎ Integration ${integration.id}: executing first poll immediately...`);
-        // Р—P°РїСѓCЃРєP°PµРј РїPµCЂРІСѓCЋ РїCЂРѕРІPµCЂРєСѓ CЃCЂP°P·Сѓ
+        console.log(`⚡ Integration ${integration.id}: executing first poll immediately...`);
+        // Запускаем первую проверку сразу
         executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed (immediate):', integration.id, err.message));
         
-        // Р—P°C‚PµРј P·P°РїСѓCЃРєP°PµРј РїРѕ C‚P°Р№РјPµCЂСѓ
+        // Затем запускаем по таймеру
         const timer = setInterval(() => {
             executeIntegrationPolling(integration).catch(err => console.error('Integration polling failed:', integration.id, err.message));
         }, intervalMs);
@@ -6423,7 +6425,7 @@ async function startIntegrationWorkers() {
     stopIntegrationWorkers();
     const ok = await loadIntegrationsCache();
     if (!ok) {
-        console.warn('вљ пёЏ Integration cache not loaded; skipping polling scheduling');
+        console.warn('⚠️ Integration cache not loaded; skipping polling scheduling');
         return;
     }
     console.log(`tg“¦ Integration cache loaded with ${integrationsCache.length} items`);
@@ -6502,7 +6504,7 @@ async function logIntegrationRun(integrationId, data) {
     }
 }
 
-// Р’C‹РїРѕP»РЅРёC‚CЊ РёРЅC‚PµРіCЂP°C†РёРё, CЃРѕРѕC‚РІPµC‚CЃC‚РІСѓCЋC‰РёPµ РІPµP±C…СѓРєСѓ
+// Выполнить интеграции, соответствующие РІPµP±C…уку
 async function executeMatchingIntegrations(payload, triggerType = 'webhook', accountId = null) {
     try {
         let integrations = [];
@@ -6518,17 +6520,17 @@ async function executeMatchingIntegrations(payload, triggerType = 'webhook', acc
             integrations = integrationsCache;
         }
 
-        // РќРѕCЂРјP°P»РёP·СѓPµРј РёРЅC‚PµРіCЂP°C†РёРё
+        // Нормализуем интеграции
         const normalizedIntegrations = integrations.map(normalizeIntegration).filter(Boolean);
 
-        // РќP°Р№РґPµРј РёРЅC‚PµРіCЂP°C†РёРё, РєРѕC‚РѕCЂC‹Pµ РґРѕP»P¶РЅC‹ CЃCЂP°P±РѕC‚P°C‚CЊ
+        // Найдем интеграции, которые должны сработать
         for (const integration of normalizedIntegrations) {
-            // РџCЂРѕРІPµCЂCЏPµРј, C‡C‚Рѕ РёРЅC‚PµРіCЂP°C†РёCЏ РІРєP»CЋC‡PµРЅP° Рё РёРјPµPµC‚ C‚РёРї webhook
+            // Проверяем, что интеграция включена и имеет тип webhook
             if (!integration.enabled || integration.triggerType !== 'webhook') {
                 continue;
             }
 
-            // РџCЂРѕРІPµCЂCЏPµРј СѓCЃP»РѕРІРёPµ CЃCЂP°P±P°C‚C‹РІP°РЅРёCЏ РёРЅC‚PµРіCЂP°C†РёРё
+            // Проверяем условие срабатывания интеграции
             let shouldExecute = true;
             if (integration.triggerCondition) {
                 try {
@@ -6548,14 +6550,14 @@ async function executeMatchingIntegrations(payload, triggerType = 'webhook', acc
             }
 
             if (shouldExecute) {
-                // Р’C‹РїРѕP»РЅCЏPµРј РёРЅC‚PµРіCЂP°C†РёCЋ
+                // Выполняем интеграцию
                 await executeIntegration(integration, payload, 'webhook');
 
-                // Р”P»CЏ РІPµP±C…СѓРє-РёРЅC‚PµРіCЂP°C†РёР№ РЅPµC‚ CЃРїPµC†РёP°P»CЊРЅРѕРіРѕ РїРѕP»CЏ "РїCЂРѕРґРѕP»P¶P°C‚CЊ РїРѕCЃP»Pµ CЃРѕРІРїP°РґPµРЅРёCЏ", 
-                // C‚P°Рє РєP°Рє РѕРЅРё CЃCЂP°P±P°C‚C‹РІP°CЋC‚ РїCЂРё РєP°P¶РґРѕРј РІPµP±C…СѓРєPµ. Р­C‚Рѕ РїРѕP»Pµ РёCЃРїРѕP»CЊP·СѓPµC‚CЃCЏ C‚РѕP»CЊРєРѕ РґP»CЏ polling РёРЅC‚PµРіCЂP°C†РёР№.
-                // РќРѕ PµCЃP»Рё РІ P±СѓРґСѓC‰PµРј РґРѕP±P°РІРёC‚CЃCЏ C‚P°РєРѕPµ РїРѕP»Pµ, P»РѕРіРёРєP° P±СѓРґPµC‚ C‚P°РєРѕР№:
+                // Для РІPµP±C…ук-интеграций нет специального поля "продолжать после совпадения", 
+                // так как они срабатывают при каждом РІPµP±C…уке. Это поле используется только для polling интеграций.
+                // Но если в будущем добавится такое поле, логика будет такой:
                 // if (integration.triggerType === 'webhook' && integration.webhookContinueAfterMatch === false) {
-                //     console.log(`   вљ™пёЏ Disabling integration ${integration.id} after match (webhookContinueAfterMatch=false)`);
+                //     console.log(`   ⚙️ Disabling integration ${integration.id} after match (webhookContinueAfterMatch=false)`);
                 //     integration.enabled = false;
                 //     await persistIntegration(integration);
                 // }
@@ -6569,7 +6571,7 @@ async function executeMatchingIntegrations(payload, triggerType = 'webhook', acc
 async function executeIntegration(integration, triggerData = null, triggerType = 'manual') {
     if (!integration.enabled && triggerType !== 'manual') return null;
 
-    // РџP°CЂCЃРёРј triggerData PµCЃP»Рё CЌC‚Рѕ JSON CЃC‚CЂРѕРєP°
+    // Парсим triggerData если это JSON строка
     let parsedTriggerData = triggerData;
     if (typeof triggerData === 'string') {
         try {
@@ -6589,19 +6591,19 @@ async function executeIntegration(integration, triggerData = null, triggerType =
     };
 
     try {
-        // РџCЂРѕРІPµCЂCЏPµРј СѓCЃP»РѕРІРёPµ РїPµCЂPµРґ РІC‹РїРѕP»РЅPµРЅРёPµРј action
+        // Проверяем условие перед выполнением action
         let shouldExecuteAction = true;
         
-        // Р”P»CЏ polling: СѓCЃP»РѕРІРёPµ СѓP¶Pµ РїCЂРѕРІPµCЂPµРЅРѕ РІ executeIntegrationPolling, РЅPµ РїCЂРѕРІPµCЂCЏPµРј PµC‰Pµ CЂP°P·
-        // Р”P»CЏ webhook: РїCЂРѕРІPµCЂCЏPµРј triggerCondition PµCЃP»Рё PµCЃC‚CЊ
+        // Для polling: условие уже проверено в executeIntegrationPolling, не проверяем еще раз
+        // Для webhook: проверяем triggerCondition если есть
         if (triggerType === 'webhook' && integration.triggerCondition) {
             console.log(`[WEBHOOK] Checking condition: ${integration.triggerCondition}`);
             shouldExecuteAction = evaluateIntegrationCondition(integration.triggerCondition, parsedTriggerData);
             console.log(`[WEBHOOK] Condition result: ${shouldExecuteAction}`);
         } 
-        // Р”P»CЏ manual: РїCЂРѕРІPµCЂCЏPµРј СѓCЃP»РѕРІРёPµ РѕCЃРЅРѕРІРЅРѕРіРѕ C‚CЂРёРіРіPµCЂP° PµCЃP»Рё PµCЃC‚CЊ
+        // Для manual: проверяем условие основного триггера если есть
         else if (triggerType === 'manual') {
-            // РћРїCЂPµРґPµP»CЏPµРј РєP°РєРѕPµ СѓCЃP»РѕРІРёPµ РїCЂРѕРІPµCЂCЏC‚CЊ РІ P·P°РІРёCЃРёРјРѕCЃC‚Рё РѕC‚ C‚РёРїP° C‚CЂРёРіРіPµCЂP° РёРЅC‚PµРіCЂP°C†РёРё
+            // Определяем какое условие проверять в зависимости от типа триггера интеграции
             const conditionToCheck = integration.triggerType === 'polling' 
                 ? integration.pollingCondition 
                 : integration.triggerCondition;
@@ -6623,12 +6625,12 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             return runData;
         }
 
-        // Р’C‹РїРѕP»РЅCЏPµРј action PµCЃP»Рё СѓРєP°P·P°РЅ URL
+        // Выполняем action если указан URL
         if (integration.actionUrl) {
             const actionHeaders = integration.actionHeaders ? parseJsonSafe(integration.actionHeaders, {}) : {};
             let actionBody = integration.actionBody || '';
             
-            // РџРѕРґCЃC‚P°РІP»CЏPµРј РґP°РЅРЅC‹Pµ C‚CЂРёРіРіPµCЂP° РІ body PµCЃP»Рё PµCЃC‚CЊ C€P°P±P»РѕРЅ
+            // Подставляем данные триггера в body если есть шаблон
             if (parsedTriggerData && actionBody) {
                 actionBody = actionBody.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
                     const keys = path.split('.');
@@ -6640,7 +6642,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
                 });
             }
 
-            // РџP°CЂCЃРёРј body РєP°Рє JSON РґP»CЏ P»РѕРіP° Рё РґP»CЏ РѕC‚РїCЂP°РІРєРё
+            // Парсим body как JSON для лога и для отправки
             let parsedBody = null;
             if (actionBody && !['GET', 'HEAD'].includes(integration.actionMethod)) {
                 parsedBody = parseJsonSafe(actionBody, actionBody);
@@ -6674,40 +6676,40 @@ async function executeIntegration(integration, triggerData = null, triggerType =
             }
         }
 
-        // РћC‚РїCЂP°РІP»CЏPµРј РІ Telegram PµCЃP»Рё РІРєP»CЋC‡PµРЅРѕ Рё РЅP°CЃC‚CЂРѕPµРЅРѕ
+        // Отправляем в Telegram если включено и настроено
         if (integration.sendToTelegram && integration.chatId && runData.status === 'success') {
             const botToken = await resolveBotToken(integration.botToken, integration.account_id);
-            let message = integration.messageTemplate || `РРЅC‚PµРіCЂP°C†РёCЏ "${integration.name}" РІC‹РїРѕP»РЅPµРЅP°`;
+            let message = integration.messageTemplate || `Рнтеграция "${integration.name}" выполнена`;
             
-            // Р”P°РЅРЅC‹Pµ РґP»CЏ C€P°P±P»РѕРЅP°: response (РѕC‚РІPµC‚ action API) Рё trigger (РґP°РЅРЅC‹Pµ C‚CЂРёРіРіPµCЂP°)
+            // Данные для шаблона: response (ответ action API) и trigger (данные триггера)
             let responseData = null;
-            // РCЃРїРѕP»CЊP·СѓPµРј РїРѕP»РЅC‹Р№ РѕC‚РІPµC‚ РґP»CЏ C€P°P±P»РѕРЅP° (РЅPµ РѕP±CЂPµP·P°РЅРЅC‹Р№)
+            // Рспользуем полный ответ для шаблона (не обрезанный)
             if (runData.fullResponse) {
                 responseData = parseJsonSafe(runData.fullResponse, null);
             } else if (runData.actionResponse) {
                 responseData = parseJsonSafe(runData.actionResponse, null);
             }
             
-            // Fallback РЅP° РїСѓCЃC‚РѕР№ РѕP±CЉPµРєC‚ C‡C‚РѕP±C‹ РёP·P±PµP¶P°C‚CЊ null errors
+            // Fallback на пустой объект чтобы избежать null errors
             const safePayload = responseData || parsedTriggerData || {};
             const safeResponse = responseData || {};
             const safeTrigger = parsedTriggerData || {};
             
-            // Р PµРЅРґPµCЂРёРј C€P°P±P»РѕРЅ CЃ РїРѕРґРґPµCЂP¶РєРѕР№ ${...} CЃРёРЅC‚P°РєCЃРёCЃP°
+            // Рендерим шаблон с поддержкой ${...} синтаксиса
             if (message && (message.includes('${') || message.includes('{{'))) {
                 try {
-                    // РџРѕРґРґPµCЂP¶РєP° ${payload.field} Рё ${response.field} Рё ${trigger.field}
+                    // Поддержка ${payload.field} и ${response.field} и ${trigger.field}
                     const templateFn = new Function('payload', 'response', 'trigger', `
                         try {
                             return \`${message.replace(/`/g, '\\`')}\`;
                         } catch (e) {
-                            return '[РћC€РёP±РєP° C€P°P±P»РѕРЅP°]: ' + e.message;
+                            return '[Ошибка шаблона]: ' + e.message;
                         }
                     `);
                     message = templateFn(safePayload, safeResponse, safeTrigger);
                 } catch (templateErr) {
                     console.error('Template error:', templateErr);
-                    // Fallback РЅP° РїCЂРѕCЃC‚СѓCЋ P·P°РјPµРЅСѓ {{field}}
+                    // Fallback на простую замену {{field}}
                     if (safePayload) {
                         message = message.replace(/\{\{(\w+(?:\.\w+)*)\}\}/g, (match, path) => {
                             const keys = path.split('.');
@@ -6739,7 +6741,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
     return runData;
 }
 
-// CRUD РґP»CЏ РёРЅC‚PµРіCЂP°C†РёР№
+// CRUD для интеграций
 app.get('/api/integrations', auth, async (req, res) => {
     const accountId = getAccountId(req);
     try {
@@ -6786,7 +6788,7 @@ app.post('/api/integrations', auth, blockAuditorWrite, async (req, res) => {
         const triggerType = req.body.triggerType === 'polling' ? 'polling' : 'webhook';
         const newIntegration = {
             id: Date.now(),
-            name: req.body.name || 'РќРѕРІP°CЏ РёРЅC‚PµРіCЂP°C†РёCЏ',
+            name: req.body.name || 'Новая интеграция',
             enabled: req.body.enabled ?? true,
             triggerType,
             triggerCondition: req.body.triggerCondition || '',
@@ -6833,7 +6835,7 @@ app.put('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) => {
         const updated = {
             ...req.body,
             id,
-            name: req.body.name || 'РќРѕРІP°CЏ РёРЅC‚PµРіCЂP°C†РёCЏ',
+            name: req.body.name || 'Новая интеграция',
             enabled: req.body.enabled ?? true,
             triggerType,
             triggerCondition: req.body.triggerCondition || '',
@@ -6897,7 +6899,7 @@ app.delete('/api/integrations/:id', auth, blockAuditorWrite, async (req, res) =>
     }
 });
 
-// Р СѓC‡РЅРѕР№ P·P°РїСѓCЃРє РёРЅC‚PµРіCЂP°C†РёРё
+// Ручной запуск интеграции
 app.post('/api/integrations/:id/run', auth, blockAuditorWrite, async (req, res) => {
     const id = parseInt(req.params.id);
     const accountId = getAccountId(req);
@@ -6916,12 +6918,12 @@ app.post('/api/integrations/:id/run', auth, blockAuditorWrite, async (req, res) 
             if (!integration) return res.status(404).json({ error: 'Integration not found' });
         }
 
-        // РќРѕCЂРјP°P»РёP·СѓPµРј РёРЅC‚PµРіCЂP°C†РёCЋ
+        // Нормализуем интеграцию
         integration = normalizeIntegration(integration);
         
         let triggerData = req.body.testData || null;
         
-        // Р•CЃP»Рё CЌC‚Рѕ polling РёРЅC‚PµРіCЂP°C†РёCЏ - CЃРЅP°C‡P°P»P° РґPµP»P°PµРј polling P·P°РїCЂРѕCЃ
+        // Если это polling интеграция - сначала делаем polling запрос
         if (integration.triggerType === 'polling' && integration.pollingUrl) {
             const headers = parseJsonSafe(integration.pollingHeaders, {});
             const body = parseJsonSafe(integration.pollingBody, null);
@@ -6953,7 +6955,7 @@ app.post('/api/integrations/:id/run', auth, blockAuditorWrite, async (req, res) 
     }
 });
 
-// РCЃC‚РѕCЂРёCЏ РёРЅC‚PµРіCЂP°C†РёР№
+// Рстория интеграций
 app.get('/api/integrations/history/all', auth, async (req, res) => {
     const accountId = getAccountId(req);
     try {
@@ -7032,13 +7034,13 @@ app.delete('/api/integrations/history/all', auth, blockAuditorWrite, async (req,
 
 // ============ REMINDER SETTINGS API ============
 
-// РџРѕP»СѓC‡РёC‚CЊ РЅP°CЃC‚CЂРѕР№РєРё РЅP°РїРѕРјРёРЅP°РЅРёР№ (РјP°CЃРєP° C‚РѕРєPµРЅP°)
+// Получить настройки напоминаний (маска токена)
 app.get('/api/reminders/settings', auth, async (req, res) => {
     try {
         let botToken = TELEGRAM_BOT_TOKEN;
         let botUsername = '';
         
-        // РџCЂРѕРІPµCЂCЏPµРј, PµCЃC‚CЊ P»Рё РѕC‚РґPµP»CЊРЅC‹Р№ C‚РѕРєPµРЅ РґP»CЏ РЅP°РїРѕРјРёРЅP°РЅРёР№ РІ settings
+        // Проверяем, есть ли отдельный токен для напоминаний в settings
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
             const result = await db.query('SELECT value FROM settings WHERE key = $1', ['reminder_bot_token']);
             if (result.rows.length > 0 && result.rows[0].value) {
@@ -7046,7 +7048,7 @@ app.get('/api/reminders/settings', auth, async (req, res) => {
             }
         }
         
-        // РџРѕP»СѓC‡P°PµРј username P±РѕC‚P°
+        // Получаем username бота
         if (botToken && botToken !== 'YOUR_TOKEN') {
             try {
                 const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
@@ -7058,7 +7060,7 @@ app.get('/api/reminders/settings', auth, async (req, res) => {
             }
         }
         
-        // РџCЂРѕРІPµCЂCЏPµРј webhook
+        // Проверяем webhook
         let webhookUrl = '';
         let webhookSet = false;
         if (botToken && botToken !== 'YOUR_TOKEN') {
@@ -7085,7 +7087,7 @@ app.get('/api/reminders/settings', auth, async (req, res) => {
     }
 });
 
-// РЎРѕC…CЂP°РЅРёC‚CЊ C‚РѕРєPµРЅ P±РѕC‚P° РЅP°РїРѕРјРёРЅP°РЅРёР№
+// РЎРѕC…ранить токен бота напоминаний
 app.post('/api/reminders/settings/token', auth, async (req, res) => {
     const { botToken } = req.body;
     
@@ -7093,7 +7095,7 @@ app.post('/api/reminders/settings/token', auth, async (req, res) => {
         return res.status(400).json({ error: 'Invalid bot token' });
     }
     
-    // РџCЂРѕРІPµCЂCЏPµРј C‚РѕРєPµРЅ
+    // Проверяем токен
     try {
         const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
         if (!response.data.ok) {
@@ -7103,7 +7105,7 @@ app.post('/api/reminders/settings/token', auth, async (req, res) => {
         return res.status(400).json({ error: 'Invalid bot token' });
     }
     
-    // РЎРѕC…CЂP°РЅCЏPµРј РІ Р‘Р”
+    // РЎРѕC…раняем в БД
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             await db.query(
@@ -7117,7 +7119,7 @@ app.post('/api/reminders/settings/token', auth, async (req, res) => {
         }
     }
     
-    // РџРѕP»СѓC‡P°PµРј username
+    // Получаем username
     let botUsername = '';
     try {
         const response = await axios.get(`https://api.telegram.org/bot${botToken}/getMe`);
@@ -7127,11 +7129,11 @@ app.post('/api/reminders/settings/token', auth, async (req, res) => {
     res.json({ ok: true, botUsername });
 });
 
-// РЈCЃC‚P°РЅРѕРІРёC‚CЊ webhook РґP»CЏ РЅP°РїРѕРјРёРЅP°РЅРёР№
+// Установить webhook для напоминаний
 app.post('/api/reminders/settings/webhook', auth, async (req, res) => {
     let botToken = '';
 
-    // РџCЂРѕРІPµCЂCЏPµРј, PµCЃC‚CЊ P»Рё РѕC‚РґPµP»CЊРЅC‹Р№ C‚РѕРєPµРЅ РґP»CЏ РЅP°РїРѕРјРёРЅP°РЅРёР№
+    // Проверяем, есть ли отдельный токен для напоминаний
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             const result = await db.query('SELECT value FROM settings WHERE key = $1', ['reminder_bot_token']);
@@ -7147,7 +7149,7 @@ app.post('/api/reminders/settings/webhook', auth, async (req, res) => {
         return res.status(400).json({ error: 'Bot token not configured' });
     }
     
-    // РћРїCЂPµРґPµP»CЏPµРј РґРѕРјPµРЅ
+    // Определяем домен
     let domain = req.headers.host || 'localhost:3000';
     const protocol = req.headers['x-forwarded-proto'] || (isProduction ? 'https' : 'http');
     const webhookUrl = `${protocol}://${domain}/api/telegram/webhook`;
@@ -7168,7 +7170,7 @@ app.post('/api/reminders/settings/webhook', auth, async (req, res) => {
     }
 });
 
-// РЈРґP°P»РёC‚CЊ webhook
+// Удалить webhook
 app.delete('/api/reminders/settings/webhook', auth, async (req, res) => {
     let botToken = '';
 
@@ -7218,3 +7220,8 @@ const server = app.listen(PORT, () => {
 });
 
 process.on('SIGTERM', () => server.close(() => process.exit(0)));
+
+
+
+
+

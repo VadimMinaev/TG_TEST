@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const ROOT_DIRS = ['src', 'server'];
 const EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.css', '.html', '.json', '.md']);
@@ -14,6 +15,15 @@ const BAD_PATTERNS = [
   { name: 'latin-1 mojibake (Ð + latin)', regex: /\u00D0[A-Za-z]/g },
   { name: 'latin-1 mojibake (Ñ + latin)', regex: /\u00D1[A-Za-z]/g },
   { name: 'emoji/text mojibake fragments', regex: /\u0440\u045F|\u0432\u201A|\u0432\u045A|\u0432\u040F/g }
+];
+
+// Extra-strict patterns for newly added lines in git diff.
+// This catches newly introduced mojibake without requiring a full legacy cleanup.
+const DIFF_BAD_PATTERNS = [
+  { name: 'mixed cp1251 mojibake (Р/С + latin)', regex: /[\u0420\u0421][A-Za-z]/g },
+  { name: 'broken utf-8 mojibake marker', regex: /вЂ|вљ|вќ|tg“|tg”|v\?/g },
+  { name: 'latin-1 mojibake (Ð + latin)', regex: /\u00D0[A-Za-z]/g },
+  { name: 'latin-1 mojibake (Ñ + latin)', regex: /\u00D1[A-Za-z]/g }
 ];
 
 function walk(dir, out) {
@@ -36,6 +46,39 @@ function findLine(text, index) {
   return lines.length;
 }
 
+function getAddedLinesFromGitDiff(relPath) {
+  try {
+    const raw = execSync(`git diff --unified=0 -- "${relPath.replace(/"/g, '\\"')}"`, {
+      cwd: process.cwd(),
+      stdio: ['ignore', 'pipe', 'ignore'],
+      encoding: 'utf8'
+    });
+
+    const added = [];
+    let currentNewLine = 0;
+    for (const line of raw.split('\n')) {
+      const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/);
+      if (hunk) {
+        currentNewLine = Number(hunk[1]);
+        continue;
+      }
+      if (line.startsWith('+++') || line.startsWith('---')) continue;
+      if (line.startsWith('+')) {
+        added.push({ line: currentNewLine, text: line.slice(1) });
+        currentNewLine += 1;
+        continue;
+      }
+      if (line.startsWith('-')) continue;
+      if (line.startsWith(' ')) {
+        currentNewLine += 1;
+      }
+    }
+    return added;
+  } catch {
+    return [];
+  }
+}
+
 const files = [];
 ROOT_DIRS.forEach((d) => walk(path.resolve(process.cwd(), d), files));
 
@@ -51,6 +94,25 @@ for (const file of files) {
     const rel = path.relative(process.cwd(), file).replace(/\\/g, '/');
     const lineText = text.split('\n')[line - 1]?.trim() || '';
     problems.push({ rel, line, name, lineText });
+  }
+}
+
+// Guard against newly added mojibake in changed files only.
+for (const file of files) {
+  const rel = path.relative(process.cwd(), file).replace(/\\/g, '/');
+  const addedLines = getAddedLinesFromGitDiff(rel);
+  if (!addedLines.length) continue;
+  for (const added of addedLines) {
+    for (const { name, regex } of DIFF_BAD_PATTERNS) {
+      regex.lastIndex = 0;
+      if (!regex.test(added.text)) continue;
+      problems.push({
+        rel,
+        line: added.line,
+        name: `${name} [added-line-check]`,
+        lineText: added.text.trim()
+      });
+    }
   }
 }
 

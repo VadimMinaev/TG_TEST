@@ -1,5 +1,5 @@
-import { Bot, Clock, MessageSquareText, Settings, Sparkles } from 'lucide-react';
-import { useMemo } from 'react';
+import { Bot, Clock, Settings, Sparkles } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { AiBots } from './AiBots';
 import { Bots } from './Bots';
@@ -19,14 +19,11 @@ export function Telegram() {
   const tab = parseTab(searchParams.get('tab'));
   const showReminderSettings = tab === 'reminders' && searchParams.get('settings') === 'true';
 
-  const tabs = useMemo(
-    () => [
-      { id: 'automation' as const, label: 'Автоматизация / Уведомления', icon: <Bot className="h-4 w-4" /> },
-      { id: 'ai-bots' as const, label: 'AI-боты', icon: <Sparkles className="h-4 w-4" /> },
-      { id: 'reminders' as const, label: 'Напоминания', icon: <Clock className="h-4 w-4" /> },
-    ],
-    []
-  );
+  const tabs: Array<{ id: TelegramTab; label: string; icon: ReactNode }> = [
+    { id: 'automation', label: 'Автоматизация / Уведомления', icon: <Bot className="h-4 w-4" /> },
+    { id: 'ai-bots', label: 'AI-боты', icon: <Sparkles className="h-4 w-4" /> },
+    { id: 'reminders', label: 'Напоминания', icon: <Clock className="h-4 w-4" /> },
+  ];
 
   const switchTab = (nextTab: TelegramTab) => {
     const next = new URLSearchParams(searchParams);
@@ -38,34 +35,21 @@ export function Telegram() {
   };
 
   return (
-    <div className="space-y-3">
-      <div className="card">
-        <div className="card-header">
-          <div>
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <MessageSquareText className="h-5 w-5" />
-              Telegram
-            </h2>
-            <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
-              Единая точка управления Telegram-ботами, AI-ботами и напоминаниями.
-            </p>
-          </div>
-        </div>
-        <div className="px-4 pb-4">
-          <div className="flex flex-wrap gap-2">
+    <div className="operations-page">
+      <div className="card operations-tabs-card">
+        <div className="card-body">
+          <div className="operations-tabbar">
             {tabs.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => switchTab(item.id)}
-                className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors ${
-                  tab === item.id
-                    ? 'border-[hsl(var(--primary))] bg-[hsl(var(--primary)_/_0.12)] text-[hsl(var(--primary))]'
-                    : 'border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))]'
-                }`}
+                className={`operations-tab-btn ${tab === item.id ? 'operations-tab-btn-active' : ''}`}
               >
-                {item.icon}
-                <span>{item.label}</span>
+                <span className="inline-flex items-center gap-2">
+                  {item.icon}
+                  {item.label}
+                </span>
               </button>
             ))}
 
@@ -78,11 +62,13 @@ export function Telegram() {
                   next.set('settings', showReminderSettings ? 'false' : 'true');
                   setSearchParams(next);
                 }}
-                className="ml-auto inline-flex items-center gap-2 rounded-md border border-[hsl(var(--border))] px-3 py-2 text-sm hover:bg-[hsl(var(--accent))]"
+                className={`operations-tab-btn ml-auto ${showReminderSettings ? 'operations-tab-btn-active' : ''}`}
                 title={showReminderSettings ? 'К списку напоминаний' : 'Настройки бота напоминаний'}
               >
-                <Settings className="h-4 w-4" />
-                <span>{showReminderSettings ? 'К напоминаниям' : 'Настройки напоминаний'}</span>
+                <span className="inline-flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  {showReminderSettings ? 'К напоминаниям' : 'Настройки напоминаний'}
+                </span>
               </button>
             )}
           </div>
