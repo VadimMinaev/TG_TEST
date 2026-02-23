@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const bcrypt = require('bcrypt');
+const FormData = require('form-data');
 require('dotenv').config();
 
 const app = express();
@@ -3383,6 +3384,107 @@ function buildOpenAiStyleUserContent(text, imageData) {
     ];
 }
 
+function parseDataImageUrl(value) {
+    const raw = String(value || '').trim();
+    const match = raw.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,([a-zA-Z0-9+/=\r\n]+)$/i);
+    if (!match) return null;
+    return {
+        mimeType: String(match[1] || 'image/jpeg').toLowerCase(),
+        base64: String(match[2] || '').replace(/\s+/g, '')
+    };
+}
+
+function parseOpenAiCompatibleChoice(choice) {
+    const textParts = [];
+    const imageUrls = [];
+    const inlineImages = [];
+    const seenUrls = new Set();
+    const seenInline = new Set();
+
+    const addText = (value) => {
+        const normalized = String(value || '').trim();
+        if (!normalized) return;
+        textParts.push(normalized);
+    };
+
+    const addImageLike = (value) => {
+        if (value == null) return;
+        const normalized = String(value).trim();
+        if (!normalized) return;
+
+        const inline = parseDataImageUrl(normalized);
+        if (inline?.base64) {
+            const key = `${inline.mimeType}:${inline.base64.slice(0, 64)}`;
+            if (seenInline.has(key)) return;
+            seenInline.add(key);
+            inlineImages.push(inline);
+            return;
+        }
+
+        if (/^https?:\/\//i.test(normalized)) {
+            if (seenUrls.has(normalized)) return;
+            seenUrls.add(normalized);
+            imageUrls.push(normalized);
+        }
+    };
+
+    const addInlineBase64 = (mimeType, b64) => {
+        const normalized = String(b64 || '').replace(/\s+/g, '').trim();
+        if (!normalized) return;
+        const mime = String(mimeType || 'image/png').trim() || 'image/png';
+        const key = `${mime}:${normalized.slice(0, 64)}`;
+        if (seenInline.has(key)) return;
+        seenInline.add(key);
+        inlineImages.push({ mimeType: mime, base64: normalized });
+    };
+
+    const parseContent = (content) => {
+        if (typeof content === 'string') {
+            addText(content);
+            return;
+        }
+        if (!Array.isArray(content)) return;
+
+        for (const part of content) {
+            if (typeof part === 'string') {
+                addText(part);
+                continue;
+            }
+            if (!part || typeof part !== 'object') continue;
+            addText(part.text);
+            addText(part.output_text);
+            addText(part.content);
+            addImageLike(part.image_url?.url);
+            addImageLike(part.image_url);
+            addImageLike(part.url);
+            addImageLike(part.image?.url);
+            addInlineBase64(part.mime_type || part.mimeType, part.b64_json || part.base64 || part.data);
+        }
+    };
+
+    const message = choice?.message || {};
+    parseContent(message.content);
+    addText(choice?.text);
+
+    const imageContainers = [];
+    if (Array.isArray(message.images)) imageContainers.push(...message.images);
+    if (Array.isArray(choice?.images)) imageContainers.push(...choice.images);
+
+    for (const image of imageContainers) {
+        if (!image || typeof image !== 'object') continue;
+        addImageLike(image.image_url?.url);
+        addImageLike(image.image_url);
+        addImageLike(image.url);
+        addInlineBase64(image.mime_type || image.mimeType, image.b64_json || image.base64 || image.data);
+    }
+
+    return {
+        text: textParts.join('\n').trim(),
+        imageUrls,
+        inlineImages
+    };
+}
+
 function extractImageUrlsFromAiText(text) {
     const source = String(text || '');
     const found = [];
@@ -3479,8 +3581,20 @@ async function runGeminiForAiBot(aiBot, chatId, text, attachments = {}) {
         .map((part) => part?.text || '')
         .join('\n')
         .trim();
+    const inlineImages = parts
+        .map((part) => {
+            const inline = part?.inlineData || part?.inline_data;
+            if (!inline) return null;
+            const base64 = String(inline.data || '').replace(/\s+/g, '').trim();
+            if (!base64) return null;
+            return {
+                mimeType: String(inline.mimeType || inline.mime_type || 'image/png'),
+                base64
+            };
+        })
+        .filter(Boolean);
 
-    if (!outputText) {
+    if (!outputText && inlineImages.length === 0) {
         const blockedReason = response.data?.promptFeedback?.blockReason;
         if (blockedReason) {
             throw new Error(`Gemini blocked response: ${blockedReason}`);
@@ -3488,7 +3602,7 @@ async function runGeminiForAiBot(aiBot, chatId, text, attachments = {}) {
         throw new Error('Gemini returned empty response');
     }
 
-    return outputText;
+    return { text: outputText, imageUrls: [], inlineImages };
 }
 
 async function runGroqForAiBot(aiBot, chatId, text, attachments = {}) {
@@ -3587,11 +3701,11 @@ async function runOpenAiForAiBot(aiBot, chatId, text, attachments = {}) {
         }
     );
 
-    const outputText = String(response.data?.choices?.[0]?.message?.content || '').trim();
-    if (!outputText) {
+    const parsed = parseOpenAiCompatibleChoice(response.data?.choices?.[0] || {});
+    if (!parsed.text && parsed.imageUrls.length === 0 && parsed.inlineImages.length === 0) {
         throw new Error('OpenAI returned empty response');
     }
-    return outputText;
+    return parsed;
 }
 
 async function runOpenRouterForAiBot(aiBot, chatId, text, attachments = {}) {
@@ -3638,25 +3752,32 @@ async function runOpenRouterForAiBot(aiBot, chatId, text, attachments = {}) {
         }
     );
 
-    const outputText = String(response.data?.choices?.[0]?.message?.content || '').trim();
-    if (!outputText) {
+    const parsed = parseOpenAiCompatibleChoice(response.data?.choices?.[0] || {});
+    if (!parsed.text && parsed.imageUrls.length === 0 && parsed.inlineImages.length === 0) {
         throw new Error('OpenRouter returned empty response');
     }
-    return outputText;
+    return parsed;
 }
 
 async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
-    if (provider === 'groq') {
-        return runGroqForAiBot(aiBot, chatId, text, attachments);
+    const rawResult = provider === 'groq'
+        ? await runGroqForAiBot(aiBot, chatId, text, attachments)
+        : provider === 'openai'
+            ? await runOpenAiForAiBot(aiBot, chatId, text, attachments)
+            : provider === 'openrouter'
+                ? await runOpenRouterForAiBot(aiBot, chatId, text, attachments)
+                : await runGeminiForAiBot(aiBot, chatId, text, attachments);
+
+    if (typeof rawResult === 'string') {
+        return { text: rawResult, imageUrls: [], inlineImages: [] };
     }
-    if (provider === 'openai') {
-        return runOpenAiForAiBot(aiBot, chatId, text, attachments);
-    }
-    if (provider === 'openrouter') {
-        return runOpenRouterForAiBot(aiBot, chatId, text, attachments);
-    }
-    return runGeminiForAiBot(aiBot, chatId, text, attachments);
+
+    return {
+        text: String(rawResult?.text || '').trim(),
+        imageUrls: Array.isArray(rawResult?.imageUrls) ? rawResult.imageUrls.filter(Boolean) : [],
+        inlineImages: Array.isArray(rawResult?.inlineImages) ? rawResult.inlineImages.filter((item) => item?.base64) : []
+    };
 }
 
 async function fetchAiBotForWebhook(aiBotId) {
@@ -4011,15 +4132,23 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         }
 
         const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, { audioData: audioPayload, imageData: imagePayload });
-        const imageUrls = extractImageUrlsFromAiText(aiResponse);
+        const aiText = String(aiResponse?.text || '');
+        const imageUrls = Array.from(new Set([
+            ...extractImageUrlsFromAiText(aiText),
+            ...(Array.isArray(aiResponse?.imageUrls) ? aiResponse.imageUrls : [])
+        ]));
+        const inlineImages = Array.isArray(aiResponse?.inlineImages) ? aiResponse.inlineImages : [];
         for (const imageUrl of imageUrls.slice(0, 3)) {
             await sendTelegramPhoto(aiBot.telegramBotToken, chatId, imageUrl);
         }
-        const cleanedText = stripImageUrlsFromAiText(aiResponse);
+        for (const imageData of inlineImages.slice(0, 3)) {
+            await sendTelegramPhoto(aiBot.telegramBotToken, chatId, imageData);
+        }
+        const cleanedText = stripImageUrlsFromAiText(aiText);
         const prepared = formatAiTextForTelegram(cleanedText).slice(0, 3900);
         if (prepared) {
             await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared);
-        } else if (imageUrls.length === 0) {
+        } else if (imageUrls.length === 0 && inlineImages.length === 0) {
             await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Пустой ответ модели.');
         }
         res.json({ ok: true });
@@ -6083,13 +6212,45 @@ async function sendTelegramMessage(botToken, chatId, text, options = {}) {
 
 async function sendTelegramPhoto(botToken, chatId, photo, caption = '') {
     try {
-        const payload = {
-            chat_id: chatId,
-            photo,
-            caption: caption ? String(caption).slice(0, 1024) : undefined,
-            parse_mode: 'HTML'
-        };
-        const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, payload);
+        const dataUriImage = typeof photo === 'string' ? parseDataImageUrl(photo) : null;
+        const inlineImage = photo && typeof photo === 'object' && photo.base64
+            ? { mimeType: String(photo.mimeType || 'image/png'), base64: String(photo.base64) }
+            : null;
+
+        let response;
+        if (dataUriImage || inlineImage) {
+            const image = dataUriImage || inlineImage;
+            const mimeType = String(image.mimeType || 'image/png').toLowerCase();
+            const ext = mimeType.includes('png')
+                ? 'png'
+                : mimeType.includes('webp')
+                    ? 'webp'
+                    : mimeType.includes('gif')
+                        ? 'gif'
+                        : 'jpg';
+            const form = new FormData();
+            form.append('chat_id', String(chatId));
+            if (caption) {
+                form.append('caption', String(caption).slice(0, 1024));
+                form.append('parse_mode', 'HTML');
+            }
+            form.append('photo', Buffer.from(String(image.base64), 'base64'), {
+                filename: `ai-image.${ext}`,
+                contentType: mimeType
+            });
+            response = await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, form, {
+                headers: form.getHeaders(),
+                maxBodyLength: Infinity
+            });
+        } else {
+            const payload = {
+                chat_id: chatId,
+                photo,
+                caption: caption ? String(caption).slice(0, 1024) : undefined,
+                parse_mode: 'HTML'
+            };
+            response = await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, payload);
+        }
         return { success: true, response: response.data };
     } catch (error) {
         const errDetail = error.response?.data || error.message;
