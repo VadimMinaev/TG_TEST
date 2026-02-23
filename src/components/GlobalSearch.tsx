@@ -155,7 +155,7 @@ export function GlobalSearch() {
     if (result.type === 'rule') {
       navigate(`/?select=${result.id}`);
     } else if (result.type === 'bot') {
-      navigate(`/bots?select=${result.id}`);
+      navigate(`/telegram?tab=automation&select=${result.id}`);
     } else {
       navigate(`/polling?select=${result.id}`);
     }
@@ -226,7 +226,7 @@ export function GlobalSearch() {
                 <span>Создать пуллинг</span>
               </button>
               <button
-                onClick={() => handleQuickAction('/bots?create=true')}
+                onClick={() => handleQuickAction('/telegram?tab=automation&create=true')}
                 className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
               >
                 <BotIcon className="h-4 w-4 text-[hsl(var(--primary))]" />

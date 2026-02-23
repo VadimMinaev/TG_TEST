@@ -3,9 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate, useSearchParams } from 'reac
 import {
   Activity,
   Bell,
-  Bot,
   Building,
-  Clock,
   FlaskConical,
   Info,
   Link as LinkIcon,
@@ -14,11 +12,11 @@ import {
   Moon,
   Plus,
   Repeat2,
+  Send,
   Settings,
   Sun,
   Users,
   MessageSquare,
-  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
@@ -69,8 +67,7 @@ export function Dashboard() {
       location.pathname === '/polling' ||
       location.pathname === '/users' ||
       location.pathname === '/integrations' ||
-      location.pathname === '/bots' ||
-      location.pathname === '/ai-bots'
+      location.pathname === '/telegram'
     );
   }, [location.pathname, user?.role]);
 
@@ -80,9 +77,7 @@ export function Dashboard() {
       { path: '/rules', label: 'Webhook', icon: <MessageSquare className="h-4 w-4" /> },
       { path: '/polling', label: 'Пуллинг', icon: <Repeat2 className="h-4 w-4" /> },
       { path: '/integrations', label: 'Интеграции', icon: <LinkIcon className="h-4 w-4" /> },
-      { path: '/bots', label: 'Боты', icon: <Bot className="h-4 w-4" /> },
-      { path: '/ai-bots', label: 'AI Бот', icon: <Sparkles className="h-4 w-4" /> },
-      { path: '/reminders', label: 'Напоминания', icon: <Clock className="h-4 w-4" /> },
+      { path: '/telegram', label: 'Telegram', icon: <Send className="h-4 w-4" /> },
     ];
 
     if (user?.isVadmin) {
@@ -123,7 +118,12 @@ export function Dashboard() {
   };
 
   const handleCreate = () => {
-    if (canCreate) setSearchParams({ create: 'true' });
+    if (!canCreate) return;
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.set('create', 'true');
+      return next;
+    });
   };
 
   const handleLogout = async () => {
@@ -361,3 +361,4 @@ export function Dashboard() {
     </div>
   );
 }
+

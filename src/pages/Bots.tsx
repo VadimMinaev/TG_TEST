@@ -127,14 +127,24 @@ export function Bots() {
       setSelectedBotId(null);
       setEditingBotId(-1);
       setForm(DEFAULT_FORM);
-      setSearchParams({}, { replace: true });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('create');
+        next.delete('select');
+        return next;
+      }, { replace: true });
     } else if (selectParam) {
       const id = parseInt(selectParam, 10);
       if (!isNaN(id)) {
         setSelectedBotId(id);
         setEditingBotId(null);
       }
-      setSearchParams({}, { replace: true });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('create');
+        next.delete('select');
+        return next;
+      }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 

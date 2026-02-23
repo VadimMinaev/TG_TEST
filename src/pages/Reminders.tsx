@@ -266,7 +266,7 @@ export function Reminders() {
           <button onClick={() => loadReminders()} className="icon-button" title="Обновить список">
             <RefreshCw className="h-4 w-4" />
           </button>
-          <Link to="/reminders/settings" className="icon-button" title="Настройки бота напоминаний">
+          <Link to="/telegram?tab=reminders&settings=true" className="icon-button" title="Настройки бота напоминаний">
             <Settings className="h-4 w-4" />
           </Link>
         </div>

@@ -81,7 +81,12 @@ export function AiBots() {
       setSelectedId(null);
       setEditingId(-1);
       setForm(DEFAULT_FORM);
-      setSearchParams({}, { replace: true });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('create');
+        next.delete('select');
+        return next;
+      }, { replace: true });
       return;
     }
 
@@ -91,7 +96,12 @@ export function AiBots() {
         setSelectedId(parsedId);
         setEditingId(null);
       }
-      setSearchParams({}, { replace: true });
+      setSearchParams((prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete('create');
+        next.delete('select');
+        return next;
+      }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 

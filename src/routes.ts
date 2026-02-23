@@ -7,11 +7,22 @@ import { Testing } from './pages/Testing';
 import { Polling } from './pages/Polling';
 import { Integrations } from './pages/Integrations';
 import { Users } from './pages/Users';
-import { Bots } from './pages/Bots';
 import { Accounts } from './pages/Accounts';
-import { Reminders } from './pages/Reminders';
-import { ReminderSettingsPage } from './pages/ReminderSettings';
-import { AiBots } from './pages/AiBots';
+import { Telegram } from './pages/Telegram';
+
+function redirectToTelegram(tab: 'automation' | 'ai-bots' | 'reminders', includeSettings = false) {
+  return ({ request }: { request: Request }) => {
+    const source = new URL(request.url);
+    const params = new URLSearchParams(source.search);
+    params.set('tab', tab);
+    if (includeSettings) {
+      params.set('settings', 'true');
+    } else {
+      params.delete('settings');
+    }
+    return redirect(`/telegram?${params.toString()}`);
+  };
+}
 
 export const router = createBrowserRouter([
   {
@@ -33,13 +44,14 @@ export const router = createBrowserRouter([
           { path: 'polling-history', loader: () => redirect('/?tab=polling-history') },
           { path: 'integrations', Component: Integrations },
           { path: 'integration-history', loader: () => redirect('/?tab=integration-history') },
-          { path: 'bots', Component: Bots },
+          { path: 'bots', loader: redirectToTelegram('automation') },
           { path: 'bot-history', loader: () => redirect('/?tab=bot-history') },
           { path: 'accounts', Component: Accounts },
           { path: 'users', Component: Users },
-          { path: 'reminders', Component: Reminders },
-          { path: 'reminders/settings', Component: ReminderSettingsPage },
-          { path: 'ai-bots', Component: AiBots },
+          { path: 'telegram', Component: Telegram },
+          { path: 'reminders', loader: redirectToTelegram('reminders') },
+          { path: 'reminders/settings', loader: redirectToTelegram('reminders', true) },
+          { path: 'ai-bots', loader: redirectToTelegram('ai-bots') },
         ],
       },
     ],

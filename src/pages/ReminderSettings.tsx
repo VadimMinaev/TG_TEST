@@ -167,7 +167,7 @@ export function ReminderSettingsPage() {
               <Breadcrumb
                 items={[
                   { label: 'Главная', path: '/' },
-                  { label: 'Напоминания', path: '/reminders' },
+                  { label: 'Telegram', path: '/telegram?tab=reminders' },
                   { label: 'Настройки', active: true },
                 ]}
               />
