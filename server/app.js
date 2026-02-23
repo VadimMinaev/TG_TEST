@@ -102,6 +102,7 @@ const pollTimers = new Map();
 let integrationsCache = [];
 const integrationTimers = new Map();
 let botsCache = [];
+let aiBotsCache = [];
 let botSchedulerInterval = null;
 let dbConnected = false;
 
@@ -111,6 +112,7 @@ const pendingReminderInput = new Map();
 const pendingTimezoneInput = new Map();
 const pendingLanguageInput = new Map();
 const pendingReminderConfirmation = new Map();
+const aiBotSessions = new Map();
 
 async function ensureUniqueAccountNames(client) {
     const result = await client.query('SELECT id, name FROM accounts ORDER BY id');
@@ -263,6 +265,13 @@ if (process.env.DATABASE_URL) {
             `);
             await client.query(`ALTER TABLE bot_runs ADD COLUMN IF NOT EXISTS account_id INTEGER`);
             await client.query(`CREATE INDEX IF NOT EXISTS idx_bot_runs_bot_id ON bot_runs(bot_id, created_at)`);
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS ai_bots (
+                    id BIGINT PRIMARY KEY,
+                    data JSONB NOT NULL
+                )
+            `);
+            await client.query(`ALTER TABLE ai_bots ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
 
             // Интеграции
             await client.query(`
@@ -388,6 +397,7 @@ if (process.env.DATABASE_URL) {
                     await client.query('UPDATE polls SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE integrations SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE bots SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
+                    await client.query('UPDATE ai_bots SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE logs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE poll_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
                     await client.query('UPDATE integration_runs SET account_id = $1 WHERE account_id IS NULL', [defaultAccountId]);
@@ -400,6 +410,7 @@ if (process.env.DATABASE_URL) {
 
             await loadPollsCache();
             await loadBotsCache();
+            await loadAiBotsCache();
             startMessageQueueWorker();
             startPollWorkers();
             startBotScheduler();
@@ -3160,6 +3171,520 @@ app.post('/api/bots/:id/run', auth, blockAuditorWrite, async (req, res) => {
         res.json({ status: 'ok' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to run bot' });
+    }
+});
+
+// ============ AI BOTS (TELEGRAM -> GEMINI) API ============
+
+async function loadAiBotsCache() {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        try {
+            const result = await db.query('SELECT id, data, account_id FROM ai_bots');
+            aiBotsCache = result.rows.map((row) => ({ ...row.data, id: row.id, account_id: row.account_id }));
+        } catch (e) {
+            console.error('Error loading AI bots cache:', e);
+            aiBotsCache = [];
+        }
+    }
+}
+
+function normalizeAiBot(input = {}) {
+    return {
+        id: input.id,
+        name: String(input.name || '').trim(),
+        enabled: input.enabled ?? true,
+        telegramBotToken: String(input.telegramBotToken || '').trim(),
+        geminiApiKey: String(input.geminiApiKey || '').trim(),
+        geminiModel: String(input.geminiModel || 'gemini-2.0-flash').trim(),
+        systemPrompt: String(input.systemPrompt || ''),
+        allowVoice: input.allowVoice !== false,
+        webhookUrl: String(input.webhookUrl || ''),
+        webhookSet: Boolean(input.webhookSet),
+        created_at: input.created_at || new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        authorId: input.authorId || null
+    };
+}
+
+function escapeTelegramHtml(text) {
+    return String(text || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+function getAiBotSessionKey(aiBotId, chatId) {
+    return `${aiBotId}:${chatId}`;
+}
+
+function cleanupAiBotSessions() {
+    const now = Date.now();
+    for (const [key, value] of aiBotSessions.entries()) {
+        if (!value || (now - (value.updatedAt || 0)) > 2 * 60 * 60 * 1000) {
+            aiBotSessions.delete(key);
+        }
+    }
+}
+
+function getAiBotSessionMessages(aiBotId, chatId) {
+    cleanupAiBotSessions();
+    const key = getAiBotSessionKey(aiBotId, chatId);
+    const session = aiBotSessions.get(key);
+    if (!session || !Array.isArray(session.messages)) return [];
+    return session.messages.slice(-12);
+}
+
+function pushAiBotSessionMessage(aiBotId, chatId, role, text) {
+    const normalizedText = String(text || '').trim();
+    if (!normalizedText) return;
+    const key = getAiBotSessionKey(aiBotId, chatId);
+    const previous = aiBotSessions.get(key) || { messages: [], updatedAt: Date.now() };
+    const nextMessages = [...previous.messages, { role, text: normalizedText }].slice(-12);
+    aiBotSessions.set(key, { messages: nextMessages, updatedAt: Date.now() });
+}
+
+function clearAiBotSession(aiBotId, chatId) {
+    aiBotSessions.delete(getAiBotSessionKey(aiBotId, chatId));
+}
+
+async function sendTelegramChatAction(botToken, chatId, action = 'typing') {
+    try {
+        await axios.post(`https://api.telegram.org/bot${botToken}/sendChatAction`, {
+            chat_id: chatId,
+            action
+        });
+    } catch (e) {
+        console.error('[AI Bot] sendChatAction error:', e.response?.data || e.message);
+    }
+}
+
+async function downloadTelegramFileAsBase64(botToken, fileId, fallbackMime = 'audio/ogg') {
+    const getFileResponse = await axios.get(`https://api.telegram.org/bot${botToken}/getFile`, {
+        params: { file_id: fileId },
+        timeout: 30000
+    });
+    if (!getFileResponse.data?.ok || !getFileResponse.data?.result?.file_path) {
+        throw new Error('Telegram getFile failed');
+    }
+
+    const filePath = getFileResponse.data.result.file_path;
+    const fileUrl = `https://api.telegram.org/file/bot${botToken}/${filePath}`;
+    const fileResponse = await axios.get(fileUrl, { responseType: 'arraybuffer', timeout: 60000 });
+    const buffer = Buffer.from(fileResponse.data);
+
+    let mimeType = fallbackMime;
+    const lowerPath = String(filePath).toLowerCase();
+    if (lowerPath.endsWith('.mp3')) mimeType = 'audio/mpeg';
+    if (lowerPath.endsWith('.m4a')) mimeType = 'audio/mp4';
+    if (lowerPath.endsWith('.wav')) mimeType = 'audio/wav';
+    if (lowerPath.endsWith('.oga') || lowerPath.endsWith('.ogg')) mimeType = 'audio/ogg';
+
+    return {
+        base64: buffer.toString('base64'),
+        mimeType
+    };
+}
+
+async function runGeminiForAiBot(aiBot, chatId, text, audioData) {
+    const apiKey = String(aiBot.geminiApiKey || '').trim();
+    const model = String(aiBot.geminiModel || 'gemini-2.0-flash').trim();
+    if (!apiKey) throw new Error('Gemini API key is missing');
+    if (!model) throw new Error('Gemini model is missing');
+
+    const history = getAiBotSessionMessages(aiBot.id, chatId);
+    const historyContents = history.map((item) => ({
+        role: item.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: item.text }]
+    }));
+
+    const userParts = [];
+    if (text) userParts.push({ text: String(text).trim() });
+    if (audioData?.base64) {
+        userParts.push({
+            inline_data: {
+                mime_type: audioData.mimeType || 'audio/ogg',
+                data: audioData.base64
+            }
+        });
+    }
+    if (userParts.length === 0) userParts.push({ text: 'Пустой запрос' });
+
+    const payload = {
+        contents: [
+            ...historyContents,
+            { role: 'user', parts: userParts }
+        ],
+        generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1024
+        }
+    };
+
+    const systemPrompt = String(aiBot.systemPrompt || '').trim();
+    if (systemPrompt) {
+        payload.systemInstruction = {
+            role: 'system',
+            parts: [{ text: systemPrompt }]
+        };
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(apiKey)}`;
+    const response = await axios.post(url, payload, { timeout: 90000 });
+
+    const candidate = response.data?.candidates?.[0];
+    const parts = candidate?.content?.parts || [];
+    const outputText = parts
+        .map((part) => part?.text || '')
+        .join('\n')
+        .trim();
+
+    if (!outputText) {
+        const blockedReason = response.data?.promptFeedback?.blockReason;
+        if (blockedReason) {
+            throw new Error(`Gemini blocked response: ${blockedReason}`);
+        }
+        throw new Error('Gemini returned empty response');
+    }
+
+    const userMessageForMemory = String(text || (audioData ? '[voice message]' : '')).trim() || '[empty]';
+    pushAiBotSessionMessage(aiBot.id, chatId, 'user', userMessageForMemory);
+    pushAiBotSessionMessage(aiBot.id, chatId, 'assistant', outputText);
+
+    return outputText;
+}
+
+async function fetchAiBotForWebhook(aiBotId) {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        const result = await db.query('SELECT id, data, account_id FROM ai_bots WHERE id = $1', [aiBotId]);
+        if (result.rows.length === 0) return null;
+        const row = result.rows[0];
+        return { ...row.data, id: row.id, account_id: row.account_id };
+    }
+    return aiBotsCache.find((item) => item.id === aiBotId) || null;
+}
+
+app.get('/api/ai-bots', auth, async (req, res) => {
+    const accountId = getAccountId(req);
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const query = accountId != null
+                ? db.query('SELECT id, data FROM ai_bots WHERE account_id = $1 ORDER BY id DESC', [accountId])
+                : db.query('SELECT id, data FROM ai_bots ORDER BY id DESC');
+            const result = await query;
+            return res.json(result.rows.map((row) => ({ ...row.data, id: row.id })));
+        }
+        return res.json(aiBotsCache);
+    } catch (error) {
+        console.error('Error loading AI bots:', error);
+        res.status(500).json({ error: 'Failed to load AI bots' });
+    }
+});
+
+app.get('/api/ai-bots/:id', auth, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const accountId = getAccountId(req);
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const query = accountId != null
+                ? db.query('SELECT id, data FROM ai_bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data FROM ai_bots WHERE id = $1', [id]);
+            const result = await query;
+            if (result.rows.length === 0) return res.status(404).json({ error: 'AI bot not found' });
+            return res.json({ ...result.rows[0].data, id: result.rows[0].id });
+        }
+
+        const aiBot = aiBotsCache.find((item) => item.id === id);
+        if (!aiBot) return res.status(404).json({ error: 'AI bot not found' });
+        res.json(aiBot);
+    } catch (error) {
+        console.error('Error loading AI bot:', error);
+        res.status(500).json({ error: 'Failed to load AI bot' });
+    }
+});
+
+app.post('/api/ai-bots', auth, blockAuditorWrite, async (req, res) => {
+    try {
+        const accountId = getAccountIdForCreate(req);
+        if (accountId == null) return res.status(400).json({ error: 'Account required to create AI bot' });
+
+        const payload = normalizeAiBot({
+            ...req.body,
+            id: Date.now(),
+            authorId: req.user.userId || req.user.username
+        });
+
+        if (!payload.name) return res.status(400).json({ error: 'name is required' });
+        if (!payload.telegramBotToken) return res.status(400).json({ error: 'telegramBotToken is required' });
+        if (!payload.geminiApiKey) return res.status(400).json({ error: 'geminiApiKey is required' });
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            await db.query('INSERT INTO ai_bots (id, data, account_id) VALUES ($1, $2, $3)', [payload.id, payload, accountId]);
+            await loadAiBotsCache();
+        } else {
+            aiBotsCache.unshift(payload);
+        }
+
+        res.json(payload);
+    } catch (error) {
+        console.error('Error creating AI bot:', error);
+        res.status(500).json({ error: 'Failed to create AI bot' });
+    }
+});
+
+app.put('/api/ai-bots/:id', auth, blockAuditorWrite, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const accountId = getAccountId(req);
+    try {
+        let current = null;
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const query = accountId != null
+                ? db.query('SELECT data FROM ai_bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT data FROM ai_bots WHERE id = $1', [id]);
+            const result = await query;
+            if (result.rows.length === 0) return res.status(404).json({ error: 'AI bot not found' });
+            current = result.rows[0].data;
+        } else {
+            current = aiBotsCache.find((item) => item.id === id);
+            if (!current) return res.status(404).json({ error: 'AI bot not found' });
+        }
+
+        const updated = normalizeAiBot({
+            ...current,
+            ...req.body,
+            id,
+            created_at: current.created_at || new Date().toISOString()
+        });
+
+        if (!updated.name) return res.status(400).json({ error: 'name is required' });
+        if (!updated.telegramBotToken) return res.status(400).json({ error: 'telegramBotToken is required' });
+        if (!updated.geminiApiKey) return res.status(400).json({ error: 'geminiApiKey is required' });
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const query = accountId != null
+                ? db.query('UPDATE ai_bots SET data = $1 WHERE id = $2 AND account_id = $3 RETURNING id', [updated, id, accountId])
+                : db.query('UPDATE ai_bots SET data = $1 WHERE id = $2 RETURNING id', [updated, id]);
+            const result = await query;
+            if (result.rowCount === 0) return res.status(404).json({ error: 'AI bot not found' });
+            await loadAiBotsCache();
+        } else {
+            const idx = aiBotsCache.findIndex((item) => item.id === id);
+            if (idx === -1) return res.status(404).json({ error: 'AI bot not found' });
+            aiBotsCache[idx] = updated;
+        }
+
+        res.json(updated);
+    } catch (error) {
+        console.error('Error updating AI bot:', error);
+        res.status(500).json({ error: 'Failed to update AI bot' });
+    }
+});
+
+app.delete('/api/ai-bots/:id', auth, blockAuditorWrite, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const accountId = getAccountId(req);
+    try {
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const query = accountId != null
+                ? db.query('DELETE FROM ai_bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('DELETE FROM ai_bots WHERE id = $1', [id]);
+            await query;
+            await loadAiBotsCache();
+        } else {
+            aiBotsCache = aiBotsCache.filter((item) => item.id !== id);
+        }
+        aiBotSessions.forEach((_value, key) => {
+            if (String(key).startsWith(`${id}:`)) aiBotSessions.delete(key);
+        });
+        res.json({ status: 'deleted' });
+    } catch (error) {
+        console.error('Error deleting AI bot:', error);
+        res.status(500).json({ error: 'Failed to delete AI bot' });
+    }
+});
+
+app.post('/api/ai-bots/:id/webhook', auth, blockAuditorWrite, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const accountId = getAccountId(req);
+    try {
+        let aiBot = null;
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const query = accountId != null
+                ? db.query('SELECT id, data FROM ai_bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data FROM ai_bots WHERE id = $1', [id]);
+            const result = await query;
+            if (result.rows.length === 0) return res.status(404).json({ error: 'AI bot not found' });
+            aiBot = { ...result.rows[0].data, id: result.rows[0].id };
+        } else {
+            aiBot = aiBotsCache.find((item) => item.id === id);
+            if (!aiBot) return res.status(404).json({ error: 'AI bot not found' });
+        }
+
+        if (!aiBot.telegramBotToken) {
+            return res.status(400).json({ error: 'telegramBotToken is required' });
+        }
+
+        const protocol = req.headers['x-forwarded-proto'] || (isProduction ? 'https' : 'http');
+        const host = req.headers.host || 'localhost:3000';
+        const webhookUrl = `${protocol}://${host}/api/telegram/ai/${id}/webhook`;
+
+        const telegramResponse = await axios.post(`https://api.telegram.org/bot${aiBot.telegramBotToken}/setWebhook`, {
+            url: webhookUrl
+        });
+
+        if (!telegramResponse.data?.ok) {
+            return res.status(400).json({ error: telegramResponse.data?.description || 'Failed to set webhook' });
+        }
+
+        const updated = normalizeAiBot({
+            ...aiBot,
+            webhookUrl,
+            webhookSet: true
+        });
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const updateQuery = accountId != null
+                ? db.query('UPDATE ai_bots SET data = $1 WHERE id = $2 AND account_id = $3 RETURNING id', [updated, id, accountId])
+                : db.query('UPDATE ai_bots SET data = $1 WHERE id = $2 RETURNING id', [updated, id]);
+            const result = await updateQuery;
+            if (result.rowCount === 0) return res.status(404).json({ error: 'AI bot not found' });
+            await loadAiBotsCache();
+        } else {
+            const idx = aiBotsCache.findIndex((item) => item.id === id);
+            if (idx >= 0) aiBotsCache[idx] = updated;
+        }
+
+        res.json({ ok: true, webhookUrl });
+    } catch (error) {
+        console.error('Error setting AI bot webhook:', error.response?.data || error.message);
+        res.status(400).json({ error: error.response?.data?.description || error.message || 'Failed to set webhook' });
+    }
+});
+
+app.delete('/api/ai-bots/:id/webhook', auth, blockAuditorWrite, async (req, res) => {
+    const id = parseInt(req.params.id, 10);
+    const accountId = getAccountId(req);
+    try {
+        let aiBot = null;
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const query = accountId != null
+                ? db.query('SELECT id, data FROM ai_bots WHERE id = $1 AND account_id = $2', [id, accountId])
+                : db.query('SELECT id, data FROM ai_bots WHERE id = $1', [id]);
+            const result = await query;
+            if (result.rows.length === 0) return res.status(404).json({ error: 'AI bot not found' });
+            aiBot = { ...result.rows[0].data, id: result.rows[0].id };
+        } else {
+            aiBot = aiBotsCache.find((item) => item.id === id);
+            if (!aiBot) return res.status(404).json({ error: 'AI bot not found' });
+        }
+
+        if (!aiBot.telegramBotToken) {
+            return res.status(400).json({ error: 'telegramBotToken is required' });
+        }
+
+        const telegramResponse = await axios.get(`https://api.telegram.org/bot${aiBot.telegramBotToken}/deleteWebhook`);
+        if (!telegramResponse.data?.ok) {
+            return res.status(400).json({ error: telegramResponse.data?.description || 'Failed to delete webhook' });
+        }
+
+        const updated = normalizeAiBot({
+            ...aiBot,
+            webhookUrl: '',
+            webhookSet: false
+        });
+
+        if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+            const updateQuery = accountId != null
+                ? db.query('UPDATE ai_bots SET data = $1 WHERE id = $2 AND account_id = $3 RETURNING id', [updated, id, accountId])
+                : db.query('UPDATE ai_bots SET data = $1 WHERE id = $2 RETURNING id', [updated, id]);
+            const result = await updateQuery;
+            if (result.rowCount === 0) return res.status(404).json({ error: 'AI bot not found' });
+            await loadAiBotsCache();
+        } else {
+            const idx = aiBotsCache.findIndex((item) => item.id === id);
+            if (idx >= 0) aiBotsCache[idx] = updated;
+        }
+
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('Error deleting AI bot webhook:', error.response?.data || error.message);
+        res.status(400).json({ error: error.response?.data?.description || error.message || 'Failed to delete webhook' });
+    }
+});
+
+app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
+    const aiBotId = parseInt(req.params.id, 10);
+    if (!Number.isInteger(aiBotId) || aiBotId < 1) {
+        return res.status(400).json({ ok: false, error: 'Invalid AI bot id' });
+    }
+
+    try {
+        const aiBot = await fetchAiBotForWebhook(aiBotId);
+        if (!aiBot || !aiBot.enabled) {
+            return res.status(404).json({ ok: false, error: 'AI bot not found or disabled' });
+        }
+        if (!aiBot.telegramBotToken || !aiBot.geminiApiKey) {
+            return res.status(400).json({ ok: false, error: 'AI bot is not fully configured' });
+        }
+
+        const update = req.body || {};
+        const message = update.message;
+        if (!message) return res.json({ ok: true });
+
+        const chatId = message.chat?.id;
+        if (!chatId) return res.json({ ok: true });
+
+        const text = String(message.text || message.caption || '').trim();
+        const lower = text.toLowerCase();
+        if (lower === '/start' || lower === '/help') {
+            const welcome = [
+                'AI бот готов.',
+                'Отправьте текстовый вопрос или голосовое сообщение.',
+                'Команда /clear очищает временную память диалога.'
+            ].join('\n');
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, escapeTelegramHtml(welcome));
+            return res.json({ ok: true });
+        }
+        if (lower === '/clear') {
+            clearAiBotSession(aiBot.id, chatId);
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Контекст сессии очищен.');
+            return res.json({ ok: true });
+        }
+
+        const hasVoice = Boolean(message.voice || message.audio);
+        if (!text && !hasVoice) return res.json({ ok: true });
+
+        if (hasVoice && aiBot.allowVoice === false) {
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Голосовые сообщения выключены для этого AI бота.');
+            return res.json({ ok: true });
+        }
+
+        await sendTelegramChatAction(aiBot.telegramBotToken, chatId, hasVoice ? 'record_voice' : 'typing');
+
+        let audioPayload = null;
+        if (hasVoice) {
+            const fileId = message.voice?.file_id || message.audio?.file_id;
+            const mime = message.voice ? 'audio/ogg' : (message.audio?.mime_type || 'audio/ogg');
+            if (fileId) {
+                audioPayload = await downloadTelegramFileAsBase64(aiBot.telegramBotToken, fileId, mime);
+            }
+        }
+
+        const aiResponse = await runGeminiForAiBot(aiBot, chatId, text, audioPayload);
+        const prepared = escapeTelegramHtml(aiResponse).slice(0, 3900);
+        await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared || 'Пустой ответ модели.');
+        res.json({ ok: true });
+    } catch (error) {
+        console.error('[AI Bot] Webhook processing error:', error.response?.data || error.message);
+        try {
+            const aiBot = await fetchAiBotForWebhook(aiBotId);
+            const chatId = req.body?.message?.chat?.id;
+            if (aiBot?.telegramBotToken && chatId) {
+                await sendTelegramMessage(aiBot.telegramBotToken, chatId, `Ошибка AI бота: ${escapeTelegramHtml(error.message || 'unknown error')}`);
+            }
+        } catch (_e) {
+            // ignore secondary errors
+        }
+        res.status(500).json({ ok: false, error: error.message || 'Failed to process AI webhook' });
     }
 });
 

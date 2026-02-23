@@ -11,6 +11,7 @@ import { Bots } from './pages/Bots';
 import { Accounts } from './pages/Accounts';
 import { Reminders } from './pages/Reminders';
 import { ReminderSettingsPage } from './pages/ReminderSettings';
+import { AiBots } from './pages/AiBots';
 
 export const router = createBrowserRouter([
   {
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
           { path: 'users', Component: Users },
           { path: 'reminders', Component: Reminders },
           { path: 'reminders/settings', Component: ReminderSettingsPage },
+          { path: 'ai-bots', Component: AiBots },
         ],
       },
     ],

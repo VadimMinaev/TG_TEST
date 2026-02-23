@@ -135,6 +135,22 @@ export interface BotRun {
   created_at: string;
 }
 
+export interface AiBot {
+  id: number;
+  name: string;
+  enabled: boolean;
+  telegramBotToken: string;
+  geminiApiKey: string;
+  geminiModel: string;
+  systemPrompt?: string;
+  allowVoice: boolean;
+  webhookUrl?: string;
+  webhookSet?: boolean;
+  created_at?: string;
+  updated_at?: string;
+  authorId?: string | number;
+}
+
 export interface Reminder {
   id: number;
   telegram_user_id: number;
@@ -544,6 +560,81 @@ export const api = {
   getReminders: async (): Promise<Reminder[]> => {
     const res = await fetch(`${API_BASE}/reminders`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch reminders');
+    return res.json();
+  },
+
+  // AI Bots
+  getAiBots: async (): Promise<AiBot[]> => {
+    const res = await fetch(`${API_BASE}/ai-bots`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch AI bots');
+    return res.json();
+  },
+
+  getAiBot: async (id: number): Promise<AiBot> => {
+    const res = await fetch(`${API_BASE}/ai-bots/${id}`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Failed to fetch AI bot');
+    return res.json();
+  },
+
+  createAiBot: async (data: Partial<AiBot>): Promise<AiBot> => {
+    const res = await fetch(`${API_BASE}/ai-bots`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to create AI bot');
+    }
+    return res.json();
+  },
+
+  updateAiBot: async (id: number, data: Partial<AiBot>): Promise<AiBot> => {
+    const res = await fetch(`${API_BASE}/ai-bots/${id}`, {
+      method: 'PUT',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to update AI bot');
+    }
+    return res.json();
+  },
+
+  deleteAiBot: async (id: number): Promise<void> => {
+    const res = await fetch(`${API_BASE}/ai-bots/${id}`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to delete AI bot');
+    }
+  },
+
+  setAiBotWebhook: async (id: number): Promise<{ ok: boolean; webhookUrl: string }> => {
+    const res = await fetch(`${API_BASE}/ai-bots/${id}/webhook`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({}),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to set AI bot webhook');
+    }
+    return res.json();
+  },
+
+  deleteAiBotWebhook: async (id: number): Promise<{ ok: boolean }> => {
+    const res = await fetch(`${API_BASE}/ai-bots/${id}/webhook`, {
+      method: 'DELETE',
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to delete AI bot webhook');
+    }
     return res.json();
   },
 

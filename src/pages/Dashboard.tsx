@@ -18,6 +18,7 @@ import {
   Sun,
   Users,
   MessageSquare,
+  Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
@@ -68,7 +69,8 @@ export function Dashboard() {
       location.pathname === '/polling' ||
       location.pathname === '/users' ||
       location.pathname === '/integrations' ||
-      location.pathname === '/bots'
+      location.pathname === '/bots' ||
+      location.pathname === '/ai-bots'
     );
   }, [location.pathname, user?.role]);
 
@@ -79,6 +81,7 @@ export function Dashboard() {
       { path: '/polling', label: 'Пуллинг', icon: <Repeat2 className="h-4 w-4" /> },
       { path: '/integrations', label: 'Интеграции', icon: <LinkIcon className="h-4 w-4" /> },
       { path: '/bots', label: 'Боты', icon: <Bot className="h-4 w-4" /> },
+      { path: '/ai-bots', label: 'AI Бот', icon: <Sparkles className="h-4 w-4" /> },
       { path: '/reminders', label: 'Напоминания', icon: <Clock className="h-4 w-4" /> },
     ];
 
