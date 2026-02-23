@@ -3229,6 +3229,40 @@ function escapeTelegramHtml(text) {
         .replace(/>/g, '&gt;');
 }
 
+function formatAiTextForTelegram(rawText) {
+    const escaped = escapeTelegramHtml(String(rawText || '').trim());
+    if (!escaped) return '';
+
+    // Keep code blocks readable and protected from further formatting replacements.
+    const codeBlocks = [];
+    let text = escaped.replace(/```([\s\S]*?)```/g, (_match, block) => {
+        const idx = codeBlocks.length;
+        codeBlocks.push(`<pre><code>${block}</code></pre>`);
+        return `__CODE_BLOCK_${idx}__`;
+    });
+
+    // Inline code.
+    text = text.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+    // Bold / italic.
+    text = text.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+    text = text.replace(/__([^_]+)__/g, '<b>$1</b>');
+    text = text.replace(/(?<!\*)\*([^*\n]+)\*(?!\*)/g, '<i>$1</i>');
+    text = text.replace(/(?<!_)_([^_\n]+)_(?!_)/g, '<i>$1</i>');
+
+    // Headings -> bold line.
+    text = text.replace(/^#{1,6}\s+(.+)$/gm, '<b>$1</b>');
+
+    // Simple bullet list normalization.
+    text = text.replace(/^\s*[-*]\s+/gm, '• ');
+
+    // Restore code blocks.
+    text = text.replace(/__CODE_BLOCK_(\d+)__/g, (_m, idx) => codeBlocks[Number(idx)] || '');
+
+    // Telegram HTML supports new lines directly.
+    return text;
+}
+
 function getAiBotSessionKey(aiBotId, chatId) {
     return `${aiBotId}:${chatId}`;
 }
@@ -3903,7 +3937,7 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         }
 
         const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, audioPayload);
-        const prepared = escapeTelegramHtml(aiResponse).slice(0, 3900);
+        const prepared = formatAiTextForTelegram(aiResponse).slice(0, 3900);
         await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared || 'Пустой ответ модели.');
         res.json({ ok: true });
     } catch (error) {
