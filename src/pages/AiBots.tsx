@@ -15,6 +15,27 @@ const PROVIDER_MODELS: Record<'gemini' | 'groq' | 'openai', string> = {
   openai: 'gpt-4o-mini',
 };
 
+const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai', string[]> = {
+  gemini: [
+    'gemini-2.0-flash',
+    'gemini-2.0-flash-lite',
+    'gemini-1.5-flash',
+    'gemini-1.5-pro',
+  ],
+  groq: [
+    'llama-3.3-70b-versatile',
+    'llama-3.1-8b-instant',
+    'mixtral-8x7b-32768',
+    'gemma2-9b-it',
+  ],
+  openai: [
+    'gpt-4o-mini',
+    'gpt-4o',
+    'gpt-4.1-mini',
+    'gpt-4.1',
+  ],
+};
+
 const DEFAULT_FORM: AiBotForm = {
   name: '',
   enabled: true,
@@ -49,6 +70,12 @@ export function AiBots() {
   const [togglingId, setTogglingId] = useState<number | null>(null);
   const [webhookBusy, setWebhookBusy] = useState(false);
   const [form, setForm] = useState<AiBotForm>(DEFAULT_FORM);
+  const [forceCustomModelInput, setForceCustomModelInput] = useState(false);
+
+  const provider = (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai';
+  const providerModels = MODEL_OPTIONS[provider] || [];
+  const isCustomModel = form.model ? !providerModels.includes(form.model) : false;
+  const showCustomModelInput = forceCustomModelInput || isCustomModel;
 
   const selectedBot = useMemo(() => bots.find((bot) => bot.id === selectedId) || null, [bots, selectedId]);
 
@@ -110,12 +137,14 @@ export function AiBots() {
     setSelectedId(null);
     setEditingId(-1);
     setForm(DEFAULT_FORM);
+    setForceCustomModelInput(false);
   };
 
   const handleEdit = (bot: AiBot) => {
     const provider = bot.provider || 'gemini';
     setSelectedId(bot.id);
     setEditingId(bot.id);
+    setForceCustomModelInput(false);
     setForm({
       name: bot.name || '',
       enabled: bot.enabled ?? true,
@@ -378,7 +407,8 @@ export function AiBots() {
                   <label className="mb-2 block text-sm font-medium">Провайдер</label>
                   <select
                     value={form.provider || 'gemini'}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      setForceCustomModelInput(false);
                       setForm((prev) => {
                         const nextProvider = (event.target.value as 'gemini' | 'groq' | 'openai') || 'gemini';
                         return {
@@ -386,8 +416,8 @@ export function AiBots() {
                           provider: nextProvider,
                           model: PROVIDER_MODELS[nextProvider],
                         };
-                      })
-                    }
+                      });
+                    }}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                   >
                     <option value="gemini">Gemini</option>
@@ -420,18 +450,40 @@ export function AiBots() {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">Модель</label>
-                  <input
-                    value={form.model}
-                    onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}
+                  <select
+                    value={showCustomModelInput ? '__custom__' : form.model}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      if (value === '__custom__') {
+                        setForceCustomModelInput(true);
+                        return;
+                      }
+                      setForceCustomModelInput(false);
+                      setForm((prev) => ({ ...prev, model: value }));
+                    }}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                    placeholder={
-                      form.provider === 'groq'
-                        ? PROVIDER_MODELS.groq
-                        : form.provider === 'openai'
-                          ? PROVIDER_MODELS.openai
-                          : PROVIDER_MODELS.gemini
-                    }
-                  />
+                  >
+                    {providerModels.map((modelName) => (
+                      <option key={modelName} value={modelName}>
+                        {modelName}
+                      </option>
+                    ))}
+                    <option value="__custom__">Своя модель...</option>
+                  </select>
+                  {showCustomModelInput && (
+                    <input
+                      value={form.model}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        setForm((prev) => ({ ...prev, model: nextValue }));
+                        if (providerModels.includes(nextValue)) {
+                          setForceCustomModelInput(false);
+                        }
+                      }}
+                      className="mt-2 w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                      placeholder="Введите имя своей модели"
+                    />
+                  )}
                 </div>
 
                 <div>
