@@ -3189,13 +3189,20 @@ async function loadAiBotsCache() {
 }
 
 function normalizeAiBot(input = {}) {
+    const provider = String(input.provider || 'gemini').toLowerCase() === 'groq' ? 'groq' : 'gemini';
+    const apiKey = String(input.apiKey || input.geminiApiKey || '').trim();
+    const model = String(input.model || input.geminiModel || (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'gemini-2.0-flash')).trim();
     return {
         id: input.id,
         name: String(input.name || '').trim(),
         enabled: input.enabled ?? true,
+        provider,
         telegramBotToken: String(input.telegramBotToken || '').trim(),
-        geminiApiKey: String(input.geminiApiKey || '').trim(),
-        geminiModel: String(input.geminiModel || 'gemini-2.0-flash').trim(),
+        apiKey,
+        model,
+        // Backward compatibility for existing frontend/data paths.
+        geminiApiKey: apiKey,
+        geminiModel: model,
         systemPrompt: String(input.systemPrompt || ''),
         allowVoice: input.allowVoice !== false,
         webhookUrl: String(input.webhookUrl || ''),
@@ -3286,8 +3293,8 @@ async function downloadTelegramFileAsBase64(botToken, fileId, fallbackMime = 'au
 }
 
 async function runGeminiForAiBot(aiBot, chatId, text, audioData) {
-    const apiKey = String(aiBot.geminiApiKey || '').trim();
-    const model = String(aiBot.geminiModel || 'gemini-2.0-flash').trim();
+    const apiKey = String(aiBot.apiKey || aiBot.geminiApiKey || '').trim();
+    const model = String(aiBot.model || aiBot.geminiModel || 'gemini-2.0-flash').trim();
     if (!apiKey) throw new Error('Gemini API key is missing');
     if (!model) throw new Error('Gemini model is missing');
 
@@ -3307,7 +3314,7 @@ async function runGeminiForAiBot(aiBot, chatId, text, audioData) {
             }
         });
     }
-    if (userParts.length === 0) userParts.push({ text: 'РџСѓCЃC‚РѕР№ P·P°РїCЂРѕCЃ' });
+    if (userParts.length === 0) userParts.push({ text: 'Empty request' });
 
     const payload = {
         contents: [
@@ -3346,11 +3353,68 @@ async function runGeminiForAiBot(aiBot, chatId, text, audioData) {
         throw new Error('Gemini returned empty response');
     }
 
-    const userMessageForMemory = String(text || (audioData ? '[voice message]' : '')).trim() || '[empty]';
-    pushAiBotSessionMessage(aiBot.id, chatId, 'user', userMessageForMemory);
-    pushAiBotSessionMessage(aiBot.id, chatId, 'assistant', outputText);
-
     return outputText;
+}
+
+async function runGroqForAiBot(aiBot, chatId, text, audioData) {
+    const apiKey = String(aiBot.apiKey || '').trim();
+    const model = String(aiBot.model || 'llama-3.3-70b-versatile').trim();
+    if (!apiKey) throw new Error('Groq API key is missing');
+    if (!model) throw new Error('Groq model is missing');
+    if (audioData?.base64) {
+        throw new Error('Groq text API does not support Telegram audio in this mode');
+    }
+
+    const history = getAiBotSessionMessages(aiBot.id, chatId);
+    const messages = [];
+
+    const systemPrompt = String(aiBot.systemPrompt || '').trim();
+    if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    for (const item of history) {
+        messages.push({
+            role: item.role === 'assistant' ? 'assistant' : 'user',
+            content: item.text
+        });
+    }
+
+    messages.push({
+        role: 'user',
+        content: String(text || '').trim() || 'Empty request'
+    });
+
+    const response = await axios.post(
+        'https://api.groq.com/openai/v1/chat/completions',
+        {
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 1024
+        },
+        {
+            timeout: 90000,
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        }
+    );
+
+    const outputText = String(response.data?.choices?.[0]?.message?.content || '').trim();
+    if (!outputText) {
+        throw new Error('Groq returned empty response');
+    }
+    return outputText;
+}
+
+async function runAiProviderForAiBot(aiBot, chatId, text, audioData) {
+    const provider = String(aiBot.provider || 'gemini').toLowerCase();
+    if (provider === 'groq') {
+        return runGroqForAiBot(aiBot, chatId, text, audioData);
+    }
+    return runGeminiForAiBot(aiBot, chatId, text, audioData);
 }
 
 async function fetchAiBotForWebhook(aiBotId) {
@@ -3415,7 +3479,8 @@ app.post('/api/ai-bots', auth, blockAuditorWrite, async (req, res) => {
 
         if (!payload.name) return res.status(400).json({ error: 'name is required' });
         if (!payload.telegramBotToken) return res.status(400).json({ error: 'telegramBotToken is required' });
-        if (!payload.geminiApiKey) return res.status(400).json({ error: 'geminiApiKey is required' });
+        if (!payload.apiKey) return res.status(400).json({ error: 'apiKey is required' });
+        if (!payload.model) return res.status(400).json({ error: 'model is required' });
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
             await db.query('INSERT INTO ai_bots (id, data, account_id) VALUES ($1, $2, $3)', [payload.id, payload, accountId]);
@@ -3457,7 +3522,8 @@ app.put('/api/ai-bots/:id', auth, blockAuditorWrite, async (req, res) => {
 
         if (!updated.name) return res.status(400).json({ error: 'name is required' });
         if (!updated.telegramBotToken) return res.status(400).json({ error: 'telegramBotToken is required' });
-        if (!updated.geminiApiKey) return res.status(400).json({ error: 'geminiApiKey is required' });
+        if (!updated.apiKey) return res.status(400).json({ error: 'apiKey is required' });
+        if (!updated.model) return res.status(400).json({ error: 'model is required' });
 
         if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
             const query = accountId != null
@@ -3622,7 +3688,7 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         if (!aiBot || !aiBot.enabled) {
             return res.status(404).json({ ok: false, error: 'AI bot not found or disabled' });
         }
-        if (!aiBot.telegramBotToken || !aiBot.geminiApiKey) {
+        if (!aiBot.telegramBotToken || !(aiBot.apiKey || aiBot.geminiApiKey)) {
             return res.status(400).json({ ok: false, error: 'AI bot is not fully configured' });
         }
 
@@ -3637,16 +3703,16 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         const lower = text.toLowerCase();
         if (lower === '/start' || lower === '/help') {
             const welcome = [
-                'AI P±РѕC‚ РіРѕC‚РѕРІ.',
-                'РћC‚РїCЂP°РІCЊC‚Pµ C‚PµРєCЃC‚РѕРІC‹Р№ РІРѕРїCЂРѕCЃ РёP»Рё РіРѕP»РѕCЃРѕРІРѕPµ CЃРѕРѕP±C‰PµРЅРёPµ.',
-                'РљРѕРјP°РЅРґP° /clear РѕC‡РёC‰P°PµC‚ РІCЂPµРјPµРЅРЅСѓCЋ РїP°РјCЏC‚CЊ РґРёP°P»РѕРіP°.'
+                'AI бот готов.',
+                'Отправьте текстовый вопрос или голосовое сообщение.',
+                'Команда /clear очищает временную память диалога.'
             ].join('\n');
             await sendTelegramMessage(aiBot.telegramBotToken, chatId, escapeTelegramHtml(welcome));
             return res.json({ ok: true });
         }
         if (lower === '/clear') {
             clearAiBotSession(aiBot.id, chatId);
-            await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'РљРѕРЅC‚PµРєCЃC‚ CЃPµCЃCЃРёРё РѕC‡РёC‰PµРЅ.');
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Контекст сессии очищен.');
             return res.json({ ok: true });
         }
 
@@ -3654,7 +3720,7 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         if (!text && !hasVoice) return res.json({ ok: true });
 
         if (hasVoice && aiBot.allowVoice === false) {
-            await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Р“РѕP»РѕCЃРѕРІC‹Pµ CЃРѕРѕP±C‰PµРЅРёCЏ РІC‹РєP»CЋC‡PµРЅC‹ РґP»CЏ CЌC‚РѕРіРѕ AI P±РѕC‚P°.');
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Голосовые сообщения выключены для этого AI бота.');
             return res.json({ ok: true });
         }
 
@@ -3669,7 +3735,7 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             }
         }
 
-        const aiResponse = await runGeminiForAiBot(aiBot, chatId, text, audioPayload);
+        const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, audioPayload);
         const prepared = escapeTelegramHtml(aiResponse).slice(0, 3900);
         await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared || 'РџСѓCЃC‚РѕР№ РѕC‚РІPµC‚ РјРѕРґPµP»Рё.');
         res.json({ ok: true });
@@ -3686,8 +3752,9 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             const aiBot = await fetchAiBotForWebhook(aiBotId);
             const chatId = req.body?.message?.chat?.id;
             if (aiBot?.telegramBotToken && chatId) {
+                const provider = String(aiBot.provider || 'gemini').toUpperCase();
                 const userMessage = statusCode === 429
-                    ? 'Лимит Gemini исчерпан (429). Проверьте квоту/биллинг API key и попробуйте позже.'
+                    ? `Лимит ${provider} исчерпан (429). Проверьте квоту/биллинг API key и попробуйте позже.`
                     : `Ошибка AI бота: ${escapeTelegramHtml(apiErrorText)}`;
                 await sendTelegramMessage(aiBot.telegramBotToken, chatId, userMessage);
             }

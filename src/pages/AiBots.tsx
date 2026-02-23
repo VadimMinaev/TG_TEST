@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Bot, KeyRound, Pencil, RefreshCw, Save, Trash2, Unplug, Webhook } from 'lucide-react';
 import { api, AiBot } from '../lib/api';
@@ -9,12 +9,18 @@ import { EntityStateSwitch } from '../components/StateToggle';
 
 type AiBotForm = Omit<AiBot, 'id'>;
 
+const PROVIDER_MODELS: Record<'gemini' | 'groq', string> = {
+  gemini: 'gemini-2.0-flash',
+  groq: 'llama-3.3-70b-versatile',
+};
+
 const DEFAULT_FORM: AiBotForm = {
   name: '',
   enabled: true,
+  provider: 'gemini',
   telegramBotToken: '',
-  geminiApiKey: '',
-  geminiModel: 'gemini-2.0-flash',
+  apiKey: '',
+  model: PROVIDER_MODELS.gemini,
   systemPrompt: '',
   allowVoice: true,
   webhookUrl: '',
@@ -96,14 +102,16 @@ export function AiBots() {
   };
 
   const handleEdit = (bot: AiBot) => {
+    const provider = bot.provider || 'gemini';
     setSelectedId(bot.id);
     setEditingId(bot.id);
     setForm({
       name: bot.name || '',
       enabled: bot.enabled ?? true,
+      provider,
       telegramBotToken: bot.telegramBotToken || '',
-      geminiApiKey: bot.geminiApiKey || '',
-      geminiModel: bot.geminiModel || 'gemini-2.0-flash',
+      apiKey: bot.apiKey || bot.geminiApiKey || '',
+      model: bot.model || bot.geminiModel || PROVIDER_MODELS[provider],
       systemPrompt: bot.systemPrompt || '',
       allowVoice: bot.allowVoice ?? true,
       webhookSet: bot.webhookSet ?? false,
@@ -111,6 +119,8 @@ export function AiBots() {
       created_at: bot.created_at,
       updated_at: bot.updated_at,
       authorId: bot.authorId,
+      geminiApiKey: bot.geminiApiKey,
+      geminiModel: bot.geminiModel,
     });
   };
 
@@ -125,21 +135,22 @@ export function AiBots() {
       addToast('Введите Telegram Bot Token', 'error');
       return;
     }
-    if (!form.geminiApiKey.trim()) {
-      addToast('Введите Gemini API Key', 'error');
+    if (!form.apiKey.trim()) {
+      addToast('Введите API Key провайдера', 'error');
       return;
     }
-    if (!form.geminiModel.trim()) {
-      addToast('Введите модель Gemini', 'error');
+    if (!form.model.trim()) {
+      addToast('Введите модель', 'error');
       return;
     }
 
     const payload = {
       name: form.name.trim(),
       enabled: !!form.enabled,
+      provider: (form.provider || 'gemini') as 'gemini' | 'groq',
       telegramBotToken: form.telegramBotToken.trim(),
-      geminiApiKey: form.geminiApiKey.trim(),
-      geminiModel: form.geminiModel.trim(),
+      apiKey: form.apiKey.trim(),
+      model: form.model.trim(),
       systemPrompt: (form.systemPrompt || '').trim(),
       allowVoice: !!form.allowVoice,
     };
@@ -289,10 +300,7 @@ export function AiBots() {
           <div className="panel">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-semibold">Список AI ботов</h3>
-              <button
-                onClick={loadBots}
-                className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs"
-              >
+              <button onClick={loadBots} className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs">
                 Обновить
               </button>
             </div>
@@ -309,7 +317,7 @@ export function AiBots() {
                   <thead>
                     <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
                       <th className="px-2 py-2">Название</th>
-                      <th className="px-2 py-2">Модель</th>
+                      <th className="px-2 py-2">Провайдер / модель</th>
                       <th className="px-2 py-2">Webhook</th>
                       <th className="px-2 py-2">Статус</th>
                     </tr>
@@ -327,7 +335,7 @@ export function AiBots() {
                         }`}
                       >
                         <td className="max-w-[220px] truncate px-2 py-2 font-medium">{bot.name}</td>
-                        <td className="px-2 py-2 text-xs">{bot.geminiModel || '—'}</td>
+                        <td className="px-2 py-2 text-xs">{(bot.provider || 'gemini') + ' / ' + (bot.model || bot.geminiModel || '—')}</td>
                         <td className="px-2 py-2 text-xs">{bot.webhookSet ? '✅' : '—'}</td>
                         <td className="px-2 py-2">{bot.enabled ? '✅' : '⏸️'}</td>
                       </tr>
@@ -351,8 +359,30 @@ export function AiBots() {
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                    placeholder="AI Ассистент поддержки"
+                    placeholder="AI Ассистент"
                   />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium">Провайдер</label>
+                  <select
+                    value={form.provider || 'gemini'}
+                    onChange={(event) =>
+                      setForm((prev) => {
+                        const nextProvider = (event.target.value as 'gemini' | 'groq') || 'gemini';
+                        const keepModel = String(prev.model || '').trim();
+                        return {
+                          ...prev,
+                          provider: nextProvider,
+                          model: keepModel || PROVIDER_MODELS[nextProvider],
+                        };
+                      })
+                    }
+                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                  >
+                    <option value="gemini">Gemini</option>
+                    <option value="groq">Groq</option>
+                  </select>
                 </div>
 
                 <div>
@@ -366,22 +396,22 @@ export function AiBots() {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Gemini API Key</label>
+                  <label className="mb-2 block text-sm font-medium">API Key ({form.provider === 'groq' ? 'Groq' : 'Gemini'})</label>
                   <input
-                    value={form.geminiApiKey}
-                    onChange={(event) => setForm((prev) => ({ ...prev, geminiApiKey: event.target.value }))}
+                    value={form.apiKey}
+                    onChange={(event) => setForm((prev) => ({ ...prev, apiKey: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
-                    placeholder="AIza..."
+                    placeholder={form.provider === 'groq' ? 'gsk_...' : 'AIza...'}
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Модель Gemini</label>
+                  <label className="mb-2 block text-sm font-medium">Модель</label>
                   <input
-                    value={form.geminiModel}
-                    onChange={(event) => setForm((prev) => ({ ...prev, geminiModel: event.target.value }))}
+                    value={form.model}
+                    onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                    placeholder="gemini-2.0-flash"
+                    placeholder={form.provider === 'groq' ? PROVIDER_MODELS.groq : PROVIDER_MODELS.gemini}
                   />
                 </div>
 
@@ -392,7 +422,7 @@ export function AiBots() {
                     value={form.systemPrompt || ''}
                     onChange={(event) => setForm((prev) => ({ ...prev, systemPrompt: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                    placeholder="Короткая системная инструкция для Gemini..."
+                    placeholder="Короткая системная инструкция..."
                   />
                 </div>
 
@@ -440,6 +470,9 @@ export function AiBots() {
                     <strong>Название:</strong> {selectedBot.name}
                   </div>
                   <div>
+                    <strong>Провайдер:</strong> <code>{selectedBot.provider || 'gemini'}</code>
+                  </div>
+                  <div>
                     <strong>Статус:</strong>{' '}
                     <span
                       className={`rounded px-2 py-1 text-xs ${
@@ -464,10 +497,10 @@ export function AiBots() {
                   </div>
                   <div className="flex items-center gap-2">
                     <KeyRound className="h-4 w-4" />
-                    <strong>Gemini API Key:</strong> <code>{maskSecret(selectedBot.geminiApiKey)}</code>
+                    <strong>Provider API Key:</strong> <code>{maskSecret(selectedBot.apiKey || selectedBot.geminiApiKey)}</code>
                   </div>
                   <div>
-                    <strong>Модель:</strong> <code>{selectedBot.geminiModel}</code>
+                    <strong>Модель:</strong> <code>{selectedBot.model || selectedBot.geminiModel}</code>
                   </div>
                 </div>
 
@@ -482,9 +515,7 @@ export function AiBots() {
                 </div>
 
                 <h4 className="entity-view-title">System Prompt</h4>
-                <div className="entity-view-card whitespace-pre-wrap break-words">
-                  {selectedBot.systemPrompt || '—'}
-                </div>
+                <div className="entity-view-card whitespace-pre-wrap break-words">{selectedBot.systemPrompt || '—'}</div>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">

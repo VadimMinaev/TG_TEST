@@ -139,9 +139,12 @@ export interface AiBot {
   id: number;
   name: string;
   enabled: boolean;
+  provider: 'gemini' | 'groq';
   telegramBotToken: string;
-  geminiApiKey: string;
-  geminiModel: string;
+  apiKey: string;
+  model: string;
+  geminiApiKey?: string;
+  geminiModel?: string;
   systemPrompt?: string;
   allowVoice: boolean;
   webhookUrl?: string;
