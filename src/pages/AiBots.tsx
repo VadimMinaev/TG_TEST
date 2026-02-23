@@ -370,11 +370,10 @@ export function AiBots() {
                     onChange={(event) =>
                       setForm((prev) => {
                         const nextProvider = (event.target.value as 'gemini' | 'groq') || 'gemini';
-                        const keepModel = String(prev.model || '').trim();
                         return {
                           ...prev,
                           provider: nextProvider,
-                          model: keepModel || PROVIDER_MODELS[nextProvider],
+                          model: PROVIDER_MODELS[nextProvider],
                         };
                       })
                     }
