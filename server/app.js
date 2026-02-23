@@ -3353,6 +3353,10 @@ async function downloadTelegramFileAsBase64(botToken, fileId, fallbackMime = 'au
     if (lowerPath.endsWith('.m4a')) mimeType = 'audio/mp4';
     if (lowerPath.endsWith('.wav')) mimeType = 'audio/wav';
     if (lowerPath.endsWith('.oga') || lowerPath.endsWith('.ogg')) mimeType = 'audio/ogg';
+    if (lowerPath.endsWith('.jpg') || lowerPath.endsWith('.jpeg')) mimeType = 'image/jpeg';
+    if (lowerPath.endsWith('.png')) mimeType = 'image/png';
+    if (lowerPath.endsWith('.webp')) mimeType = 'image/webp';
+    if (lowerPath.endsWith('.gif')) mimeType = 'image/gif';
 
     return {
         base64: buffer.toString('base64'),
@@ -3360,7 +3364,59 @@ async function downloadTelegramFileAsBase64(botToken, fileId, fallbackMime = 'au
     };
 }
 
-async function runGeminiForAiBot(aiBot, chatId, text, audioData) {
+function buildOpenAiStyleUserContent(text, imageData) {
+    const normalizedText = String(text || '').trim();
+    if (!imageData?.base64) {
+        return normalizedText || 'Empty request';
+    }
+    return [
+        {
+            type: 'text',
+            text: normalizedText || 'Опиши изображение'
+        },
+        {
+            type: 'image_url',
+            image_url: {
+                url: `data:${imageData.mimeType || 'image/jpeg'};base64,${imageData.base64}`
+            }
+        }
+    ];
+}
+
+function extractImageUrlsFromAiText(text) {
+    const source = String(text || '');
+    const found = [];
+    const seen = new Set();
+
+    const addUrl = (url) => {
+        const normalized = String(url || '').trim();
+        if (!normalized || seen.has(normalized)) return;
+        seen.add(normalized);
+        found.push(normalized);
+    };
+
+    source.replace(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/gi, (_m, url) => {
+        addUrl(url);
+        return _m;
+    });
+
+    source.replace(/https?:\/\/[^\s<>()]+?\.(?:png|jpe?g|gif|webp)(?:\?[^\s<>()]*)?/gi, (url) => {
+        addUrl(url);
+        return url;
+    });
+
+    return found;
+}
+
+function stripImageUrlsFromAiText(text) {
+    return String(text || '')
+        .replace(/!\[[^\]]*]\((https?:\/\/[^)\s]+)\)/gi, ' ')
+        .replace(/https?:\/\/[^\s<>()]+?\.(?:png|jpe?g|gif|webp)(?:\?[^\s<>()]*)?/gi, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
+async function runGeminiForAiBot(aiBot, chatId, text, attachments = {}) {
     const apiKey = String(aiBot.apiKey || aiBot.geminiApiKey || '').trim();
     const model = String(aiBot.model || aiBot.geminiModel || 'gemini-2.0-flash').trim();
     if (!apiKey) throw new Error('Gemini API key is missing');
@@ -3374,13 +3430,24 @@ async function runGeminiForAiBot(aiBot, chatId, text, audioData) {
 
     const userParts = [];
     if (text) userParts.push({ text: String(text).trim() });
-    if (audioData?.base64) {
+    if (attachments.audioData?.base64) {
         userParts.push({
             inline_data: {
-                mime_type: audioData.mimeType || 'audio/ogg',
-                data: audioData.base64
+                mime_type: attachments.audioData.mimeType || 'audio/ogg',
+                data: attachments.audioData.base64
             }
         });
+    }
+    if (attachments.imageData?.base64) {
+        userParts.push({
+            inline_data: {
+                mime_type: attachments.imageData.mimeType || 'image/jpeg',
+                data: attachments.imageData.base64
+            }
+        });
+    }
+    if (!text && attachments.imageData?.base64 && !attachments.audioData?.base64) {
+        userParts.push({ text: 'Опиши изображение' });
     }
     if (userParts.length === 0) userParts.push({ text: 'Empty request' });
 
@@ -3424,12 +3491,12 @@ async function runGeminiForAiBot(aiBot, chatId, text, audioData) {
     return outputText;
 }
 
-async function runGroqForAiBot(aiBot, chatId, text, audioData) {
+async function runGroqForAiBot(aiBot, chatId, text, attachments = {}) {
     const apiKey = String(aiBot.apiKey || '').trim();
     const model = String(aiBot.model || 'llama-3.3-70b-versatile').trim();
     if (!apiKey) throw new Error('Groq API key is missing');
     if (!model) throw new Error('Groq model is missing');
-    if (audioData?.base64) {
+    if (attachments.audioData?.base64) {
         throw new Error('Groq text API does not support Telegram audio in this mode');
     }
 
@@ -3477,12 +3544,12 @@ async function runGroqForAiBot(aiBot, chatId, text, audioData) {
     return outputText;
 }
 
-async function runOpenAiForAiBot(aiBot, chatId, text, audioData) {
+async function runOpenAiForAiBot(aiBot, chatId, text, attachments = {}) {
     const apiKey = String(aiBot.apiKey || '').trim();
     const model = String(aiBot.model || 'gpt-4o-mini').trim();
     if (!apiKey) throw new Error('OpenAI API key is missing');
     if (!model) throw new Error('OpenAI model is missing');
-    if (audioData?.base64) {
+    if (attachments.audioData?.base64) {
         throw new Error('OpenAI chat completions mode does not support Telegram audio in this path');
     }
 
@@ -3501,10 +3568,7 @@ async function runOpenAiForAiBot(aiBot, chatId, text, audioData) {
         });
     }
 
-    messages.push({
-        role: 'user',
-        content: String(text || '').trim() || 'Empty request'
-    });
+    messages.push({ role: 'user', content: buildOpenAiStyleUserContent(text, attachments.imageData) });
 
     const response = await axios.post(
         'https://api.openai.com/v1/chat/completions',
@@ -3530,12 +3594,12 @@ async function runOpenAiForAiBot(aiBot, chatId, text, audioData) {
     return outputText;
 }
 
-async function runOpenRouterForAiBot(aiBot, chatId, text, audioData) {
+async function runOpenRouterForAiBot(aiBot, chatId, text, attachments = {}) {
     const apiKey = String(aiBot.apiKey || '').trim();
     const model = String(aiBot.model || 'openai/gpt-4o-mini').trim();
     if (!apiKey) throw new Error('OpenRouter API key is missing');
     if (!model) throw new Error('OpenRouter model is missing');
-    if (audioData?.base64) {
+    if (attachments.audioData?.base64) {
         throw new Error('OpenRouter chat completions mode does not support Telegram audio in this path');
     }
 
@@ -3554,10 +3618,7 @@ async function runOpenRouterForAiBot(aiBot, chatId, text, audioData) {
         });
     }
 
-    messages.push({
-        role: 'user',
-        content: String(text || '').trim() || 'Empty request'
-    });
+    messages.push({ role: 'user', content: buildOpenAiStyleUserContent(text, attachments.imageData) });
 
     const response = await axios.post(
         'https://openrouter.ai/api/v1/chat/completions',
@@ -3584,18 +3645,18 @@ async function runOpenRouterForAiBot(aiBot, chatId, text, audioData) {
     return outputText;
 }
 
-async function runAiProviderForAiBot(aiBot, chatId, text, audioData) {
+async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
     if (provider === 'groq') {
-        return runGroqForAiBot(aiBot, chatId, text, audioData);
+        return runGroqForAiBot(aiBot, chatId, text, attachments);
     }
     if (provider === 'openai') {
-        return runOpenAiForAiBot(aiBot, chatId, text, audioData);
+        return runOpenAiForAiBot(aiBot, chatId, text, attachments);
     }
     if (provider === 'openrouter') {
-        return runOpenRouterForAiBot(aiBot, chatId, text, audioData);
+        return runOpenRouterForAiBot(aiBot, chatId, text, attachments);
     }
-    return runGeminiForAiBot(aiBot, chatId, text, audioData);
+    return runGeminiForAiBot(aiBot, chatId, text, attachments);
 }
 
 async function fetchAiBotForWebhook(aiBotId) {
@@ -3918,7 +3979,8 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         }
 
         const hasVoice = Boolean(message.voice || message.audio);
-        if (!text && !hasVoice) return res.json({ ok: true });
+        const hasPhoto = Array.isArray(message.photo) && message.photo.length > 0;
+        if (!text && !hasVoice && !hasPhoto) return res.json({ ok: true });
 
         if (hasVoice && aiBot.allowVoice === false) {
             await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Голосовые сообщения выключены для этого AI бота.');
@@ -3936,9 +3998,30 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             }
         }
 
-        const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, audioPayload);
-        const prepared = formatAiTextForTelegram(aiResponse).slice(0, 3900);
-        await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared || 'Пустой ответ модели.');
+        let imagePayload = null;
+        if (hasPhoto) {
+            const photoVariants = message.photo || [];
+            const bestPhoto = photoVariants.reduce((best, current) => {
+                if (!best) return current;
+                return (Number(current?.file_size || 0) > Number(best?.file_size || 0)) ? current : best;
+            }, null) || photoVariants[photoVariants.length - 1];
+            if (bestPhoto?.file_id) {
+                imagePayload = await downloadTelegramFileAsBase64(aiBot.telegramBotToken, bestPhoto.file_id, 'image/jpeg');
+            }
+        }
+
+        const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, { audioData: audioPayload, imageData: imagePayload });
+        const imageUrls = extractImageUrlsFromAiText(aiResponse);
+        for (const imageUrl of imageUrls.slice(0, 3)) {
+            await sendTelegramPhoto(aiBot.telegramBotToken, chatId, imageUrl);
+        }
+        const cleanedText = stripImageUrlsFromAiText(aiResponse);
+        const prepared = formatAiTextForTelegram(cleanedText).slice(0, 3900);
+        if (prepared) {
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, prepared);
+        } else if (imageUrls.length === 0) {
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, 'Пустой ответ модели.');
+        }
         res.json({ ok: true });
     } catch (error) {
         const statusCode = Number(error?.response?.status || 0);
@@ -5994,6 +6077,23 @@ async function sendTelegramMessage(botToken, chatId, text, options = {}) {
     } catch (error) {
         const errDetail = error.response?.data || error.message;
         console.error('[Telegram] Send message error:', errDetail);
+        return { success: false, error: errDetail };
+    }
+}
+
+async function sendTelegramPhoto(botToken, chatId, photo, caption = '') {
+    try {
+        const payload = {
+            chat_id: chatId,
+            photo,
+            caption: caption ? String(caption).slice(0, 1024) : undefined,
+            parse_mode: 'HTML'
+        };
+        const response = await axios.post(`https://api.telegram.org/bot${botToken}/sendPhoto`, payload);
+        return { success: true, response: response.data };
+    } catch (error) {
+        const errDetail = error.response?.data || error.message;
+        console.error('[Telegram] Send photo error:', errDetail);
         return { success: false, error: errDetail };
     }
 }
