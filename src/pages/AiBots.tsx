@@ -9,13 +9,14 @@ import { EntityStateSwitch } from '../components/StateToggle';
 
 type AiBotForm = Omit<AiBot, 'id'>;
 
-const PROVIDER_MODELS: Record<'gemini' | 'groq' | 'openai', string> = {
+const PROVIDER_MODELS: Record<'gemini' | 'groq' | 'openai' | 'openrouter', string> = {
   gemini: 'gemini-2.0-flash',
   groq: 'llama-3.3-70b-versatile',
   openai: 'gpt-4o-mini',
+  openrouter: 'openai/gpt-4o-mini',
 };
 
-const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai', string[]> = {
+const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai' | 'openrouter', string[]> = {
   gemini: [
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
@@ -33,6 +34,12 @@ const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai', string[]> = {
     'gpt-4o',
     'gpt-4.1-mini',
     'gpt-4.1',
+  ],
+  openrouter: [
+    'openai/gpt-4o-mini',
+    'openai/gpt-4o',
+    'anthropic/claude-3.5-sonnet',
+    'google/gemini-2.0-flash-001',
   ],
 };
 
@@ -71,9 +78,13 @@ export function AiBots() {
   const [webhookBusy, setWebhookBusy] = useState(false);
   const [form, setForm] = useState<AiBotForm>(DEFAULT_FORM);
   const [forceCustomModelInput, setForceCustomModelInput] = useState(false);
+  const [openRouterModels, setOpenRouterModels] = useState<string[]>([]);
+  const [openRouterModelsLoaded, setOpenRouterModelsLoaded] = useState(false);
 
-  const provider = (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai';
-  const providerModels = MODEL_OPTIONS[provider] || [];
+  const provider = (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter';
+  const providerModels = provider === 'openrouter'
+    ? (openRouterModels.length ? openRouterModels : MODEL_OPTIONS.openrouter)
+    : (MODEL_OPTIONS[provider] || []);
   const isCustomModel = form.model ? !providerModels.includes(form.model) : false;
   const showCustomModelInput = forceCustomModelInput || isCustomModel;
 
@@ -101,6 +112,22 @@ export function AiBots() {
   useEffect(() => {
     loadBots();
   }, []);
+
+  useEffect(() => {
+    if (provider !== 'openrouter' || openRouterModelsLoaded) return;
+    (async () => {
+      try {
+        const models = await api.getAiProviderModels('openrouter');
+        if (models.length > 0) {
+          setOpenRouterModels(models);
+        }
+      } catch {
+        // keep static fallback
+      } finally {
+        setOpenRouterModelsLoaded(true);
+      }
+    })();
+  }, [provider, openRouterModelsLoaded]);
 
   useEffect(() => {
     const createParam = searchParams.get('create');
@@ -187,7 +214,7 @@ export function AiBots() {
     const payload = {
       name: form.name.trim(),
       enabled: !!form.enabled,
-      provider: (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai',
+      provider: (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter',
       telegramBotToken: form.telegramBotToken.trim(),
       apiKey: form.apiKey.trim(),
       model: form.model.trim(),
@@ -410,7 +437,7 @@ export function AiBots() {
                     onChange={(event) => {
                       setForceCustomModelInput(false);
                       setForm((prev) => {
-                        const nextProvider = (event.target.value as 'gemini' | 'groq' | 'openai') || 'gemini';
+                        const nextProvider = (event.target.value as 'gemini' | 'groq' | 'openai' | 'openrouter') || 'gemini';
                         return {
                           ...prev,
                           provider: nextProvider,
@@ -423,6 +450,7 @@ export function AiBots() {
                     <option value="gemini">Gemini</option>
                     <option value="groq">Groq</option>
                     <option value="openai">OpenAI</option>
+                    <option value="openrouter">OpenRouter</option>
                   </select>
                 </div>
 
@@ -438,13 +466,13 @@ export function AiBots() {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">
-                    API Key ({form.provider === 'groq' ? 'Groq' : form.provider === 'openai' ? 'OpenAI' : 'Gemini'})
+                    API Key ({form.provider === 'groq' ? 'Groq' : form.provider === 'openai' ? 'OpenAI' : form.provider === 'openrouter' ? 'OpenRouter' : 'Gemini'})
                   </label>
                   <input
                     value={form.apiKey}
                     onChange={(event) => setForm((prev) => ({ ...prev, apiKey: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
-                    placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : 'AIza...'}
+                    placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : form.provider === 'openrouter' ? 'sk-or-v1-...' : 'AIza...'}
                   />
                 </div>
 

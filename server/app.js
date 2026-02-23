@@ -113,6 +113,7 @@ const pendingTimezoneInput = new Map();
 const pendingLanguageInput = new Map();
 const pendingReminderConfirmation = new Map();
 const aiBotSessions = new Map();
+const aiProviderModelsCache = new Map();
 
 async function ensureUniqueAccountNames(client) {
     const result = await client.query('SELECT id, name FROM accounts ORDER BY id');
@@ -3190,12 +3191,15 @@ async function loadAiBotsCache() {
 
 function normalizeAiBot(input = {}) {
     const providerRaw = String(input.provider || 'gemini').toLowerCase();
-    const provider = providerRaw === 'groq' ? 'groq' : (providerRaw === 'openai' ? 'openai' : 'gemini');
+    const provider =
+        providerRaw === 'groq'
+            ? 'groq'
+            : (providerRaw === 'openai' ? 'openai' : (providerRaw === 'openrouter' ? 'openrouter' : 'gemini'));
     const apiKey = String(input.apiKey || input.geminiApiKey || '').trim();
     const defaultModel =
         provider === 'groq'
             ? 'llama-3.3-70b-versatile'
-            : (provider === 'openai' ? 'gpt-4o-mini' : 'gemini-2.0-flash');
+            : (provider === 'openai' ? 'gpt-4o-mini' : (provider === 'openrouter' ? 'openai/gpt-4o-mini' : 'gemini-2.0-flash'));
     const model = String(input.model || input.geminiModel || defaultModel).trim();
     return {
         id: input.id,
@@ -3257,6 +3261,31 @@ function pushAiBotSessionMessage(aiBotId, chatId, role, text) {
 
 function clearAiBotSession(aiBotId, chatId) {
     aiBotSessions.delete(getAiBotSessionKey(aiBotId, chatId));
+}
+
+async function getCachedOpenRouterModels() {
+    const cacheKey = 'openrouter';
+    const now = Date.now();
+    const cached = aiProviderModelsCache.get(cacheKey);
+    if (cached && cached.expiresAt > now && Array.isArray(cached.models) && cached.models.length > 0) {
+        return cached.models;
+    }
+
+    const response = await axios.get('https://openrouter.ai/api/v1/models', { timeout: 20000 });
+    const models = Array.isArray(response.data?.data)
+        ? response.data.data
+            .map((item) => String(item?.id || '').trim())
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b))
+        : [];
+
+    if (models.length > 0) {
+        aiProviderModelsCache.set(cacheKey, {
+            models,
+            expiresAt: now + 10 * 60 * 1000
+        });
+    }
+    return models;
 }
 
 async function sendTelegramChatAction(botToken, chatId, action = 'typing') {
@@ -3467,6 +3496,60 @@ async function runOpenAiForAiBot(aiBot, chatId, text, audioData) {
     return outputText;
 }
 
+async function runOpenRouterForAiBot(aiBot, chatId, text, audioData) {
+    const apiKey = String(aiBot.apiKey || '').trim();
+    const model = String(aiBot.model || 'openai/gpt-4o-mini').trim();
+    if (!apiKey) throw new Error('OpenRouter API key is missing');
+    if (!model) throw new Error('OpenRouter model is missing');
+    if (audioData?.base64) {
+        throw new Error('OpenRouter chat completions mode does not support Telegram audio in this path');
+    }
+
+    const history = getAiBotSessionMessages(aiBot.id, chatId);
+    const messages = [];
+
+    const systemPrompt = String(aiBot.systemPrompt || '').trim();
+    if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    for (const item of history) {
+        messages.push({
+            role: item.role === 'assistant' ? 'assistant' : 'user',
+            content: item.text
+        });
+    }
+
+    messages.push({
+        role: 'user',
+        content: String(text || '').trim() || 'Empty request'
+    });
+
+    const response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 1024
+        },
+        {
+            timeout: 90000,
+            headers: {
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json',
+                'X-Title': 'TG_TEST AI Bot'
+            }
+        }
+    );
+
+    const outputText = String(response.data?.choices?.[0]?.message?.content || '').trim();
+    if (!outputText) {
+        throw new Error('OpenRouter returned empty response');
+    }
+    return outputText;
+}
+
 async function runAiProviderForAiBot(aiBot, chatId, text, audioData) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
     if (provider === 'groq') {
@@ -3474,6 +3557,9 @@ async function runAiProviderForAiBot(aiBot, chatId, text, audioData) {
     }
     if (provider === 'openai') {
         return runOpenAiForAiBot(aiBot, chatId, text, audioData);
+    }
+    if (provider === 'openrouter') {
+        return runOpenRouterForAiBot(aiBot, chatId, text, audioData);
     }
     return runGeminiForAiBot(aiBot, chatId, text, audioData);
 }
@@ -3487,6 +3573,26 @@ async function fetchAiBotForWebhook(aiBotId) {
     }
     return aiBotsCache.find((item) => item.id === aiBotId) || null;
 }
+
+app.get('/api/ai/providers/models', auth, async (req, res) => {
+    const provider = String(req.query.provider || 'openrouter').toLowerCase();
+    try {
+        if (provider === 'openrouter') {
+            const models = await getCachedOpenRouterModels();
+            return res.json({ provider, models });
+        }
+        if (provider === 'openai') {
+            return res.json({ provider, models: ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1-mini', 'gpt-4.1'] });
+        }
+        if (provider === 'groq') {
+            return res.json({ provider, models: ['llama-3.3-70b-versatile', 'llama-3.1-8b-instant', 'mixtral-8x7b-32768', 'gemma2-9b-it'] });
+        }
+        return res.json({ provider: 'gemini', models: ['gemini-2.0-flash', 'gemini-2.0-flash-lite', 'gemini-1.5-flash', 'gemini-1.5-pro'] });
+    } catch (error) {
+        console.error('Error loading provider models:', provider, error.response?.data || error.message);
+        res.status(500).json({ error: 'Failed to load provider models' });
+    }
+});
 
 app.get('/api/ai-bots', auth, async (req, res) => {
     const accountId = getAccountId(req);

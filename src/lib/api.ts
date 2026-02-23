@@ -139,7 +139,7 @@ export interface AiBot {
   id: number;
   name: string;
   enabled: boolean;
-  provider: 'gemini' | 'groq' | 'openai';
+  provider: 'gemini' | 'groq' | 'openai' | 'openrouter';
   telegramBotToken: string;
   apiKey: string;
   model: string;
@@ -639,6 +639,18 @@ export const api = {
       throw new Error(error.error || 'Failed to delete AI bot webhook');
     }
     return res.json();
+  },
+
+  getAiProviderModels: async (provider: 'gemini' | 'groq' | 'openai' | 'openrouter'): Promise<string[]> => {
+    const res = await fetch(`${API_BASE}/ai/providers/models?provider=${encodeURIComponent(provider)}`, {
+      headers: getHeaders(),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'Failed to load AI provider models');
+    }
+    const data = await res.json();
+    return Array.isArray(data.models) ? data.models : [];
   },
 
   updateReminder: async (id: number, data: Partial<Reminder> & { runAt?: string; repeatType?: 'none' | 'interval' | 'cron'; repeatConfig?: any; isActive?: boolean; nextRunAt?: string | null }): Promise<Reminder> => {
