@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { api, Account, AccountCloneOptions } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
-import { Breadcrumb } from '../components/Breadcrumb';
 import { useToast } from '../components/ToastNotification';
 
 type CloneIncludeState = {
@@ -173,14 +172,6 @@ export function Accounts() {
         <div className="flex flex-col gap-2">
           <div>
             <h2 className="text-xl font-semibold">Аккаунты</h2>
-            <div className="mt-1">
-              <Breadcrumb
-                items={[
-                  { label: 'Главная', path: '/' },
-                  { label: 'Аккаунты', active: true },
-                ]}
-              />
-            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

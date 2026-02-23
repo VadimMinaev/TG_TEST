@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, WebhookLog } from '../lib/api';
 import { RefreshCw, Trash2 } from 'lucide-react';
-import { Breadcrumb } from '../components/Breadcrumb';
 
 export function History() {
   const [logs, setLogs] = useState<WebhookLog[]>([]);
@@ -51,14 +50,6 @@ export function History() {
         <div className="flex flex-col gap-2">
           <div>
             <h2 className="text-xl font-semibold">📊 История вебхуков</h2>
-            <div className="mt-1">
-              <Breadcrumb 
-                items={[
-                  { label: 'Главная', path: '/' },
-                  { label: 'История', active: true }
-                ]} 
-              />
-            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">

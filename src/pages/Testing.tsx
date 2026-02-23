@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
-import { Breadcrumb } from '../components/Breadcrumb';
 
 export function Testing() {
   const [testCondition, setTestCondition] = useState('payload.category === "incident"');
@@ -77,14 +76,6 @@ export function Testing() {
           <div className="flex flex-col gap-2">
             <div>
               <h2 className="text-xl font-semibold">🧪 Тестирование</h2>
-              <div className="mt-1">
-                <Breadcrumb 
-                  items={[
-                    { label: 'Главная', path: '/' },
-                    { label: 'Тестирование', active: true }
-                  ]} 
-                />
-              </div>
             </div>
           </div>
         </div>

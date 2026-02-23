@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../components/ToastNotification';
 import { Save, Bot, Key, Link as LinkIcon, RefreshCw } from 'lucide-react';
-import { Breadcrumb } from '../components/Breadcrumb';
 
 interface ReminderSettings {
   botToken: string;
@@ -163,15 +162,6 @@ export function ReminderSettingsPage() {
               <Bot className="h-5 w-5" />
               Настройки бота напоминаний
             </h2>
-            <div className="mt-1">
-              <Breadcrumb
-                items={[
-                  { label: 'Главная', path: '/' },
-                  { label: 'Telegram', path: '/telegram?tab=reminders' },
-                  { label: 'Настройки', active: true },
-                ]}
-              />
-            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
