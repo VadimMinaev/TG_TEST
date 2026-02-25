@@ -66,7 +66,7 @@ const fieldTranslations = {
     created_at: 'Создан',
     updated_at: 'Обновлен',
     requested_by: {
-        name: 'Рнициатор запроса',
+        name: 'Инициатор запроса',
         account: { name: 'Организация' }
     },
     person: {
@@ -275,7 +275,7 @@ if (process.env.DATABASE_URL) {
             `);
             await client.query(`ALTER TABLE ai_bots ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
 
-            // Рнтеграции
+            // Интеграции
             await client.query(`
                 CREATE TABLE IF NOT EXISTS integrations (
                     id BIGINT PRIMARY KEY,
@@ -704,7 +704,7 @@ function blockAuditorWrite(req, res, next) {
 }
 
 // ────────────────────────────────────────────────────────────────
-// НОВАЯ Р¤РЈРќРљР¦РЯ Р¤РћР РњРђРўРР РћР’РђРќРЯ РЎРћРћР‘Р©Р•РќРЯ
+// НОВАЯ ФУНКЦИЯ ФОРМАТИРОВАНИЯ СООБЩЕНИЯ
 // ────────────────────────────────────────────────────────────────
 function formatMessage(fullBody, payload, rule = {}) {
     // Пользовательский шаблон, если указан
@@ -729,17 +729,17 @@ function formatMessage(fullBody, payload, rule = {}) {
         const messageParts = [];
 
         if (payload.id) {
-            messageParts.push(`tg†” ${getFieldTranslation('id')}: ${payload.id}`);
+            messageParts.push(`${getFieldTranslation('id')}: ${payload.id}`);
         }
         if (payload.subject) {
-            messageParts.push(`tg“‹ ${getFieldTranslation('subject')}: ${payload.subject}`);
+            messageParts.push(`${getFieldTranslation('subject')}: ${payload.subject}`);
         }
         if (payload.requested_by?.name) {
             const account = payload.requested_by.account?.name || '';
-            messageParts.push(`tg‘¤ ${getFieldTranslation('requested_by.name')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
+            messageParts.push(`${getFieldTranslation('requested_by.name')}: ${payload.requested_by.name}${account ? ' @' + account : ''}`);
         }
         if (payload.status) {
-            messageParts.push(`tg“Љ ${getFieldTranslation('status')}: ${payload.status}`);
+            messageParts.push(`${getFieldTranslation('status')}: ${payload.status}`);
         }
 
         const slaFields = ['response_target_at', 'resolution_target_at'];
@@ -758,7 +758,7 @@ function formatMessage(fullBody, payload, rule = {}) {
                         });
                     }
                 } catch {}
-                messageParts.push(`v?° ${getFieldTranslation(field)}: ${value}`);
+                messageParts.push(`${getFieldTranslation(field)}: ${value}`);
             }
         }
 
@@ -777,7 +777,7 @@ function formatMessage(fullBody, payload, rule = {}) {
 
         const notes = payload.note ? (Array.isArray(payload.note) ? payload.note : [payload.note]) : [];
         if (notes.length > 0) {
-            messageParts.push(`tg“ќ ${getFieldTranslation('note')}:`);
+            messageParts.push(`${getFieldTranslation('note')}:`);
             notes.forEach((note, index) => {
                 const author = note.person?.name || note.person_name || 'Unknown';
                 const account = note.account?.name || note.person?.account?.name || '';
@@ -809,7 +809,7 @@ function formatMessage(fullBody, payload, rule = {}) {
             const author = payload.author || payload.person_name || fullBody.person_name || payload.requested_by?.name || 'Unknown';
             const account = payload.account?.name || payload.requested_by?.account?.name || '';
             const text = payload.text || payload.message;
-            messageParts.push(`tg’¬ ${getFieldTranslation('message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
+            messageParts.push(`${getFieldTranslation('message')}: ${author}${account ? ' @' + account : ''}: ${text}`);
         }
 
         if (messageParts.length === 0) {
@@ -1306,7 +1306,7 @@ async function refreshPollWorkers() {
 }
 
 // ────────────────────────────────────────────────────────────────
-// РђР’РўРћР РР—РђР¦РЯ Р РЈРџР РђР’Р›Р•РќРЕ РџРћР›Р¬Р—РћР’РђРўР•Р›РЇРњР
+// АВТОРИЗАЦИЯ И УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ
 // ────────────────────────────────────────────────────────────────
 
 app.post('/api/login', async (req, res) => {
@@ -1616,7 +1616,7 @@ app.delete('/api/accounts/:id', auth, vadminOnly, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// РЈРџР РђР’Р›Р•РќРЕ РџРћР›Р¬Р—РћР’РђРўР•Р›РЇРњР
+// УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ
 // ────────────────────────────────────────────────────────────────
 
 app.get('/api/users', auth, async (req, res) => {
@@ -1957,7 +1957,7 @@ app.post('/api/test-send', auth, async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// РЈРџР РђР’Р›Р•РќРЕ РџР РђР’РР›РђРњР
+// УПРАВЛЕНИЕ ПРАВИЛАМИ
 // ────────────────────────────────────────────────────────────────
 
 app.get('/api/rules', auth, async (req, res) => {
@@ -2491,7 +2491,7 @@ app.post('/webhook/:accountSlug', async (req, res) => {
         }
     }
 
-    // Выполнить интеграции, соответствующие этому РІPµP±C…уку
+    // Выполнить интеграции, соответствующие этому webhook
     await executeMatchingIntegrations(incomingPayload, 'webhook', accountId);
 
     logWebhook(req.body, matched, rules.length, telegram_results, accountId);
@@ -2499,7 +2499,7 @@ app.post('/webhook/:accountSlug', async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// WEBHOOK — РћР‘Р©РЙ (все правила, для обратной совместимости)
+// WEBHOOK — ОБЩИЙ (все правила, для обратной совместимости)
 // ────────────────────────────────────────────────────────────────
 
 app.post('/webhook', async (req, res) => {
@@ -2590,7 +2590,7 @@ app.post('/webhook', async (req, res) => {
         }
     }
 
-    // Выполнить интеграции, соответствующие этому РІPµP±C…уку
+    // Выполнить интеграции, соответствующие этому webhook
     await executeMatchingIntegrations(incomingPayload, 'webhook', firstMatchedAccountId);
 
     logWebhook(req.body, matched, rules.length, telegram_results, firstMatchedAccountId);
@@ -2598,7 +2598,7 @@ app.post('/webhook', async (req, res) => {
 });
 
 // ────────────────────────────────────────────────────────────────
-// Р”Р РЈР“РЕ РОУТЫ (логи, здоровье, очередь)
+// ДРУГИЕ РОУТЫ (логи, здоровье, очередь)
 // ────────────────────────────────────────────────────────────────
 
 app.get('/health', (req, res) => res.json({ ok: true }));
@@ -2974,7 +2974,7 @@ app.get('/api/bots', auth, async (req, res) => {
     }
 });
 
-// Рстория ботов (MUST be before /api/bots/:id to avoid param capture)
+// История ботов (MUST be before /api/bots/:id to avoid param capture)
 app.get('/api/bots/history', auth, async (req, res) => {
     const accountId = getAccountId(req);
     try {
@@ -4836,7 +4836,7 @@ function parseNaturalLanguageReminder(rawText, timeZone = 'UTC') {
             const dayWord = String(m[2] || '').toLowerCase();
             const parsedTime = m[3] != null ? parseFlexibleTimeToken(m[3]) : { hour: 9, minute: 0 };
             if (!message || !parsedTime || !isValidHourMinute(parsedTime.hour, parsedTime.minute)) {
-                return { error: 'Неверное время. Рспользуйте часы 0-23 и минуты 0-59' };
+                return { error: 'Неверное время. Используйте часы 0-23 и минуты 0-59' };
             }
 
             let offsetDays = 0;
@@ -6741,7 +6741,7 @@ app.get('/api/reminders/:id/history', auth, async (req, res) => {
 // ============ INTEGRATIONS API ============
 
 async function loadIntegrationsCache() {
-    console.log('tg“Ґ Loading integrations cache...');
+    console.log('[INT] Loading integrations cache...');
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             const result = await db.query('SELECT id, data, account_id FROM integrations');
@@ -6749,7 +6749,7 @@ async function loadIntegrationsCache() {
                 .map(r => ({ ...r.data, id: r.id, account_id: r.account_id }))
                 .map(normalizeIntegration)
                 .filter(Boolean);
-            console.log(`v?… Loaded ${integrationsCache.length} integrations from database`);
+            console.log(`[INT] Loaded ${integrationsCache.length} integrations from database`);
             return true;
         } catch (e) {
             console.error('Error loading integrations cache from DB:', e);
@@ -6760,7 +6760,7 @@ async function loadIntegrationsCache() {
     integrationsCache = loadIntegrationsFromFile()
         .map(normalizeIntegration)
         .filter(Boolean);
-    console.log(`v?… Loaded ${integrationsCache.length} integrations from file`);
+    console.log(`[INT] Loaded ${integrationsCache.length} integrations from file`);
     return true;
 }
 
@@ -6813,7 +6813,7 @@ async function executeIntegrationPolling(integration) {
         return;
     }
 
-    console.log(`tg”„ Polling integration ${integration.id} (${integration.name})...`);
+    console.log(`[POLL] Polling integration ${integration.id} (${integration.name})...`);
 
     const headers = parseJsonSafe(integration.pollingHeaders, {});
     const body = parseJsonSafe(integration.pollingBody, null);
@@ -6839,21 +6839,21 @@ async function executeIntegrationPolling(integration) {
     };
 
     try {
-        console.log(`   tg“¤ ${method} ${integration.pollingUrl}`);
+        console.log(`   [REQ] ${method} ${integration.pollingUrl}`);
         const response = await axios(requestConfig);
-        console.log(`   v?“ Got response: ${response.status}`);
+        console.log(`   [RESP] Status: ${response.status}`);
         const responseData = response.data ?? {};
         runData.triggerData = JSON.stringify(responseData).slice(0, 2000);
         const conditionMet = evaluateIntegrationCondition(integration.pollingCondition, responseData);
         console.log(`   Condition: ${integration.pollingCondition ? conditionMet : 'no condition'}`);
         if (!conditionMet) {
-            console.log(`   v?­пёЏ Condition not met, skipping action`);
+            console.log(`   [SKIP] Condition not met, skipping action`);
             runData.status = 'skipped';
             runData.errorMessage = 'Condition not met';
             await logIntegrationRun(integration.id, runData);
             return;
         }
-        console.log(`   v?… Executing action...`);
+        console.log(`   [ACT] Executing action...`);
         const runResult = await executeIntegration(integration, responseData, 'polling');
         // Если интеграция сработала успешно и pollingContinueAfterMatch равно false, то выключаем интеграцию
         if (
@@ -6870,7 +6870,7 @@ async function executeIntegrationPolling(integration) {
             }
         }
     } catch (error) {
-        console.error(`   v?— Integration polling error [${integration.id}]:`, error.message);
+        console.error(`   [ERR] Integration polling error [${integration.id}]:`, error.message);
         runData.status = 'error';
         runData.errorMessage = error.message;
         await logIntegrationRun(integration.id, runData);
@@ -6881,7 +6881,7 @@ function scheduleIntegrationTimers() {
     const list = Array.isArray(integrationsCache) ? integrationsCache : [];
     let scheduled = 0;
 
-    console.log(`tg“‹ Processing ${list.length} integrations for polling...`);
+    console.log(`[POLL] Processing ${list.length} integrations for polling...`);
 
     list.forEach(raw => {
         const integration = normalizeIntegration(raw);
@@ -6891,15 +6891,15 @@ function scheduleIntegrationTimers() {
         }
 
         console.log(
-            `tg”Ќ Integration ${integration.id}: enabled=${integration.enabled}, triggerType="${integration.triggerType}", pollingUrl="${integration.pollingUrl}"`
+            `[INT] Integration ${integration.id}: enabled=${integration.enabled}, triggerType="${integration.triggerType}", pollingUrl="${integration.pollingUrl}"`
         );
 
         if (!integration.enabled) {
-            console.log(`v?ёпёЏ Integration ${integration.id} (${integration.name}) is disabled`);
+            console.log(`[SKIP] Integration ${integration.id} (${integration.name}) is disabled`);
             return;
         }
         if (integration.triggerType !== 'polling') {
-            console.log(`v?­пёЏ Integration ${integration.id} (${integration.name}) has triggerType: ${integration.triggerType} (skip)`);
+            console.log(`[SKIP] Integration ${integration.id} (${integration.name}) has triggerType: ${integration.triggerType} (skip)`);
             return;
         }
         if (!integration.pollingUrl || integration.pollingUrl.trim() === '') {
@@ -6919,11 +6919,11 @@ function scheduleIntegrationTimers() {
         }, intervalMs);
         integrationTimers.set(integration.id, timer);
 
-        console.log(`v?… Scheduled polling for ${integration.name} (ID: ${integration.id}) every ${integration.pollingInterval}s`);
+        console.log(`[POLL] Scheduled ${integration.name} (ID: ${integration.id}) every ${integration.pollingInterval}s`);
         scheduled += 1;
     });
 
-    console.log(`v?Ё Successfully scheduled ${scheduled} polling integrations`);
+    console.log(`[POLL] Successfully scheduled ${scheduled} polling integrations`);
 }
 
 function stopIntegrationWorkers() {
@@ -6934,16 +6934,16 @@ function stopIntegrationWorkers() {
 }
 
 async function startIntegrationWorkers() {
-    console.log('tgљЂ Starting integration workers...');
+    console.log('[INT] Starting integration workers...');
     stopIntegrationWorkers();
     const ok = await loadIntegrationsCache();
     if (!ok) {
         console.warn('⚠️ Integration cache not loaded; skipping polling scheduling');
         return;
     }
-    console.log(`tg“¦ Integration cache loaded with ${integrationsCache.length} items`);
+    console.log(`[INT] Integration cache loaded with ${integrationsCache.length} items`);
     scheduleIntegrationTimers();
-    console.log('v?… Integration workers started');
+    console.log('[INT] Integration workers started');
 }
 
 async function refreshIntegrationWorkers() {
@@ -7017,7 +7017,7 @@ async function logIntegrationRun(integrationId, data) {
     }
 }
 
-// Выполнить интеграции, соответствующие РІPµP±C…уку
+// Выполнить интеграции, соответствующие webhook
 async function executeMatchingIntegrations(payload, triggerType = 'webhook', accountId = null) {
     try {
         let integrations = [];
@@ -7066,8 +7066,8 @@ async function executeMatchingIntegrations(payload, triggerType = 'webhook', acc
                 // Выполняем интеграцию
                 await executeIntegration(integration, payload, 'webhook');
 
-                // Для РІPµP±C…ук-интеграций нет специального поля "продолжать после совпадения", 
-                // так как они срабатывают при каждом РІPµP±C…уке. Это поле используется только для polling интеграций.
+                // Для webhook-интеграций нет специального поля "продолжать после совпадения",
+                // так как они срабатывают при каждом webhook. Это поле используется только для polling интеграций.
                 // Но если в будущем добавится такое поле, логика будет такой:
                 // if (integration.triggerType === 'webhook' && integration.webhookContinueAfterMatch === false) {
                 //     console.log(`   ⚙️ Disabling integration ${integration.id} after match (webhookContinueAfterMatch=false)`);
@@ -7131,7 +7131,7 @@ async function executeIntegration(integration, triggerData = null, triggerType =
         }
 
         if (!shouldExecuteAction) {
-            console.log(`v?­пёЏ Skipping action: condition not met`);
+            console.log(`[SKIP] Skipping action: condition not met`);
             runData.status = 'skipped';
             runData.errorMessage = 'Condition not met';
             await logIntegrationRun(integration.id, runData);
@@ -7192,11 +7192,11 @@ async function executeIntegration(integration, triggerData = null, triggerType =
         // Отправляем в Telegram если включено и настроено
         if (integration.sendToTelegram && integration.chatId && runData.status === 'success') {
             const botToken = await resolveBotToken(integration.botToken, integration.account_id);
-            let message = integration.messageTemplate || `Рнтеграция "${integration.name}" выполнена`;
+            let message = integration.messageTemplate || `Интеграция "${integration.name}" выполнена`;
             
             // Данные для шаблона: response (ответ action API) и trigger (данные триггера)
             let responseData = null;
-            // Рспользуем полный ответ для шаблона (не обрезанный)
+            // Используем полный ответ для шаблона (не обрезанный)
             if (runData.fullResponse) {
                 responseData = parseJsonSafe(runData.fullResponse, null);
             } else if (runData.actionResponse) {
@@ -7468,7 +7468,7 @@ app.post('/api/integrations/:id/run', auth, blockAuditorWrite, async (req, res) 
     }
 });
 
-// Рстория интеграций
+// История интеграций
 app.get('/api/integrations/history/all', auth, async (req, res) => {
     const accountId = getAccountId(req);
     try {
@@ -7600,7 +7600,7 @@ app.get('/api/reminders/settings', auth, async (req, res) => {
     }
 });
 
-// РЎРѕC…ранить токен бота напоминаний
+// Сохранить токен бота напоминаний
 app.post('/api/reminders/settings/token', auth, async (req, res) => {
     const { botToken } = req.body;
     
@@ -7618,7 +7618,7 @@ app.post('/api/reminders/settings/token', auth, async (req, res) => {
         return res.status(400).json({ error: 'Invalid bot token' });
     }
     
-    // РЎРѕC…раняем в БД
+    // Сохраняем в БД
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         try {
             await db.query(
