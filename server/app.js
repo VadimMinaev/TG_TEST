@@ -5065,6 +5065,26 @@ function normalizeLanguageInput(input) {
     return null;
 }
 
+function isRussianLanguage(languageCode) {
+    return String(languageCode || 'ru').toLowerCase() === 'ru';
+}
+
+function reminderUiText(key, languageCode = 'ru') {
+    const ru = isRussianLanguage(languageCode);
+    const dict = {
+        quickActionsTitle: ru ? 'Выберите действие:' : 'Choose an action:',
+        quickCreate: ru ? 'Создать' : 'Create',
+        quickList: ru ? 'Мои напоминания' : 'My reminders',
+        quickSettings: ru ? 'Настройки' : 'Settings',
+        quickHelp: ru ? 'Помощь' : 'Help',
+        languageSaved: ru ? 'Язык сохранен' : 'Language saved',
+        languageUpdated: ru ? 'Язык обновлен' : 'Language updated',
+        timezoneSaved: ru ? 'Часовой пояс сохранен' : 'Timezone saved',
+        timezoneUpdated: ru ? 'Часовой пояс обновлен' : 'Timezone updated'
+    };
+    return dict[key] || '';
+}
+
 function parseInterval(str) {
     // Parse: 10m, 1h, 1d, 1w
     const match = str.match(/^(\d+)([mhdw])$/i);
@@ -5250,7 +5270,7 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
         await sendLanguageSelectionPrompt(
             botToken,
             chatId,
-            '⚠️ Перед использованием бота нужно выбрать язык.\n\nОтправьте:\nru\nили\nen\n\nРли командой:\n/settings language ru'
+            '⚠️ Перед использованием бота нужно выбрать язык.\n\nОтправьте:\nru\nили\nen\n\nИли командой:\n/settings language ru'
         );
         return { ok: true };
     }
@@ -5261,7 +5281,7 @@ async function handleTelegramCommand(text, chatId, telegramUser) {
         await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
-            '⚠️ Перед использованием бота нужно выбрать часовой пояс.\n\nОтправьте, например:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York\n\nРли командой:\n/settings timezone Europe/Moscow'
+            '⚠️ Перед использованием бота нужно выбрать часовой пояс.\n\nОтправьте, например:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York\n\nИли командой:\n/settings timezone Europe/Moscow'
         );
         return { ok: true };
     }
@@ -5491,7 +5511,12 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
             return { ok: true };
         }
 
-        await sendReminderQuickActions(botToken, chatId, `Language updated: ${normalizedLanguage}`);
+        await sendReminderQuickActions(
+            botToken,
+            chatId,
+            `${reminderUiText('languageUpdated', normalizedLanguage)}: ${normalizedLanguage}`,
+            normalizedLanguage
+        );
         return { ok: true };
     }
 
@@ -5524,7 +5549,12 @@ async function handleSettingsCommand(args, chatId, telegramUser) {
         telegramUser.timezone = value;
         telegramUser.timezone_is_set = true;
         pendingTimezoneInput.delete(telegramUser.id);
-        await sendReminderQuickActions(botToken, chatId, `Timezone updated: ${value}`);
+        await sendReminderQuickActions(
+            botToken,
+            chatId,
+            `${reminderUiText('timezoneUpdated', telegramUser.language_code)}: ${value}`,
+            telegramUser.language_code
+        );
         return { ok: true };
     }
 
@@ -5612,7 +5642,7 @@ async function handlePendingLanguageInput(text, chatId, telegramUser) {
 
     const saveResult = await setUserLanguage(telegramUser.id, normalizedLanguage);
     if (!saveResult.success) {
-        await sendTelegramMessage(botToken, chatId, `❌ Не удалось CЃРѕC…ранить язык: ${saveResult.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ Не удалось сохранить язык: ${saveResult.error}`);
         return { ok: true };
     }
 
@@ -5630,7 +5660,12 @@ async function handlePendingLanguageInput(text, chatId, telegramUser) {
         return { ok: true };
     }
 
-    await sendReminderQuickActions(botToken, chatId, `Language saved: ${normalizedLanguage}`);
+    await sendReminderQuickActions(
+        botToken,
+        chatId,
+        `${reminderUiText('languageSaved', normalizedLanguage)}: ${normalizedLanguage}`,
+        normalizedLanguage
+    );
     return { ok: true };
 }
 
@@ -5641,21 +5676,26 @@ async function handlePendingTimezoneInput(text, chatId, telegramUser) {
         await sendTimeZoneSelectionPrompt(
             botToken,
             chatId,
-            `❌ Неверный часовой пояс: ${candidate}\n\nПримеры РєРѕCЂCЂPµРєC‚РЅC‹C… значений:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York`
+            `❌ Неверный часовой пояс: ${candidate}\n\nПримеры корректных значений:\nEurope/Moscow\nAsia/Almaty\nAmerica/New_York`
         );
         return { ok: true };
     }
 
     const saveResult = await setUserTimeZone(telegramUser.id, candidate);
     if (!saveResult.success) {
-        await sendTelegramMessage(botToken, chatId, `❌ Не удалось CЃРѕC…ранить часовой пояс: ${saveResult.error}`);
+        await sendTelegramMessage(botToken, chatId, `❌ Не удалось сохранить часовой пояс: ${saveResult.error}`);
         return { ok: true };
     }
 
     telegramUser.timezone = candidate;
     telegramUser.timezone_is_set = true;
     pendingTimezoneInput.delete(telegramUser.id);
-    await sendReminderQuickActions(botToken, chatId, `Timezone saved: ${candidate}`);
+    await sendReminderQuickActions(
+        botToken,
+        chatId,
+        `${reminderUiText('timezoneSaved', telegramUser.language_code)}: ${candidate}`,
+        telegramUser.language_code
+    );
     return { ok: true };
 }
 
@@ -5696,11 +5736,11 @@ function buildReminderConfirmationText(parsed, userTimeZone) {
             ? `\nПовтор: cron (${parsed.repeatConfig?.cron || ''})`
             : '';
 
-    return `Проверьте данные перед CЃРѕC…ранением:
+    return `Проверьте данные перед сохранением:
 
-tg“ќ ${parsed.message}
-v?° ${dateStr}
-tgЊЌ ${userTimeZone}${repeatInfo}`;
+Текст: ${parsed.message}
+Дата и время: ${dateStr}
+Часовой пояс: ${userTimeZone}${repeatInfo}`;
 }
 
 async function maybeConfirmOrCreateReminder(parsed, chatId, telegramUser, sourceMode = 'single') {
@@ -5969,7 +6009,12 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
             pendingTimezoneInput.set(telegramUser.id, { chatId, createdAt: Date.now() });
             await sendTimeZoneSelectionPrompt(botToken, chatId, 'Язык сохранен. Теперь выберите часовой пояс.');
         } else {
-            await sendReminderQuickActions(botToken, chatId, 'Language saved. Choose an action:');
+            await sendReminderQuickActions(
+                botToken,
+                chatId,
+                `${reminderUiText('languageSaved', telegramUser.language_code)}. ${reminderUiText('quickActionsTitle', telegramUser.language_code)}`,
+                telegramUser.language_code
+            );
         }
         await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Язык сохранен');
         return { ok: true };
@@ -6047,7 +6092,12 @@ async function handleCallbackQuery(callbackQuery, telegramUser) {
         telegramUser.timezone = tzValue;
         telegramUser.timezone_is_set = true;
         pendingTimezoneInput.delete(telegramUser.id);
-        await sendReminderQuickActions(botToken, chatId, `Timezone saved: ${tzValue}`);
+        await sendReminderQuickActions(
+            botToken,
+            chatId,
+            `${reminderUiText('timezoneSaved', telegramUser.language_code)}: ${tzValue}`,
+            telegramUser.language_code
+        );
         await answerTelegramCallbackQuery(botToken, callbackQuery.id, 'Timezone сохранен');
         return { ok: true };
     }
@@ -6323,17 +6373,18 @@ async function sendQuietHoursSelectionPrompt(botToken, chatId, text) {
 }
 
 
-async function sendReminderQuickActions(botToken, chatId, text = 'Choose an action:') {
-    return await sendTelegramMessage(botToken, chatId, text, {
+async function sendReminderQuickActions(botToken, chatId, text = null, languageCode = 'ru') {
+    const messageText = text || reminderUiText('quickActionsTitle', languageCode);
+    return await sendTelegramMessage(botToken, chatId, messageText, {
         reply_markup: {
             inline_keyboard: [
                 [
-                    { text: 'Create', callback_data: 'action:add' },
-                    { text: 'My reminders', callback_data: 'action:list' }
+                    { text: reminderUiText('quickCreate', languageCode), callback_data: 'action:add' },
+                    { text: reminderUiText('quickList', languageCode), callback_data: 'action:list' }
                 ],
                 [
-                    { text: 'Settings', callback_data: 'action:settings' },
-                    { text: 'Help', callback_data: 'action:help' }
+                    { text: reminderUiText('quickSettings', languageCode), callback_data: 'action:settings' },
+                    { text: reminderUiText('quickHelp', languageCode), callback_data: 'action:help' }
                 ]
             ]
         }
