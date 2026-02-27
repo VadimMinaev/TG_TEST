@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import { api, Reminder, ReminderLog } from '../lib/api';
 import { useToast } from '../components/ToastNotification';
 import { useAuth } from '../lib/auth-context';
@@ -72,6 +72,7 @@ function normalizeForm(reminder: Reminder): ReminderForm {
 }
 
 export function Reminders() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const canEdit = user?.role !== 'auditor';
   const { addToast } = useToast();
@@ -119,6 +120,21 @@ export function Reminders() {
   useEffect(() => {
     loadReminders();
   }, []);
+
+  useEffect(() => {
+    const selectParam = searchParams.get('select');
+    if (!selectParam) return;
+
+    const id = Number(selectParam);
+    if (Number.isInteger(id) && id > 0) {
+      setSelectedReminderId(id);
+      setEditingReminderId(null);
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('select');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     const loadHistory = async () => {

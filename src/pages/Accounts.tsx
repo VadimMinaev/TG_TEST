@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router';
 import { api, Account, AccountCloneOptions } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
@@ -20,6 +21,7 @@ const EMPTY_INCLUDE: CloneIncludeState = {
 
 export function Accounts() {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -57,6 +59,21 @@ export function Accounts() {
   useEffect(() => {
     if (user?.isVadmin) loadAccounts();
   }, [user]);
+
+  useEffect(() => {
+    const selectParam = searchParams.get('select');
+    if (!selectParam) return;
+
+    const id = Number(selectParam);
+    if (Number.isInteger(id) && id > 0) {
+      setCreating(false);
+      setSelectedAccountId(id);
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete('select');
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const loadAccounts = async () => {
     try {

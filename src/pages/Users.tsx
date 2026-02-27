@@ -72,6 +72,14 @@ export function Users() {
   useEffect(() => {
     if (searchParams.get('create') === 'true' && canManageUsers) setMode('create');
     if (searchParams.get('profile') === 'true' && !isVadmin) setMode('profile');
+    const selectParam = searchParams.get('select');
+    if (selectParam) {
+      const id = Number(selectParam);
+      if (Number.isInteger(id) && id > 0) {
+        setSelectedUserId(id);
+        setMode('view');
+      }
+    }
     setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams, canManageUsers, isVadmin]);
 
