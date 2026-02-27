@@ -182,17 +182,13 @@ export function GlobalSearch() {
           className="flex-1 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
         />
         {query ? (
-          <button 
-            onClick={() => setQuery('')} 
+          <button
+            onClick={() => setQuery('')}
             className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
           >
             <X className="h-4 w-4" />
           </button>
-        ) : (
-          <kbd className="rounded bg-[hsl(var(--muted))] px-1.5 py-0.5 text-[10px] font-medium text-[hsl(var(--muted-foreground))]">
-            /
-          </kbd>
-        )}
+        ) : null}
       </div>
 
       {/* Dropdown */}
