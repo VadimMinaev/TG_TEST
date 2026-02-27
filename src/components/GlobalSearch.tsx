@@ -197,7 +197,7 @@ export function GlobalSearch() {
 
       {/* Dropdown */}
       {isFocused && (
-        <div className="topbar-search-dropdown">
+        <div className="topbar-search-dropdown" role="listbox" aria-label="Global search results">
           {loading ? (
             <div className="flex items-center justify-center px-3 py-6">
               <div className="h-5 w-5 animate-spin rounded-full border-2 border-[hsl(var(--primary))] border-t-transparent" />
@@ -208,33 +208,33 @@ export function GlobalSearch() {
             </div>
           ) : !query ? (
             <div className="p-3">
-              <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+              <div className="topbar-search-section-title px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
                 Быстрые действия
               </div>
               <button
                 onClick={() => handleQuickAction('/?create=true')}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
+                className="topbar-search-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
               >
                 <ListChecks className="h-4 w-4 text-[hsl(var(--primary))]" />
                 <span>Создать Webhook</span>
               </button>
               <button
                 onClick={() => handleQuickAction('/polling?create=true')}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
+                className="topbar-search-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
               >
                 <Repeat className="h-4 w-4 text-[hsl(var(--primary))]" />
                 <span>Создать пуллинг</span>
               </button>
               <button
                 onClick={() => handleQuickAction('/telegram?tab=automation&create=true')}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
+                className="topbar-search-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
               >
                 <BotIcon className="h-4 w-4 text-[hsl(var(--primary))]" />
                 <span>Создать бота</span>
               </button>
               <button
                 onClick={() => handleQuickAction('/history')}
-                className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
+                className="topbar-search-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-[hsl(var(--accent))]"
               >
                 <FileText className="h-4 w-4 text-[hsl(var(--primary))]" />
                 <span>История вебхуков</span>
@@ -244,7 +244,7 @@ export function GlobalSearch() {
             <div className="p-3">
               {results.filter(r => r.type === 'rule').length > 0 && (
                 <>
-                  <div className="px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                  <div className="topbar-search-section-title px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
                     Webhook
                   </div>
                   {results.filter(r => r.type === 'rule').map((result) => {
@@ -253,7 +253,7 @@ export function GlobalSearch() {
                       <button
                         key={`rule-${result.id}`}
                         onClick={() => handleSelect(result)}
-                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
+                        className={`topbar-search-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
                           selectedIndex === globalIdx ? 'bg-[hsl(var(--accent))]' : 'hover:bg-[hsl(var(--accent)_/_0.5)]'
                         }`}
                       >
@@ -280,7 +280,7 @@ export function GlobalSearch() {
               )}
               {results.filter(r => r.type === 'poll').length > 0 && (
                 <>
-                  <div className="mt-1 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
+                  <div className="topbar-search-section-title mt-1 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
                     Пуллинг
                   </div>
                   {results.filter(r => r.type === 'poll').map((result) => {
@@ -289,7 +289,7 @@ export function GlobalSearch() {
                       <button
                         key={`poll-${result.id}`}
                         onClick={() => handleSelect(result)}
-                        className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
+                        className={`topbar-search-item flex w-full items-center gap-2 rounded-md px-3 py-2 text-left transition-colors ${
                           selectedIndex === globalIdx ? 'bg-[hsl(var(--accent))]' : 'hover:bg-[hsl(var(--accent)_/_0.5)]'
                         }`}
                       >

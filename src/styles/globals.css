@@ -318,10 +318,46 @@ body {
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
   box-shadow: 0 10px 40px -10px hsl(var(--foreground) / 0.2);
-  max-height: 320px;
+  max-height: min(60vh, 360px);
+  padding: 4px;
+  overflow-x: hidden;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--border)) transparent;
   z-index: 50;
   animation: fadeIn 0.15s ease;
+}
+
+.topbar-search-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.topbar-search-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.topbar-search-dropdown::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 999px;
+}
+
+.topbar-search-section-title {
+  letter-spacing: 0.06em;
+}
+
+.topbar-search-item {
+  border: 1px solid transparent;
+}
+
+.topbar-search-item:hover {
+  border-color: hsl(var(--border) / 0.6);
+}
+
+.topbar-search-item:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -1px;
 }
 
 .topbar-actions {
