@@ -4,9 +4,6 @@ import { api, Account, User } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Pencil, Plus, Search, Trash2, UserRound } from 'lucide-react';
 import { useToast } from '../components/ToastNotification';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Button } from '../components/ui/button';
 
 type Mode = 'view' | 'create' | 'edit' | 'profile';
 
@@ -306,24 +303,24 @@ export function Users() {
         <div className="split-right">
           <div className="panel users-entity-panel">
             {mode === 'create' && canManageUsers ? (
-              <form onSubmit={handleCreateUser} className="flex flex-col gap-5">
+              <form onSubmit={handleCreateUser} className="entity-edit-form flex flex-col gap-5">
                 <h3 className="mb-4 text-lg font-semibold">Создать пользователя</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="mb-2 block">Логин *</Label>
-                    <Input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="username" required />
+                    <label className="mb-2 block text-sm font-medium">Логин *</label>
+                    <input value={newUsername} onChange={(e) => setNewUsername(e.target.value)} placeholder="username" required />
                   </div>
                   <div>
-                    <Label className="mb-2 block">Имя</Label>
-                    <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Иван Петров" />
+                    <label className="mb-2 block text-sm font-medium">Имя</label>
+                    <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Иван Петров" />
                   </div>
                   <div>
-                    <Label className="mb-2 block">Пароль *</Label>
-                    <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Введите пароль" required />
+                    <label className="mb-2 block text-sm font-medium">Пароль *</label>
+                    <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Введите пароль" required />
                   </div>
                   <div>
-                    <Label className="mb-2 block">Роль</Label>
-                    <select className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2" value={newRole} onChange={(e) => setNewRole(e.target.value as 'administrator' | 'auditor')}>
+                    <label className="mb-2 block text-sm font-medium">Роль</label>
+                    <select value={newRole} onChange={(e) => setNewRole(e.target.value as 'administrator' | 'auditor')}>
                       <option value="administrator">Администратор</option>
                       <option value="auditor">Аудитор</option>
                     </select>
@@ -331,37 +328,37 @@ export function Users() {
                 </div>
                 {isVadmin && (
                   <div>
-                    <Label className="mb-2 block">Аккаунт *</Label>
-                    <select className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2" value={newAccountId} onChange={(e) => setNewAccountId(e.target.value ? Number(e.target.value) : '')} required>
+                    <label className="mb-2 block text-sm font-medium">Аккаунт *</label>
+                    <select value={newAccountId} onChange={(e) => setNewAccountId(e.target.value ? Number(e.target.value) : '')} required>
                       <option value="">— выберите —</option>
                       {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   </div>
                 )}
                 <div className="flex gap-3 pt-2">
-                  <Button type="submit" className="flex-1">Сохранить пользователя</Button>
-                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setMode('view')}>Отмена</Button>
+                  <button type="submit" className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]">Сохранить пользователя</button>
+                  <button type="button" onClick={() => setMode('view')} className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]">Отмена</button>
                 </div>
               </form>
             ) : mode === 'edit' && canManageUsers && selectedUser ? (
-              <form onSubmit={handleEditUser} className="flex flex-col gap-5">
+              <form onSubmit={handleEditUser} className="entity-edit-form flex flex-col gap-5">
                 <h3 className="mb-4 text-lg font-semibold">Редактировать пользователя</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="mb-2 block">Логин *</Label>
-                    <Input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} placeholder="username" required />
+                    <label className="mb-2 block text-sm font-medium">Логин *</label>
+                    <input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} placeholder="username" required />
                   </div>
                   <div>
-                    <Label className="mb-2 block">Имя</Label>
-                    <Input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Иван Петров" />
+                    <label className="mb-2 block text-sm font-medium">Имя</label>
+                    <input value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Иван Петров" />
                   </div>
                   <div>
-                    <Label className="mb-2 block">Новый пароль</Label>
-                    <Input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Оставьте пустым, чтобы не менять" />
+                    <label className="mb-2 block text-sm font-medium">Новый пароль</label>
+                    <input type="password" value={editPassword} onChange={(e) => setEditPassword(e.target.value)} placeholder="Оставьте пустым, чтобы не менять" />
                   </div>
                   <div>
-                    <Label className="mb-2 block">Роль</Label>
-                    <select className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2" value={editRole} onChange={(e) => setEditRole(e.target.value as 'administrator' | 'auditor')}>
+                    <label className="mb-2 block text-sm font-medium">Роль</label>
+                    <select value={editRole} onChange={(e) => setEditRole(e.target.value as 'administrator' | 'auditor')}>
                       <option value="administrator">Администратор</option>
                       <option value="auditor">Аудитор</option>
                     </select>
@@ -369,40 +366,40 @@ export function Users() {
                 </div>
                 {isVadmin && (
                   <div>
-                    <Label className="mb-2 block">Аккаунт *</Label>
-                    <select className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2" value={editAccountId} onChange={(e) => setEditAccountId(e.target.value ? Number(e.target.value) : '')} required>
+                    <label className="mb-2 block text-sm font-medium">Аккаунт *</label>
+                    <select value={editAccountId} onChange={(e) => setEditAccountId(e.target.value ? Number(e.target.value) : '')} required>
                       <option value="">— выберите —</option>
                       {accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </select>
                   </div>
                 )}
                 <div className="flex gap-3 pt-2">
-                  <Button type="submit" className="flex-1">Сохранить изменения</Button>
-                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setMode('view')}>Отмена</Button>
+                  <button type="submit" className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]">Сохранить изменения</button>
+                  <button type="button" onClick={() => setMode('view')} className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]">Отмена</button>
                 </div>
               </form>
             ) : mode === 'profile' && !isVadmin ? (
-              <form onSubmit={handleUpdateMe} className="flex flex-col gap-5 p-1">
+              <form onSubmit={handleUpdateMe} className="entity-edit-form flex flex-col gap-5 p-1">
                 <h3 className="text-xl font-semibold">Мой профиль</h3>
                 <div>
-                  <Label className="mb-2 block">Имя</Label>
-                  <Input type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Ваше имя" />
+                  <label className="mb-2 block text-sm font-semibold">Имя</label>
+                  <input type="text" value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Ваше имя" />
                 </div>
                 <div>
-                  <Label className="mb-2 block">Новый логин</Label>
-                  <Input type="text" value={profileUsername} onChange={(e) => setProfileUsername(e.target.value)} placeholder={user?.username} />
+                  <label className="mb-2 block text-sm font-semibold">Новый логин</label>
+                  <input type="text" value={profileUsername} onChange={(e) => setProfileUsername(e.target.value)} placeholder={user?.username} />
                 </div>
                 <div>
-                  <Label className="mb-2 block">Текущий пароль</Label>
-                  <Input type="password" value={profileOldPassword} onChange={(e) => setProfileOldPassword(e.target.value)} />
+                  <label className="mb-2 block text-sm font-semibold">Текущий пароль</label>
+                  <input type="password" value={profileOldPassword} onChange={(e) => setProfileOldPassword(e.target.value)} />
                 </div>
                 <div>
-                  <Label className="mb-2 block">Новый пароль</Label>
-                  <Input type="password" value={profilePassword} onChange={(e) => setProfilePassword(e.target.value)} />
+                  <label className="mb-2 block text-sm font-semibold">Новый пароль</label>
+                  <input type="password" value={profilePassword} onChange={(e) => setProfilePassword(e.target.value)} />
                 </div>
                 <div className="flex gap-3 pt-2">
-                  <Button type="submit" className="flex-1">Сохранить</Button>
-                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setMode('view')}>Отмена</Button>
+                  <button type="submit" className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]">Сохранить</button>
+                  <button type="button" onClick={() => setMode('view')} className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]">Отмена</button>
                 </div>
               </form>
             ) : selectedUser ? (

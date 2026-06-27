@@ -4,9 +4,6 @@ import { api, Account, AccountCloneOptions } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { useToast } from '../components/ToastNotification';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Button } from '../components/ui/button';
 
 type CloneIncludeState = {
   rules: boolean;
@@ -281,12 +278,12 @@ export function Accounts() {
         <div className="split-right">
           <div className="panel">
             {creating ? (
-              <form onSubmit={handleCreate} className="flex flex-col gap-5">
+              <form onSubmit={handleCreate} className="entity-edit-form flex flex-col gap-5">
                 <h3 className="mb-4 text-lg font-semibold">Создать аккаунт</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label className="mb-2 block">Название *</Label>
-                    <Input
+                    <label className="mb-2 block text-sm font-medium">Название *</label>
+                    <input
                       value={newName}
                       onChange={(e) => setNewName(e.target.value)}
                       placeholder="Название аккаунта"
@@ -297,14 +294,13 @@ export function Accounts() {
                     )}
                   </div>
                   <div>
-                    <Label className="mb-2 block">Наполнение нового аккаунта</Label>
+                    <label className="mb-2 block text-sm font-medium">Наполнение нового аккаунта</label>
                     <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
                       <div className="mb-3 text-xs text-[hsl(var(--muted-foreground))]">
                         Можно выбрать источник и скопировать нужные сущности сразу при создании.
                       </div>
-                      <Label className="mb-2 block text-sm font-medium">Источник</Label>
+                      <label className="mb-2 block text-sm font-medium">Источник</label>
                       <select
-                        className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                         value={cloneSourceAccountId}
                         onChange={(e) => {
                           const value = e.target.value ? Number(e.target.value) : '';
@@ -353,12 +349,20 @@ export function Accounts() {
                 </div>
 
                 <div className="flex gap-3 pt-2">
-                  <Button type="submit" disabled={duplicateNameExists} className="flex-1">
+                  <button
+                    type="submit"
+                    disabled={duplicateNameExists}
+                    className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] disabled:opacity-50"
+                  >
                     Создать аккаунт
-                  </Button>
-                  <Button type="button" variant="secondary" className="flex-1" onClick={handleCancelCreate}>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelCreate}
+                    className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
+                  >
                     Отмена
-                  </Button>
+                  </button>
                 </div>
               </form>
             ) : selectedAccount ? (

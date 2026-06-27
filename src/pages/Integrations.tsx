@@ -8,7 +8,6 @@ import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
-import { Button } from '../components/ui/button';
 import {
   Tooltip,
   TooltipContent,
@@ -841,11 +840,22 @@ export function Integrations() {
                   </div>
 
                   <div className="flex gap-3 pt-2">
-                    <Button type="submit" className="flex-1">Сохранить</Button>
-                    <Button type="button" variant="secondary" className="flex-1" onClick={() => {
-                      setEditingId(null);
-                      if (!selectedId) setForm(DEFAULT_FORM);
-                    }}>Отмена</Button>
+                    <button
+                      type="submit"
+                      className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
+                    >
+                      Сохранить
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(null);
+                        if (!selectedId) setForm(DEFAULT_FORM);
+                      }}
+                      className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
+                    >
+                      Отмена
+                    </button>
                   </div>
                 </form>
               </>

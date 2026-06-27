@@ -3,10 +3,6 @@ import { useSearchParams } from 'react-router';
 import { Bot, KeyRound, Pencil, RefreshCw, Save, Trash2, Unplug, Webhook } from 'lucide-react';
 import { api, AiBot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Button } from '../components/ui/button';
-import { Textarea } from '../components/ui/textarea';
 import { useToast } from '../components/ToastNotification';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { EntityStateSwitch } from '../components/StateToggle';
@@ -430,12 +426,12 @@ export function AiBots() {
         <div className="split-right">
           <div className={`panel ${editingId !== null ? 'entity-edit-panel' : ''}`}>
             {editingId !== null ? (
-              <form onSubmit={handleSave} className="flex flex-col gap-5">
+              <form onSubmit={handleSave} className="entity-edit-form flex flex-col gap-5">
                 <h3 className="text-lg font-semibold">{editingId === -1 ? 'Создание AI бота' : 'Редактирование AI бота'}</h3>
 
                 <div>
-                  <Label className="mb-2 block">Название</Label>
-                  <Input
+                  <label className="mb-2 block text-sm font-medium">Название</label>
+                  <input
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
                     placeholder="AI Ассистент"
@@ -443,7 +439,7 @@ export function AiBots() {
                 </div>
 
                 <div>
-                  <Label className="mb-2 block">Провайдер</Label>
+                  <label className="mb-2 block text-sm font-medium">Провайдер</label>
                   <select
                     value={form.provider || 'gemini'}
                     onChange={(event) => {
@@ -458,7 +454,6 @@ export function AiBots() {
                         };
                       });
                     }}
-                    className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                   >
                     <option value="gemini">Gemini</option>
                     <option value="groq">Groq</option>
@@ -470,8 +465,8 @@ export function AiBots() {
 
                 {form.provider === 'custom' && (
                   <div>
-                    <Label className="mb-2 block">URL API (Base URL)</Label>
-                    <Input
+                    <label className="mb-2 block text-sm font-medium">URL API (Base URL)</label>
+                    <input
                       value={form.apiBase || ''}
                       onChange={(event) => setForm((prev) => ({ ...prev, apiBase: event.target.value }))}
                       className="font-mono"
@@ -481,8 +476,8 @@ export function AiBots() {
                 )}
 
                 <div>
-                  <Label className="mb-2 block">Telegram Bot Token</Label>
-                  <Input
+                  <label className="mb-2 block text-sm font-medium">Telegram Bot Token</label>
+                  <input
                     value={form.telegramBotToken}
                     onChange={(event) => setForm((prev) => ({ ...prev, telegramBotToken: event.target.value }))}
                     className="font-mono"
@@ -491,10 +486,10 @@ export function AiBots() {
                 </div>
 
                 <div>
-                  <Label className="mb-2 block">
+                  <label className="mb-2 block text-sm font-medium">
                     API Key ({form.provider === 'groq' ? 'Groq' : form.provider === 'openai' ? 'OpenAI' : form.provider === 'openrouter' ? 'OpenRouter' : form.provider === 'custom' ? 'Custom' : 'Gemini'})
-                  </Label>
-                  <Input
+                  </label>
+                  <input
                     value={form.apiKey}
                     onChange={(event) => setForm((prev) => ({ ...prev, apiKey: event.target.value }))}
                     className="font-mono"
@@ -504,8 +499,8 @@ export function AiBots() {
 
                 {form.provider === 'custom' ? (
                   <div>
-                    <Label className="mb-2 block">Название модели</Label>
-                    <Input
+                    <label className="mb-2 block text-sm font-medium">Название модели</label>
+                    <input
                       value={form.model}
                       onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}
                       placeholder="qwen3-72b, llama-3.1-405b..."
@@ -513,7 +508,7 @@ export function AiBots() {
                   </div>
                 ) : (
                   <div>
-                    <Label className="mb-2 block">Модель</Label>
+                    <label className="mb-2 block text-sm font-medium">Модель</label>
                     <select
                       value={showCustomModelInput ? '__custom__' : form.model}
                       onChange={(event) => {
@@ -525,7 +520,6 @@ export function AiBots() {
                         setForceCustomModelInput(false);
                         setForm((prev) => ({ ...prev, model: value }));
                       }}
-                      className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                     >
                       {providerModels.map((modelName) => (
                         <option key={modelName} value={modelName}>
@@ -535,7 +529,7 @@ export function AiBots() {
                       <option value="__custom__">Своя модель...</option>
                     </select>
                     {showCustomModelInput && (
-                      <Input
+                      <input
                         value={form.model}
                         onChange={(event) => {
                           const nextValue = event.target.value;
@@ -552,8 +546,8 @@ export function AiBots() {
                 )}
 
                 <div>
-                  <Label className="mb-2 block">System Prompt (опционально)</Label>
-                  <Textarea
+                  <label className="mb-2 block text-sm font-medium">System Prompt (опционально)</label>
+                  <textarea
                     rows={4}
                     value={form.systemPrompt || ''}
                     onChange={(event) => setForm((prev) => ({ ...prev, systemPrompt: event.target.value }))}
@@ -575,13 +569,23 @@ export function AiBots() {
                 </div>
 
                 <div className="flex gap-3">
-                  <Button type="submit" disabled={saving} className="flex-1">
-                    <Save className="h-4 w-4" />
-                    {saving ? 'Сохранение...' : 'Сохранить'}
-                  </Button>
-                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditingId(null)}>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] disabled:opacity-60"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <Save className="h-4 w-4" />
+                      {saving ? 'Сохранение...' : 'Сохранить'}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(null)}
+                    className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
+                  >
                     Отмена
-                  </Button>
+                  </button>
                 </div>
               </form>
             ) : selectedBot ? (
