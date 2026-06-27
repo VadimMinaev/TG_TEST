@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Rule } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Plus, Search, Download, Upload, Info, Copy, CheckCheck, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Download, Upload, Info, Copy, CheckCheck, Pencil, Trash2, RefreshCw } from 'lucide-react';
 import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
