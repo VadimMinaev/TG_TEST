@@ -480,68 +480,41 @@ export function Bots() {
       </div>
 
 
-      <div className="split-layout p-6">
-        <div className="split-left">
-          <div className="panel">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список ботов</h3>
-              <button
-                onClick={() => loadBots()}
-                className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs"
-              >
-                Обновить
-              </button>
+      <div className="fp">
+        <div className="fp-sidebar">
+          <div className="fp-sidebar-head">
+            <span className="fp-sidebar-title">Телеграм боты</span>
+            <div className="fp-sidebar-actions">
+              {canEdit && <button className="fp-icon-btn" onClick={handleStartCreate} title="Создать"><Plus size={13} /></button>}
+              <button className="fp-icon-btn" onClick={() => loadBots()} title="Обновить"><RefreshCw size={13} /></button>
             </div>
+          </div>
+          <div className="fp-bot-list">
             {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-              </div>
+              <div className="fp-loading"><div className="fp-spinner" /></div>
             ) : bots.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Боты не найдены</p>
-            ) : (
-              <div className="entity-list-scroll scrollbar-thin">
-                <table className="table-basic w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Название</th>
-                      <th className="px-2 py-2">Тип</th>
-                      <th className="px-2 py-2">Расписание</th>
-                      <th className="px-2 py-2">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bots.map((bot) => (
-                      <tr
-                        key={bot.id}
-                        onClick={() => handleSelectBot(bot.id)}
-                        className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
-                          selectedBotId === bot.id ? 'bg-[hsl(var(--accent))]' : ''
-                        }`}
-                      >
-                        <td className="px-2 py-2 font-medium">
-                          <span className="inline-flex items-center gap-2">
-                            <span>{bot.name}</span>
-                            {isDraftBot(bot) && (
-                              <span className="rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                                Черновик
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2">{bot.messageType === 'poll' ? '📊' : '💬'}</td>
-                        <td className="px-2 py-2 text-xs">{formatSchedule(bot)}</td>
-                        <td className="px-2 py-2">{bot.enabled ? '✅' : '⏸️'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="fp-empty">Ботов нет</div>
+            ) : bots.map((bot) => (
+              <div key={bot.id} className={`fp-bot-item ${selectedBotId === bot.id ? 'active' : ''}`} onClick={() => handleSelectBot(bot.id)}>
+                <div className="fp-bot-avatar">{(bot.name || '?')[0]}</div>
+                <div className="fp-bot-info">
+                  <div className="fp-bot-name">{bot.name}</div>
+                  <div className="fp-bot-model">{bot.messageType === 'poll' ? 'Poll' : 'Message'} · {formatSchedule(bot)}</div>
+                </div>
+                <div className={`fp-dot ${bot.enabled ? 'on' : ''}`} />
               </div>
-            )}
+            ))}
           </div>
         </div>
 
-        <div className="split-right">
-          <div className={`panel ${editingBotId !== null ? 'entity-edit-panel' : ''}`}>
+        <div className="fp-panel">
+          <div className="fp-panel-head">
+            <div className="fp-panel-meta">
+              <div className="fp-panel-name">{editingBotId !== null ? (editingBotId === -1 ? 'Создание бота' : 'Редактирование') : selectedBotId ? 'Просмотр' : 'Телеграм боты'}</div>
+            </div>
+          </div>
+
+          <div className="fp-form-body">
           {editingBotId !== null ? (
             <>
               <h3 className="mb-4 text-lg font-semibold">

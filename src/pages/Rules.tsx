@@ -389,29 +389,33 @@ export function Rules() {
       </div>
 
 
-      <div className="split-layout p-6">
-        <div className="split-left">
-          <div className={`panel ${editingRuleId !== null ? 'entity-edit-panel' : ''}`}>
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список Webhook</h3>
-              <button
-                onClick={loadRules}
-                className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs hover:bg-[hsl(var(--accent))]"
-              >
-                Обновить
-              </button>
+      <div className="fp">
+        <div className="fp-sidebar">
+          <div className="fp-sidebar-head">
+            <span className="fp-sidebar-title">Webhook</span>
+            <div className="fp-sidebar-actions">
+              {canEdit && <button className="fp-icon-btn" onClick={handleStartCreate} title="Создать"><Plus size={13} /></button>}
+              <button className="fp-icon-btn" onClick={loadRules} title="Обновить"><RefreshCw size={13} /></button>
             </div>
-          <RulesList
-            rules={filteredRules}
-            selectedId={selectedRuleId}
-            onSelect={handleSelectRule}
-            loading={loading}
-          />
+          </div>
+          <div className="fp-bot-list">
+            <RulesList
+              rules={filteredRules}
+              selectedId={selectedRuleId}
+              onSelect={handleSelectRule}
+              loading={loading}
+            />
           </div>
         </div>
 
-        <div className="split-right">
-          <div className="panel">
+        <div className="fp-panel">
+          <div className="fp-panel-head">
+            <div className="fp-panel-meta">
+              <div className="fp-panel-name">{editingRuleId !== null ? (editingRuleId === -1 ? 'Создание Webhook' : 'Редактирование') : selectedRuleId ? 'Просмотр Webhook' : 'Webhook'}</div>
+            </div>
+          </div>
+
+          <div className="fp-form-body">
           {editingRuleId !== null ? (
             <RuleForm
               ruleId={editingRuleId === -1 ? null : editingRuleId}
@@ -432,19 +436,17 @@ export function Rules() {
               toggling={togglingRuleId === selectedRuleId}
             />
           ) : (
-            <div className="flex min-h-[420px] w-full flex-col items-center justify-center text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Выберите Webhook из списка слева для редактирования или просмотра</p>
-              <button
-                onClick={handleStartCreate}
-                className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
-              >
-                <Plus className="h-4 w-4" />
-                Создать Webhook
-              </button>
+            <div className="fp-placeholder">
+              <p>Выберите Webhook или создайте нового</p>
+              {canEdit && (
+                <button className="fp-btn fp-btn-primary" onClick={handleStartCreate}>
+                  <Plus size={14} /> Создать Webhook
+                </button>
+              )}
             </div>
           )}
+          </div>
         </div>
-      </div>
       </div>
 
       {/* Export Modal */}

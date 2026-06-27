@@ -466,63 +466,41 @@ export function Integrations() {
       </div>
 
 
-      <div className="split-layout p-6">
-        <div className="split-left">
-          <div className="panel">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список интеграций</h3>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">{integrations.length}</span>
+      <div className="fp">
+        <div className="fp-sidebar">
+          <div className="fp-sidebar-head">
+            <span className="fp-sidebar-title">Интеграции</span>
+            <div className="fp-sidebar-actions">
+              {canEdit && <button className="fp-icon-btn" onClick={handleStartCreate} title="Создать"><Plus size={13} /></button>}
+              <button className="fp-icon-btn" onClick={loadIntegrations} title="Обновить"><RefreshCw size={13} /></button>
             </div>
+          </div>
+          <div className="fp-bot-list">
             {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-              </div>
+              <div className="fp-loading"><div className="fp-spinner" /></div>
             ) : integrations.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Интеграции не найдены</p>
-            ) : (
-              <div className="entity-list-scroll scrollbar-thin">
-                <table className="table-basic w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Название</th>
-                      <th className="px-2 py-2">Триггер</th>
-                      <th className="px-2 py-2">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {integrations.map((integration) => (
-                      <tr
-                        key={integration.id}
-                        onClick={() => handleSelect(integration.id)}
-                        className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
-                          selectedId === integration.id ? 'bg-[hsl(var(--accent))]' : ''
-                        }`}
-                      >
-                        <td className="px-2 py-2 font-medium">
-                          <span className="inline-flex items-center gap-2">
-                            <span>{integration.name}</span>
-                            {isDraftIntegration(integration) && (
-                              <span className="rounded-full bg-[hsl(var(--muted))] px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-[hsl(var(--muted-foreground))]">
-                                Черновик
-                              </span>
-                            )}
-                          </span>
-                        </td>
-                        <td className="px-2 py-2 text-xs">
-                          {integration.triggerType === 'webhook' ? '📥 Webhook' : '🔄 Polling'}
-                        </td>
-                        <td className="px-2 py-2">{integration.enabled ? '✅ Вкл' : '⏸️ Выкл'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="fp-empty">Нет интеграций</div>
+            ) : integrations.map((int) => (
+              <div key={int.id} className={`fp-bot-item ${selectedId === int.id ? 'active' : ''}`} onClick={() => handleSelect(int.id)}>
+                <div className="fp-bot-avatar">{(int.name || '?')[0]}</div>
+                <div className="fp-bot-info">
+                  <div className="fp-bot-name">{int.name}</div>
+                  <div className="fp-bot-model">{int.triggerType}</div>
+                </div>
+                <div className={`fp-dot ${int.enabled ? 'on' : ''}`} />
               </div>
-            )}
+            ))}
           </div>
         </div>
 
-        <div className="split-right">
-          <div className={`panel ${editingId !== null ? 'entity-edit-panel' : ''}`}>
+        <div className="fp-panel">
+          <div className="fp-panel-head">
+            <div className="fp-panel-meta">
+              <div className="fp-panel-name">{editingId !== null ? (editingId === -1 ? 'Создание интеграции' : 'Редактирование') : 'Интеграции'}</div>
+            </div>
+          </div>
+
+          <div className="fp-form-body">
             {editingId !== null ? (
               <>
                 <h3 className="mb-4 text-lg font-semibold">
