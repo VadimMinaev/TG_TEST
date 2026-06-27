@@ -3823,29 +3823,35 @@ function parseReminderMarker(text) {
         const data = JSON.parse(match[1]);
         if (!data.message || !data.runAt) return null;
         const runAtDate = new Date(data.runAt);
-        if (Number.isNaN(runAtDate.getTime())) return null;
+        if (Number.isisNaN(runAtDate.getTime())) return null;
         return { message: String(data.message).trim(), runAt: runAtDate.toISOString() };
     } catch { return null; }
 }
 
-const REMINDER_SYSTEM_INSTRUCTION = `
-当你识别到用户想要创建提醒/напоминание时，请严格按以下格式回复：
+function buildReminderSystemInstruction() {
+    const now = new Date();
+    const utcStr = now.toISOString();
+    const moscowStr = now.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', weekday: 'short' });
+    return `Сейчас ${utcStr} (UTC), ${moscowStr} (Москва).
 
-[[REMINDER:{"message":"описание напоминания на русском","runAt":"2025-01-15T10:00:00Z"}]]
+Если пользователь просит напомнить о чём-то — отвечай ТОЛЬКО в этом формате:
+[[REMINDER:{"message":"текст напоминания на русском","runAt":"ISO8601 UTC"}]]
 
-После маркера напиши краткое подтверждение на русском языке (1-2 предложения).
-runAt — это UTC ISO 8601. Вычисляй дату/время из слов пользователя.
-Если пользователь сказал "завтра в 10" — посчитай реальную дату.
-Если точная дата не ясна — НЕ ставь маркер, а попроси уточнить.
-Примеры:
-- "Напомни позвонить маме завтра в 15:00" → [[REMINDER:{"message":"Позвонить маме","runAt":"2025-01-16T15:00:00Z"}]]
-- "Через час напомни про совещание" → [[REMINDER:{"message":"Совещание","runAt":"2025-01-15T11:00:00Z"}]]
-`.trim();
+После маркера напиши подтверждение (1-2 предложения).
+runAt — UTC ISO 8601. ВЫЧИСЛЯЙ дату/время ОТНОСИТЕЛЬНО текущего времени выше.
+Относительные формулировки: "через 5 минут", "через час", "завтра в 10", "в понедельник".
+Точная дата не ясна — НЕ ставь маркер, попроси уточнить.
+
+Примеры (при currentTime = 2025-01-15T10:00:00Z):
+"Напомни позвонить маме завтра в 15" → [[REMINDER:{"message":"Позвонить маме","runAt":"2025-01-16T15:00:00Z"}]]
+"Через 5 минут покурить" → [[REMINDER:{"message":"Пойти покурить","runAt":"2025-01-15T10:05:00Z"}]]
+"Через час совещание" → [[REMINDER:{"message":"Совещание","runAt":"2025-01-15T11:00:00Z"}]]`;
+}
 
 async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
 
-    const reminderInstruction = '\n\n' + REMINDER_SYSTEM_INSTRUCTION;
+    const reminderInstruction = '\n\n' + buildReminderSystemInstruction();
     const originalPrompt = String(aiBot.systemPrompt || '');
     const enhancedPrompt = originalPrompt + reminderInstruction;
 
