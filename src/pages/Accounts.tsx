@@ -2,22 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Account, AccountCloneOptions } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useToast } from '../components/ToastNotification';
+import { FormPage, FormPageItem, FormSection, FormField } from '../components/FormPage';
 
-type CloneIncludeState = {
-  rules: boolean;
-  polls: boolean;
-  integrations: boolean;
-  bots: boolean;
-};
-
-const EMPTY_INCLUDE: CloneIncludeState = {
-  rules: false,
-  polls: false,
-  integrations: false,
-  bots: false,
-};
+type CloneIncludeState = { rules: boolean; polls: boolean; integrations: boolean; bots: boolean };
+const EMPTY_INCLUDE: CloneIncludeState = { rules: false, polls: false, integrations: false, bots: false };
 
 export function Accounts() {
   const { user } = useAuth();
@@ -26,396 +16,136 @@ export function Accounts() {
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [selectedAccountId, setSelectedAccountId] = useState<number | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [saving, setSaving] = useState(false);
+  const { addToast } = useToast();
+
   const [newName, setNewName] = useState('');
   const [cloneSourceAccountId, setCloneSourceAccountId] = useState<number | ''>('');
   const [cloneInclude, setCloneInclude] = useState<CloneIncludeState>(EMPTY_INCLUDE);
-  const { addToast } = useToast();
 
-  const selectedAccount = useMemo(
-    () => accounts.find((a) => a.id === selectedAccountId) || null,
-    [accounts, selectedAccountId]
-  );
+  const selectedAccount = useMemo(() => accounts.find((a) => a.id === selectedAccountId) || null, [accounts, selectedAccountId]);
   const mainAccountId = useMemo(() => {
-    if (accounts.length === 0) return null;
-    return accounts.reduce((minId, account) => (account.id < minId ? account.id : minId), accounts[0].id);
+    if (!accounts.length) return null;
+    return accounts.reduce((min, a) => a.id < min ? a.id : min, accounts[0].id);
   }, [accounts]);
+
   const normalizedNewName = newName.trim().toLowerCase();
-  const duplicateNameExists = useMemo(
-    () => !!normalizedNewName && accounts.some((a) => a.name.trim().toLowerCase() === normalizedNewName),
-    [accounts, normalizedNewName]
-  );
+  const duplicateNameExists = useMemo(() => !!normalizedNewName && accounts.some((a) => a.name.trim().toLowerCase() === normalizedNewName), [accounts, normalizedNewName]);
 
-  const filteredAccounts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return accounts;
-    return accounts.filter((a) => {
-      const slug = a.slug || `account_${a.id}`;
-      return `${a.name} ${slug} ${a.id}`.toLowerCase().includes(q);
-    });
-  }, [accounts, searchQuery]);
-
+  useEffect(() => { if (user?.isVadmin) loadAccounts(); }, [user]);
 
   useEffect(() => {
-    if (user?.isVadmin) loadAccounts();
-  }, [user]);
-
-  useEffect(() => {
-    const selectParam = searchParams.get('select');
-    if (!selectParam) return;
-
-    const id = Number(selectParam);
-    if (Number.isInteger(id) && id > 0) {
-      setCreating(false);
-      setSelectedAccountId(id);
-    }
-
-    const next = new URLSearchParams(searchParams);
-    next.delete('select');
-    setSearchParams(next, { replace: true });
+    const sp = searchParams.get('select');
+    if (!sp) return;
+    const id = Number(sp);
+    if (Number.isInteger(id) && id > 0) { setCreating(false); setSelectedAccountId(id); }
+    setSearchParams({}, { replace: true });
   }, [searchParams, setSearchParams]);
 
   const loadAccounts = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getAccounts();
-      setAccounts(data);
-      if (data.length > 0 && selectedAccountId == null) {
-        setSelectedAccountId(data[0].id);
-      }
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка загрузки аккаунтов', 'error');
-    } finally {
-      setLoading(false);
-    }
+    try { setLoading(true); const d = await api.getAccounts(); setAccounts(d); if (d.length && selectedAccountId == null) setSelectedAccountId(d[0].id); }
+    catch (e: any) { addToast(e?.message || 'Ошибка', 'error'); }
+    finally { setLoading(false); }
   };
 
-  const resetCreateForm = () => {
-    setNewName('');
-    setCloneSourceAccountId('');
-    setCloneInclude(EMPTY_INCLUDE);
-  };
-
-  const handleStartCreate = () => {
-    setCreating(true);
-    setSelectedAccountId(null);
-    // Clear message is no longer needed with toast system
-  };
-
-  const handleCancelCreate = () => {
-    setCreating(false);
-    resetCreateForm();
-  };
-
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    // Clear message is no longer needed with toast system
+  const handleCreate = async () => {
     const name = newName.trim();
-    if (!name) {
-      addToast('Введите название аккаунта', 'error');
-      return;
-    }
-
-    if (duplicateNameExists) {
-      addToast('Такое название уже используется', 'error');
-      return;
-    }
+    if (!name) { addToast('Введите название', 'error'); return; }
+    if (duplicateNameExists) { addToast('Название уже используется', 'error'); return; }
 
     let cloneOptions: AccountCloneOptions | undefined;
     if (cloneSourceAccountId !== '') {
       const hasAny = Object.values(cloneInclude).some(Boolean);
-      if (hasAny) {
-        cloneOptions = {
-          sourceAccountId: Number(cloneSourceAccountId),
-          include: cloneInclude,
-        };
-      } else {
-        addToast('Выберите хотя бы одну сущность для копирования', 'error');
-        return;
-      }
+      if (!hasAny) { addToast('Выберите хотя бы одну сущность', 'error'); return; }
+      cloneOptions = { sourceAccountId: Number(cloneSourceAccountId), include: cloneInclude };
     }
 
     try {
-      const created = await api.createAccount(name, cloneOptions);
-      const cloned = created?.cloned as
-        | { rules?: number; polls?: number; integrations?: number; bots?: number }
-        | undefined;
-      const copiedTotal = cloned
-        ? (cloned.rules || 0) + (cloned.polls || 0) + (cloned.integrations || 0) + (cloned.bots || 0)
-        : 0;
-      addToast(copiedTotal > 0 ? `Аккаунт создан, скопировано сущностей: ${copiedTotal}` : 'Аккаунт создан', 'success');
-      setCreating(false);
-      resetCreateForm();
-      await loadAccounts();
-      if (created?.id) setSelectedAccountId(created.id);
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка создания аккаунта', 'error');
-    }
+      setSaving(true);
+      const c = await api.createAccount(name, cloneOptions);
+      const cloned = c?.cloned as { rules?: number; polls?: number; integrations?: number; bots?: number } | undefined;
+      const total = cloned ? (cloned.rules || 0) + (cloned.polls || 0) + (cloned.integrations || 0) + (cloned.bots || 0) : 0;
+      addToast(total > 0 ? `Создано, скопировано: ${total}` : 'Аккаунт создан', 'success');
+      setCreating(false); setNewName(''); setCloneSourceAccountId(''); setCloneInclude(EMPTY_INCLUDE);
+      await loadAccounts(); if (c?.id) setSelectedAccountId(c.id);
+    } catch (e: any) { addToast(e?.message || 'Ошибка', 'error'); }
+    finally { setSaving(false); }
   };
 
-  const handleDeleteAccount = async () => {
+  const handleDelete = async () => {
     if (!selectedAccount) return;
-    if (mainAccountId != null && selectedAccount.id === mainAccountId) {
-      addToast('Нельзя удалить главный аккаунт', 'error');
-      return;
-    }
-    if (!confirm(`Удалить аккаунт "${selectedAccount.name}"? Данные будут перенесены в главный аккаунт.`)) return;
-
-    try {
-      await api.deleteAccount(selectedAccount.id);
-      addToast('Аккаунт удален', 'success');
-      await loadAccounts();
-      setSelectedAccountId(mainAccountId);
-    } catch (error: any) {
-      addToast(error?.message || 'Ошибка удаления аккаунта', 'error');
-    }
+    if (mainAccountId != null && selectedAccount.id === mainAccountId) { addToast('Нельзя удалить главный', 'error'); return; }
+    if (!confirm(`Удалить "${selectedAccount.name}"?`)) return;
+    try { await api.deleteAccount(selectedAccount.id); addToast('Удален', 'success'); await loadAccounts(); setSelectedAccountId(mainAccountId); }
+    catch (e: any) { addToast(e?.message || 'Ошибка', 'error'); }
   };
 
   if (!user?.isVadmin) {
-    return (
-      <div className="card">
-        <div className="card-body">
-          <p className="text-center text-[hsl(var(--destructive))]">
-            Только администратор (vadmin) может управлять аккаунтами.
-          </p>
-        </div>
-      </div>
-    );
+    return <div className="fp"><div className="fp-panel"><div className="fp-placeholder"><p style={{ color: 'var(--form-danger)' }}>Только vadmin может управлять аккаунтами</p></div></div></div>;
   }
 
+  const items: FormPageItem[] = accounts.map((a) => ({
+    id: a.id, name: a.name, subtitle: a.slug || `account_${a.id}`, enabled: true,
+  }));
+
+  const accountOptions = accounts.map((a) => ({ value: String(a.id), label: `${a.name} (#${a.id})` }));
+
+  const cloneFields: FormField[] = [
+    { type: 'select', label: 'Источник', value: String(cloneSourceAccountId), options: [{ value: '', label: 'Не копировать' }, ...accountOptions], onChange: (v) => setCloneSourceAccountId(v ? Number(v) : '') },
+    ...(['rules', 'polls', 'integrations', 'bots'] as const).map((key): FormField => ({
+      type: 'checkbox', label: key === 'rules' ? 'Webhook' : key === 'polls' ? 'Пуллинги' : key === 'integrations' ? 'Интеграции' : 'Боты',
+      checked: cloneInclude[key], disabled: cloneSourceAccountId === '',
+      onChange: (v: boolean) => setCloneInclude((p) => ({ ...p, [key]: v })),
+    })),
+  ];
+
+  const cloneSection: FormSection = { title: 'Клонирование', fields: cloneFields };
+
+  const editData = creating ? {
+    title: 'Создание аккаунта' as string,
+    sections: [
+      { title: 'Данные', fields: [
+        { type: 'input' as const, label: 'Название', value: newName, required: true, placeholder: 'Название аккаунта', onChange: setNewName, error: duplicateNameExists ? 'Название уже используется' : undefined },
+      ] },
+      cloneSection,
+    ],
+    onSave: handleCreate, saving,
+  } : null;
+
+  const viewData = selectedAccount ? {
+    name: selectedAccount.name,
+    subtitle: selectedAccount.slug || `account_${selectedAccount.id}`,
+    avatar: selectedAccount.name[0],
+    actions: (mainAccountId != null && selectedAccount.id !== mainAccountId) ? (
+      <button className="fp-btn fp-btn-danger" onClick={handleDelete} title="Удалить"><Trash2 size={14} /></button>
+    ) : undefined,
+    sections: [
+      { title: 'Информация', fields: [
+        { type: 'view' as const, label: 'ID', value: `#${selectedAccount.id}` },
+        { type: 'view' as const, label: 'Название', value: selectedAccount.name },
+        { type: 'view' as const, label: 'Slug', value: selectedAccount.slug || `account_${selectedAccount.id}`, mono: true },
+        { type: 'badge' as const, label: 'Тип', value: mainAccountId != null && selectedAccount.id === mainAccountId ? 'Главный' : 'Обычный', active: mainAccountId != null && selectedAccount.id === mainAccountId },
+        { type: 'date' as const, label: 'Создан', value: selectedAccount.created_at ? new Date(selectedAccount.created_at).toLocaleString('ru-RU') : '—' },
+      ] },
+      { title: 'Webhook URL', fields: [
+        { type: 'view' as const, label: 'URL', value: `${typeof window !== 'undefined' ? window.location.origin : ''}/webhook/${selectedAccount.slug || `account_${selectedAccount.id}`}`, span2: true, mono: true },
+      ] },
+    ],
+  } : null;
+
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h2 className="text-xl font-semibold">Аккаунты</h2>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="rules-search flex items-center gap-2 rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm transition-all focus-within:border-[hsl(var(--ring))] focus-within:ring-2 focus-within:ring-[hsl(var(--ring)_/_0.2)]">
-            <Search className="h-4 w-4 text-[hsl(var(--muted-foreground))]" />
-            <input
-              type="text"
-              placeholder="Поиск аккаунта..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-56 bg-transparent text-sm outline-none placeholder:text-[hsl(var(--muted-foreground))]"
-            />
-          </div>
-          <button onClick={loadAccounts} className="icon-button" title="Обновить">
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <button onClick={handleStartCreate} className="icon-button" title="Создать аккаунт">
-            <Plus className="h-4 w-4" />
-          </button>
-          {selectedAccount && mainAccountId != null && selectedAccount.id !== mainAccountId && (
-            <>
-              <button
-                onClick={handleDeleteAccount}
-                className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                title="Удалить аккаунт"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-              <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
-            </>
-          )}
-        </div>
-      </div>
-
-
-      <div className="split-layout p-6">
-        <div className="split-left">
-          <div className="panel">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">Список аккаунтов</h3>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">{filteredAccounts.length} записей</span>
-            </div>
-            {loading ? (
-              <div className="flex justify-center py-10">
-                <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-              </div>
-            ) : filteredAccounts.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Аккаунты не найдены</p>
-            ) : (
-              <div className="entity-list-scroll scrollbar-thin">
-                <table className="table-basic w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Название</th>
-                      <th className="px-2 py-2">Slug</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAccounts.map((account) => {
-                      const slug = account.slug || `account_${account.id}`;
-                      return (
-                        <tr
-                          key={account.id}
-                          onClick={() => {
-                            setCreating(false);
-                            setSelectedAccountId(account.id);
-                          }}
-                          className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
-                            selectedAccountId === account.id && !creating ? 'bg-[hsl(var(--accent))]' : ''
-                          }`}
-                        >
-                          <td className="px-2 py-2">
-                            <div className="font-medium text-xs">{account.name}</div>
-                            <div className="text-[10px] text-[hsl(var(--muted-foreground))]">#{account.id}</div>
-                          </td>
-                          <td className="px-2 py-2 text-xs">{slug}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="split-right">
-          <div className="panel">
-            {creating ? (
-              <form onSubmit={handleCreate} className="entity-edit-form flex flex-col gap-5">
-                <h3 className="mb-4 text-lg font-semibold">Создать аккаунт</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Название *</label>
-                    <input
-                      value={newName}
-                      onChange={(e) => setNewName(e.target.value)}
-                      placeholder="Название аккаунта"
-                      required
-                    />
-                    {duplicateNameExists && (
-                      <p className="mt-1 text-xs text-[hsl(var(--destructive))]">Такое название уже используется</p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Наполнение нового аккаунта</label>
-                    <div className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--background))] p-4">
-                      <div className="mb-3 text-xs text-[hsl(var(--muted-foreground))]">
-                        Можно выбрать источник и скопировать нужные сущности сразу при создании.
-                      </div>
-                      <label className="mb-2 block text-sm font-medium">Источник</label>
-                      <select
-                        value={cloneSourceAccountId}
-                        onChange={(e) => {
-                          const value = e.target.value ? Number(e.target.value) : '';
-                          setCloneSourceAccountId(value);
-                        }}
-                      >
-                        <option value="">Не копировать сущности</option>
-                        {accounts.map((a) => (
-                          <option key={a.id} value={a.id}>
-                            {a.name} (#{a.id})
-                          </option>
-                        ))}
-                      </select>
-
-                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                        {[
-                          { key: 'rules', label: 'Webhook' },
-                          { key: 'polls', label: 'Пуллинги' },
-                          { key: 'integrations', label: 'Интеграции' },
-                          { key: 'bots', label: 'Боты' },
-                        ].map((item) => (
-                          <label
-                            key={item.key}
-                            className={`flex items-center gap-2 rounded border border-[hsl(var(--input))] px-3 py-2 text-sm ${
-                              cloneSourceAccountId === '' ? 'opacity-50' : ''
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={cloneInclude[item.key as keyof CloneIncludeState]}
-                              onChange={(e) =>
-                                setCloneInclude((prev) => ({
-                                  ...prev,
-                                  [item.key]: e.target.checked,
-                                }))
-                              }
-                              disabled={cloneSourceAccountId === ''}
-                              className="mr-2"
-                            />
-                            <span>{item.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 pt-2">
-                  <button
-                    type="submit"
-                    disabled={duplicateNameExists}
-                    className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] disabled:opacity-50"
-                  >
-                    Создать аккаунт
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleCancelCreate}
-                    className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </form>
-            ) : selectedAccount ? (
-              <div>
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация об аккаунте</h4>
-                    <div style={{ padding: '16px' }} className="rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--card))]">
-                      <div style={{ marginBottom: '12px' }}>
-                        <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">#{selectedAccount.id}</code>
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <strong>Название:</strong> {selectedAccount.name}
-                      </div>
-                      <div style={{ marginBottom: '12px' }}>
-                        <strong>Slug:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
-                          {selectedAccount.slug || `account_${selectedAccount.id}`}
-                        </code>
-                      </div>
-                      <div>
-                        <strong>Тип:</strong>{' '}
-                        <span style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)] text-xs">
-                          {mainAccountId != null && selectedAccount.id === mainAccountId ? 'Главный' : 'Обычный'}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: '12px' }}>
-                        <strong>Создан:</strong>{' '}
-                        {selectedAccount.created_at ? new Date(selectedAccount.created_at).toLocaleString('ru-RU') : '—'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Webhook URL</h4>
-                    <div style={{ padding: '16px' }} className="overflow-x-auto rounded-lg border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.3)]">
-                      <code className="block whitespace-pre-wrap break-words text-sm">
-                        {`${typeof window !== 'undefined' ? window.location.origin : ''}/webhook/${
-                          selectedAccount.slug || `account_${selectedAccount.id}`
-                        }`}
-                      </code>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <p className="py-16 text-center text-[hsl(var(--muted-foreground))]">
-                Выберите аккаунт слева или нажмите «Создать»
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <FormPage
+      title="Аккаунты"
+      items={items}
+      selectedId={creating ? null : selectedAccountId}
+      onSelect={(id) => { setCreating(false); setSelectedAccountId(id); }}
+      onRefresh={loadAccounts}
+      onCreate={() => { setCreating(true); setSelectedAccountId(null); setNewName(''); setCloneSourceAccountId(''); setCloneInclude(EMPTY_INCLUDE); }}
+      loading={loading}
+      canEdit
+      view={viewData}
+      edit={editData}
+      onExitEdit={() => setCreating(false)}
+    />
   );
 }

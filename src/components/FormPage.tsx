@@ -13,14 +13,16 @@ export interface FormPageItem {
 }
 
 export type FormField =
-  | { type: 'input'; label: string; value: string; span2?: boolean; mono?: boolean; placeholder?: string; required?: boolean; onChange?: (v: string) => void; hint?: string; link?: string; linkLabel?: string }
+  | { type: 'input'; label: string; value: string; span2?: boolean; mono?: boolean; placeholder?: string; required?: boolean; onChange?: (v: string) => void; hint?: string; link?: string; linkLabel?: string; error?: string }
   | { type: 'select'; label: string; value: string; options: { value: string; label: string }[]; onChange?: (v: string) => void; span2?: boolean }
   | { type: 'textarea'; label: string; value: string; span2?: boolean; placeholder?: string; rows?: number; onChange?: (v: string) => void; hint?: string }
   | { type: 'password'; label: string; value: string; placeholder?: string; required?: boolean; onChange?: (v: string) => void; hint?: string; link?: string; linkLabel?: string }
   | { type: 'toggle'; label: string; description?: string; checked: boolean; onChange?: (v: boolean) => void }
+  | { type: 'checkbox'; label: string; checked: boolean; onChange?: (v: boolean) => void; disabled?: boolean }
   | { type: 'view'; label: string; value: string; span2?: boolean; mono?: boolean; multiline?: boolean; secret?: boolean; empty?: string }
   | { type: 'badge'; label: string; value: string; active: boolean }
-  | { type: 'date'; label: string; value: string };
+  | { type: 'date'; label: string; value: string }
+  | { type: 'custom'; span2?: boolean; content: React.ReactNode };
 
 export interface FormSection {
   title: string;
@@ -80,8 +82,9 @@ function EditField({ field }: { field: FormField }) {
     return (
       <div className={`fp-field ${field.span2 ? 'span2' : ''}`}>
         <label className="fp-label">{field.label} {field.required && <span className="fp-required">*</span>}</label>
-        <input className={`fp-input ${field.mono ? 'mono' : ''}`} value={field.value} onChange={(e) => field.onChange?.(e.target.value)} placeholder={field.placeholder} />
+        <input className={`fp-input ${field.mono ? 'mono' : ''} ${field.error ? 'has-error' : ''}`} value={field.value} onChange={(e) => field.onChange?.(e.target.value)} placeholder={field.placeholder} />
         {field.hint && <span className="fp-hint">{field.hint}</span>}
+        {field.error && <span className="fp-error">{field.error}</span>}
       </div>
     );
   }
@@ -160,6 +163,18 @@ function EditField({ field }: { field: FormField }) {
         <span style={{ fontSize: 13, color: 'var(--form-text-secondary, #6b7080)' }}>{field.value}</span>
       </div>
     );
+  }
+  if (field.type === 'checkbox') {
+    return (
+      <label className={`fp-checkbox ${field.disabled ? 'disabled' : ''}`}>
+        <input type="checkbox" checked={field.checked} onChange={(e) => field.onChange?.(e.target.checked)} disabled={field.disabled} />
+        <span className="fp-checkbox-box" />
+        <span className="fp-checkbox-label">{field.label}</span>
+      </label>
+    );
+  }
+  if (field.type === 'custom') {
+    return <div className={`fp-field ${field.span2 ? 'span2' : ''}`}>{field.content}</div>;
   }
   return null;
 }

@@ -2019,6 +2019,35 @@ code {
 .fp-link { color: var(--form-accent, #1a9e8f); text-decoration: none; }
 .fp-link:hover { text-decoration: underline; }
 .fp-mt-2 { margin-top: 8px; }
+.fp-error { font-size: 11.5px; color: var(--form-danger, #dc3545); margin-top: 4px; }
+
+/* Checkbox */
+.fp-checkbox {
+  display: inline-flex; align-items: center; gap: 8px;
+  cursor: pointer; font-size: 13px; color: var(--form-text-primary, #1a1c1f);
+  user-select: none; padding: 4px 0;
+}
+.fp-checkbox.disabled { opacity: .5; cursor: not-allowed; }
+.fp-checkbox input { position: absolute; opacity: 0; width: 0; height: 0; }
+.fp-checkbox-box {
+  width: 16px; height: 16px; flex-shrink: 0;
+  border: 1px solid var(--form-border-default, rgba(0,0,0,.12));
+  border-radius: 4px; background: var(--form-input-bg, #fff);
+  transition: all .15s; display: flex; align-items: center; justify-content: center;
+}
+.fp-checkbox-box::after {
+  content: ''; width: 8px; height: 5px;
+  border-left: 2px solid #fff; border-bottom: 2px solid #fff;
+  transform: rotate(-45deg) translateY(-1px);
+  opacity: 0; transition: opacity .15s;
+}
+.fp-checkbox input:checked ~ .fp-checkbox-box {
+  background: var(--form-accent, #1a9e8f);
+  border-color: var(--form-accent, #1a9e8f);
+}
+.fp-checkbox input:checked ~ .fp-checkbox-box::after { opacity: 1; }
+.fp-checkbox input:focus-visible ~ .fp-checkbox-box { box-shadow: var(--form-shadow-focus, 0 0 0 3px rgba(26,158,143,.15)); }
+.fp-checkbox-label { line-height: 1.4; }
 
 /* ── Field value (view mode) ── */
 .fp-fv {
