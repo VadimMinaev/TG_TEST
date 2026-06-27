@@ -3816,17 +3816,50 @@ async function runCustomProviderForAiBot(aiBot, chatId, text, attachments = {}) 
     return parsed;
 }
 
+function parseReminderMarker(text) {
+    const match = text.match(/\[\[REMINDER:(\{.*?\})\]\]/);
+    if (!match) return null;
+    try {
+        const data = JSON.parse(match[1]);
+        if (!data.message || !data.runAt) return null;
+        const runAtDate = new Date(data.runAt);
+        if (Number.isNaN(runAtDate.getTime())) return null;
+        return { message: String(data.message).trim(), runAt: runAtDate.toISOString() };
+    } catch { return null; }
+}
+
+const REMINDER_SYSTEM_INSTRUCTION = `
+当你识别到用户想要创建提醒/напоминание时，请严格按以下格式回复：
+
+[[REMINDER:{"message":"описание напоминания на русском","runAt":"2025-01-15T10:00:00Z"}]]
+
+После маркера напиши краткое подтверждение на русском языке (1-2 предложения).
+runAt — это UTC ISO 8601. Вычисляй дату/время из слов пользователя.
+Если пользователь сказал "завтра в 10" — посчитай реальную дату.
+Если точная дата не ясна — НЕ ставь маркер, а попроси уточнить.
+Примеры:
+- "Напомни позвонить маме завтра в 15:00" → [[REMINDER:{"message":"Позвонить маме","runAt":"2025-01-16T15:00:00Z"}]]
+- "Через час напомни про совещание" → [[REMINDER:{"message":"Совещание","runAt":"2025-01-15T11:00:00Z"}]]
+`.trim();
+
 async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
+
+    const reminderInstruction = '\n\n' + REMINDER_SYSTEM_INSTRUCTION;
+    const originalPrompt = String(aiBot.systemPrompt || '');
+    const enhancedPrompt = originalPrompt + reminderInstruction;
+
+    const enhancedBot = { ...aiBot, systemPrompt: enhancedPrompt };
+
     const rawResult = provider === 'groq'
-        ? await runGroqForAiBot(aiBot, chatId, text, attachments)
+        ? await runGroqForAiBot(enhancedBot, chatId, text, attachments)
         : provider === 'openai'
-            ? await runOpenAiForAiBot(aiBot, chatId, text, attachments)
+            ? await runOpenAiForAiBot(enhancedBot, chatId, text, attachments)
             : provider === 'openrouter'
-                ? await runOpenRouterForAiBot(aiBot, chatId, text, attachments)
+                ? await runOpenRouterForAiBot(enhancedBot, chatId, text, attachments)
                 : provider === 'custom'
-                    ? await runCustomProviderForAiBot(aiBot, chatId, text, attachments)
-                    : await runGeminiForAiBot(aiBot, chatId, text, attachments);
+                    ? await runCustomProviderForAiBot(enhancedBot, chatId, text, attachments)
+                    : await runGeminiForAiBot(enhancedBot, chatId, text, attachments);
 
     if (typeof rawResult === 'string') {
         return { text: rawResult, imageUrls: [], inlineImages: [] };
@@ -4191,7 +4224,30 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         }
 
         const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, { audioData: audioPayload, imageData: imagePayload });
-        const aiText = String(aiResponse?.text || '');
+        let aiText = String(aiResponse?.text || '');
+
+        const reminderData = parseReminderMarker(aiText);
+        if (reminderData) {
+            const fromUser = message.from;
+            if (fromUser?.id) {
+                const telegramUser = await getOrCreateTelegramUser({
+                    id: fromUser.id,
+                    username: fromUser.username,
+                    first_name: fromUser.first_name,
+                    last_name: fromUser.last_name,
+                    language_code: fromUser.language_code
+                });
+                if (telegramUser) {
+                    const reminderResult = await createReminder(telegramUser.id, reminderData.message, reminderData.runAt);
+                    if (reminderResult.success) {
+                        console.log(`[AI Bot] Reminder created via AI: ${reminderData.message} at ${reminderData.runAt}`);
+                    } else {
+                        console.error('[AI Bot] Failed to create reminder:', reminderResult.error);
+                    }
+                }
+            }
+            aiText = aiText.replace(/\[\[REMINDER:.*?\]\]/g, '').trim();
+        }
 
         pushAiBotSessionMessage(aiBot.id, chatId, 'user', text);
         if (aiText) {
