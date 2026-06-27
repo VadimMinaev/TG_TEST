@@ -1,549 +1,160 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 import { api, Reminder, ReminderLog } from '../lib/api';
 import { useToast } from '../components/ToastNotification';
 import { useAuth } from '../lib/auth-context';
-import { EntityStateSwitch } from '../components/StateToggle';
-import { ToolbarToggle } from '../components/ToolbarToggle';
-import { Calendar, Pencil, RefreshCw, Settings, Trash2 } from 'lucide-react';
+import { FormPage, FormPageItem } from '../components/FormPage';
 
-type ReminderForm = {
-  message: string;
-  runAtLocal: string;
-  repeatType: 'none' | 'interval' | 'cron';
-  intervalMinutes: string;
-  cronExpression: string;
-  isActive: boolean;
-};
+type ReminderForm = { message: string; runAtLocal: string; repeatType: 'none' | 'interval' | 'cron'; intervalMinutes: string; cronExpression: string; isActive: boolean };
 
-function toDateTimeLocal(value?: string) {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-  return local.toISOString().slice(0, 16);
-}
-
-function formatDateTime(value?: string) {
-  if (!value) return '—';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '—';
-  return date.toLocaleString('ru-RU', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
-function reminderOwnerLabel(reminder: Reminder) {
-  if (reminder.username) return `@${reminder.username}`;
-  const fullName = [reminder.first_name, reminder.last_name].filter(Boolean).join(' ');
-  if (fullName) return fullName;
-  if (reminder.telegram_id) return `ID ${reminder.telegram_id}`;
-  return `User ${reminder.telegram_user_id}`;
-}
-
-function reminderScheduleLabel(reminder: Reminder) {
-  if (reminder.repeat_type === 'interval') {
-    const seconds = Number(reminder.repeat_config?.interval_seconds || 0);
-    const minutes = Math.max(1, Math.round(seconds / 60));
-    return `Каждые ${minutes} мин`;
-  }
-  if (reminder.repeat_type === 'cron') {
-    return `Cron: ${reminder.repeat_config?.cron || '—'}`;
-  }
-  return formatDateTime(reminder.run_at);
-}
-
-function normalizeForm(reminder: Reminder): ReminderForm {
-  return {
-    message: reminder.message || '',
-    runAtLocal: toDateTimeLocal(reminder.run_at),
-    repeatType: reminder.repeat_type || 'none',
-    intervalMinutes:
-      reminder.repeat_type === 'interval'
-        ? String(Math.max(1, Math.round(Number(reminder.repeat_config?.interval_seconds || 60) / 60)))
-        : '60',
-    cronExpression: reminder.repeat_type === 'cron' ? String(reminder.repeat_config?.cron || '') : '',
-    isActive: reminder.is_active,
-  };
-}
+function toDateTimeLocal(val?: string) { if (!val) return ''; const d = new Date(val); if (Number.isNaN(d.getTime())) return ''; return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+function fmt(val?: string) { if (!val) return '-'; const d = new Date(val); if (Number.isNaN(d.getTime())) return '-'; return d.toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); }
+function ownerLabel(r: Reminder) { if (r.username) return `@${r.username}`; const fn = [r.first_name, r.last_name].filter(Boolean).join(' '); if (fn) return fn; if (r.telegram_id) return `ID ${r.telegram_id}`; return `User ${r.telegram_user_id}`; }
+function schedLabel(r: Reminder) { if (r.repeat_type === 'interval') return `Каждые ${Math.max(1, Math.round(Number(r.repeat_config?.interval_seconds || 0) / 60))} мин`; if (r.repeat_type === 'cron') return `Cron: ${r.repeat_config?.cron || '-'}`; return fmt(r.run_at); }
+function normForm(r: Reminder): ReminderForm { return { message: r.message || '', runAtLocal: toDateTimeLocal(r.run_at), repeatType: r.repeat_type || 'none', intervalMinutes: r.repeat_type === 'interval' ? String(Math.max(1, Math.round(Number(r.repeat_config?.interval_seconds || 60) / 60))) : '60', cronExpression: r.repeat_type === 'cron' ? String(r.repeat_config?.cron || '') : '', isActive: r.is_active }; }
 
 export function Reminders() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const canEdit = user?.role !== 'auditor';
   const { addToast } = useToast();
-
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [reminders, setReminders] = useState<Reminder[]>([]);
-  const [selectedReminderId, setSelectedReminderId] = useState<number | null>(null);
-  const [editingReminderId, setEditingReminderId] = useState<number | null>(null);
-  const [form, setForm] = useState<ReminderForm>({
-    message: '',
-    runAtLocal: '',
-    repeatType: 'none',
-    intervalMinutes: '60',
-    cronExpression: '',
-    isActive: true,
-  });
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [form, setForm] = useState<ReminderForm>({ message: '', runAtLocal: '', repeatType: 'none', intervalMinutes: '60', cronExpression: '', isActive: true });
   const [history, setHistory] = useState<ReminderLog[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  const selectedReminder = useMemo(
-    () => reminders.find((r) => r.id === selectedReminderId) || null,
-    [reminders, selectedReminderId]
-  );
+  const selected = useMemo(() => reminders.find((r) => r.id === selectedId) || null, [reminders, selectedId]);
 
-  const loadReminders = async () => {
-    try {
-      setLoading(true);
-      const data = await api.getReminders();
-      setReminders(data);
-      if (data.length && (selectedReminderId == null || !data.some((r) => r.id === selectedReminderId))) {
-        setSelectedReminderId(data[0].id);
-      }
-      if (!data.length) {
-        setSelectedReminderId(null);
-        setEditingReminderId(null);
-      }
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось загрузить напоминания', 'error');
-    } finally {
-      setLoading(false);
-    }
+  const load = async () => {
+    try { setLoading(true); const d = await api.getReminders(); setReminders(d); if (d.length && (selectedId == null || !d.some((r) => r.id === selectedId))) setSelectedId(d[0].id); if (!d.length) { setSelectedId(null); setEditingId(null); } }
+    catch (e: any) { addToast(e.message || 'Ошибка', 'error'); } finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    loadReminders();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   useEffect(() => {
-    const selectParam = searchParams.get('select');
-    if (!selectParam) return;
-
-    const id = Number(selectParam);
-    if (Number.isInteger(id) && id > 0) {
-      setSelectedReminderId(id);
-      setEditingReminderId(null);
-    }
-
-    const next = new URLSearchParams(searchParams);
-    next.delete('select');
-    setSearchParams(next, { replace: true });
+    const sp = searchParams.get('select');
+    if (sp) { const id = Number(sp); if (Number.isInteger(id) && id > 0) { setSelectedId(id); setEditingId(null); } setSearchParams({}, { replace: true }); }
   }, [searchParams, setSearchParams]);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      if (!selectedReminderId) {
-        setHistory([]);
-        return;
-      }
-      try {
-        setHistoryLoading(true);
-        const data = await api.getReminderHistory(selectedReminderId);
-        setHistory(data);
-      } catch {
-        setHistory([]);
-      } finally {
-        setHistoryLoading(false);
-      }
-    };
-    loadHistory();
-  }, [selectedReminderId]);
+    if (!selectedId) { setHistory([]); return; }
+    (async () => { try { setHistoryLoading(true); setHistory(await api.getReminderHistory(selectedId)); } catch { setHistory([]); } finally { setHistoryLoading(false); } })();
+  }, [selectedId]);
 
-  const handleEditReminder = (reminder: Reminder) => {
-    setSelectedReminderId(reminder.id);
-    setEditingReminderId(reminder.id);
-    setForm(normalizeForm(reminder));
-  };
+  const startEdit = (r: Reminder) => { setSelectedId(r.id); setEditingId(r.id); setForm(normForm(r)); };
 
-  const handleSaveReminder = async (event: React.FormEvent) => {
-    event.preventDefault();
-    if (!selectedReminder || editingReminderId == null) return;
-
-    const message = form.message.trim();
-    if (!message) {
-      addToast('Введите текст напоминания', 'error');
-      return;
-    }
-
-    if (!form.runAtLocal) {
-      addToast('Укажите дату и время', 'error');
-      return;
-    }
-
-    const runAtDate = new Date(form.runAtLocal);
-    if (Number.isNaN(runAtDate.getTime())) {
-      addToast('Некорректная дата и время', 'error');
-      return;
-    }
-
+  const handleSave = async () => {
+    if (!selected || editingId == null) return;
+    if (!form.message.trim()) { addToast('Введите текст', 'error'); return; }
+    if (!form.runAtLocal) { addToast('Укажите дату', 'error'); return; }
+    const runAt = new Date(form.runAtLocal); if (Number.isNaN(runAt.getTime())) { addToast('Некорректная дата', 'error'); return; }
     let repeatConfig: any = null;
-    if (form.repeatType === 'interval') {
-      const minutes = Number(form.intervalMinutes);
-      if (!Number.isFinite(minutes) || minutes < 1) {
-        addToast('Интервал должен быть больше 0', 'error');
-        return;
-      }
-      repeatConfig = { interval_seconds: Math.round(minutes * 60) };
-    } else if (form.repeatType === 'cron') {
-      const cron = form.cronExpression.trim();
-      if (!cron) {
-        addToast('Введите cron-выражение', 'error');
-        return;
-      }
-      repeatConfig = { cron };
-    }
-
+    if (form.repeatType === 'interval') { const m = Number(form.intervalMinutes); if (!Number.isFinite(m) || m < 1) { addToast('Интервал > 0', 'error'); return; } repeatConfig = { interval_seconds: Math.round(m * 60) }; }
+    else if (form.repeatType === 'cron') { const c = form.cronExpression.trim(); if (!c) { addToast('Введите cron', 'error'); return; } repeatConfig = { cron: c }; }
     try {
       setSaving(true);
-      const runAtIso = runAtDate.toISOString();
-      const updated = await api.updateReminder(selectedReminder.id, {
-        message,
-        runAt: runAtIso,
-        nextRunAt: runAtIso,
-        repeatType: form.repeatType,
-        repeatConfig,
-        isActive: form.isActive,
-      });
-
-      setReminders((prev) => prev.map((r) => (r.id === updated.id ? { ...r, ...updated } : r)));
-      setEditingReminderId(null);
-      addToast('Напоминание обновлено', 'success');
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось сохранить напоминание', 'error');
-    } finally {
-      setSaving(false);
-    }
+      const u = await api.updateReminder(selected.id, { message: form.message.trim(), runAt: runAt.toISOString(), nextRunAt: runAt.toISOString(), repeatType: form.repeatType, repeatConfig, isActive: form.isActive });
+      setReminders((p) => p.map((r) => r.id === u.id ? { ...r, ...u } : r));
+      setEditingId(null); addToast('Сохранено', 'success');
+    } catch (e: any) { addToast(e.message || 'Ошибка', 'error'); } finally { setSaving(false); }
   };
 
-  const handleToggleReminder = async (reminder: Reminder) => {
-    const nextActive = !reminder.is_active;
-    try {
-      const updated = await api.updateReminder(reminder.id, { isActive: nextActive });
-      setReminders((prev) => prev.map((r) => (r.id === reminder.id ? { ...r, ...updated } : r)));
-      addToast(nextActive ? 'Напоминание включено' : 'Напоминание выключено', 'success');
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось изменить статус', 'error');
-    }
+  const handleToggle = async (r: Reminder) => {
+    try { const u = await api.updateReminder(r.id, { isActive: !r.is_active }); setReminders((p) => p.map((x) => x.id === r.id ? { ...x, ...u } : x)); addToast('Статус изменен', 'success'); }
+    catch (e: any) { addToast(e.message || 'Ошибка', 'error'); }
   };
 
-  const handleDeleteReminder = async (reminder: Reminder) => {
-    if (!confirm(`Деактивировать напоминание "${reminder.message}"?`)) return;
-    try {
-      await api.deleteReminder(reminder.id);
-      setReminders((prev) => prev.map((r) => (r.id === reminder.id ? { ...r, is_active: false } : r)));
-      if (selectedReminderId === reminder.id) {
-        setEditingReminderId(null);
-      }
-      addToast('Напоминание деактивировано', 'success');
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось деактивировать напоминание', 'error');
-    }
+  const handleDelete = async (r: Reminder) => {
+    if (!confirm(`Деактивировать "${r.message}"?`)) return;
+    try { await api.deleteReminder(r.id); setReminders((p) => p.map((x) => x.id === r.id ? { ...x, is_active: false } : x)); if (selectedId === r.id) setEditingId(null); addToast('Деактивировано', 'success'); }
+    catch (e: any) { addToast(e.message || 'Ошибка', 'error'); }
   };
+
+  const items: FormPageItem[] = reminders.map((r) => ({ id: r.id, name: r.message.slice(0, 40), subtitle: `${ownerLabel(r)} · ${schedLabel(r)}`, enabled: r.is_active }));
+
+  const repeatOptions = [{ value: 'none', label: 'Однократно' }, { value: 'interval', label: 'Интервал' }, { value: 'cron', label: 'Cron' }];
+
+  const editData = editingId !== null && selected ? {
+    title: 'Редактирование', sections: [
+      { title: 'Текст', fields: [
+        { type: 'textarea' as const, label: 'Текст напоминания', value: form.message, rows: 3, placeholder: 'Текст напоминания', onChange: (v: string) => setForm((p) => ({ ...p, message: v })), span2: true },
+      ] },
+      { title: 'Расписание', fields: [
+        { type: 'input' as const, label: 'Дата и время', value: form.runAtLocal, onChange: (v: string) => setForm((p) => ({ ...p, runAtLocal: v })), span2: true },
+        { type: 'select' as const, label: 'Тип повтора', value: form.repeatType, options: repeatOptions, onChange: (v: string) => setForm((p) => ({ ...p, repeatType: v as any })) },
+        ...(form.repeatType === 'interval' ? [{ type: 'input' as const, label: 'Интервал (мин)', value: form.intervalMinutes, onChange: (v: string) => setForm((p) => ({ ...p, intervalMinutes: v })) }] : []),
+        ...(form.repeatType === 'cron' ? [{ type: 'input' as const, label: 'Cron', value: form.cronExpression, mono: true, placeholder: '0 9 * * *', onChange: (v: string) => setForm((p) => ({ ...p, cronExpression: v })), span2: true }] : []),
+      ] },
+      { title: 'Состояние', fields: [
+        { type: 'toggle' as const, label: 'Активно', checked: form.isActive, onChange: (v: boolean) => setForm((p) => ({ ...p, isActive: v })) },
+      ] },
+    ],
+    onSave: handleSave, saving,
+  } : null;
+
+  const historyContent = historyLoading ? <div style={{ color: 'var(--form-text-secondary)', fontSize: 13 }}>Загрузка...</div>
+    : history.length === 0 ? <div style={{ color: 'var(--form-text-secondary)', fontSize: 13 }}>Нет записей</div>
+    : <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {history.map((h) => (
+        <div key={h.id} style={{ border: '1px solid var(--form-border-subtle, rgba(0,0,0,.06))', borderRadius: 8, padding: '8px 12px', fontSize: 13 }}>
+          <div><strong>{h.status === 'sent' ? '✅' : '❌'} {h.status}</strong> {fmt(h.sent_at)}</div>
+          {h.error_message && <div style={{ color: 'var(--form-danger)', marginTop: 4, fontSize: 12 }}>{h.error_message}</div>}
+        </div>
+      ))}
+    </div>;
+
+  const viewData = selected ? {
+    name: selected.message.slice(0, 40),
+    subtitle: ownerLabel(selected),
+    avatar: (ownerLabel(selected)[0] || '?'),
+    actions: canEdit ? (
+      <>
+        <button className="fp-btn fp-btn-ghost" onClick={() => handleToggle(selected)} title={selected.is_active ? 'Выкл' : 'Вкл'}>{selected.is_active ? '⏸️' : '▶️'}</button>
+        <button className="fp-btn fp-btn-ghost" onClick={() => startEdit(selected)} title="Редактировать">✏️</button>
+        <button className="fp-btn fp-btn-danger" onClick={() => handleDelete(selected)} title="Деактивировать">🗑️</button>
+      </>
+    ) : undefined,
+    sections: [
+      { title: 'Информация', fields: [
+        { type: 'view' as const, label: 'ID', value: `#${selected.id}` },
+        { type: 'view' as const, label: 'Пользователь', value: ownerLabel(selected) },
+        { type: 'badge' as const, label: 'Статус', value: selected.is_active ? 'Активно' : 'Неактивно', active: selected.is_active },
+        { type: 'view' as const, label: 'Текст', value: selected.message, span2: true, multiline: true },
+      ] },
+      { title: 'Расписание', fields: [
+        { type: 'view' as const, label: 'Запуск', value: fmt(selected.run_at) },
+        { type: 'view' as const, label: 'Следующий', value: fmt(selected.next_run_at) },
+        { type: 'view' as const, label: 'Тип', value: selected.repeat_type, mono: true },
+        ...(selected.repeat_type === 'interval' ? [{ type: 'view' as const, label: 'Интервал', value: `${Math.max(1, Math.round(Number(selected.repeat_config?.interval_seconds || 0) / 60))} мин` }] : []),
+        ...(selected.repeat_type === 'cron' ? [{ type: 'view' as const, label: 'Cron', value: selected.repeat_config?.cron || '-', mono: true }] : []),
+      ] },
+      { title: 'Мета', fields: [
+        { type: 'date' as const, label: 'Создано', value: fmt(selected.created_at) },
+        { type: 'date' as const, label: 'Обновлено', value: fmt(selected.updated_at) },
+      ] },
+      { title: 'История отправок', fields: [
+        { type: 'custom' as const, span2: true, content: historyContent },
+      ] },
+    ],
+  } : null;
 
   return (
-    <div className="card">
-      <div className="card-header">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h2 className="text-xl font-semibold">⏰ Напоминания</h2>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {canEdit && selectedReminder && editingReminderId === null && (
-            <>
-              <button
-                onClick={() => handleEditReminder(selectedReminder)}
-                className="icon-button"
-                title="Редактировать"
-              >
-                <Pencil className="h-4 w-4" />
-              </button>
-              <button
-                onClick={() => handleDeleteReminder(selectedReminder)}
-                className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
-                title="Деактивировать"
-              >
-                <Trash2 className="h-4 w-4" />
-              </button>
-              <ToolbarToggle
-                enabled={selectedReminder.is_active}
-                onChange={() => handleToggleReminder(selectedReminder)}
-                title={selectedReminder.is_active ? 'Отключить напоминание' : 'Включить напоминание'}
-              />
-              <div className="mx-1 h-6 w-px bg-[hsl(var(--border))]" />
-            </>
-          )}
-          <button onClick={() => loadReminders()} className="icon-button" title="Обновить список">
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <Link to="/telegram?tab=reminders&settings=true" className="icon-button" title="Настройки бота напоминаний">
-            <Settings className="h-4 w-4" />
-          </Link>
-        </div>
-      </div>
-
-      <div className="split-layout p-6">
-        <div className="split-left">
-          <div className="panel">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список напоминаний</h3>
-              <button
-                onClick={() => loadReminders()}
-                className="rounded border border-[hsl(var(--border))] px-2 py-1 text-xs"
-              >
-                Обновить
-              </button>
-            </div>
-
-            {loading ? (
-              <div className="flex items-center justify-center py-10">
-                <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
-              </div>
-            ) : reminders.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">Напоминаний нет</p>
-            ) : (
-              <div className="entity-list-scroll scrollbar-thin">
-                <table className="table-basic w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Текст</th>
-                      <th className="px-2 py-2">Пользователь</th>
-                      <th className="px-2 py-2">Расписание</th>
-                      <th className="px-2 py-2">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {reminders.map((reminder) => (
-                      <tr
-                        key={reminder.id}
-                        onClick={() => {
-                          setSelectedReminderId(reminder.id);
-                          setEditingReminderId(null);
-                        }}
-                        className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
-                          selectedReminderId === reminder.id ? 'bg-[hsl(var(--accent))]' : ''
-                        }`}
-                      >
-                        <td className="max-w-[220px] truncate px-2 py-2 font-medium">{reminder.message}</td>
-                        <td className="px-2 py-2 text-xs">{reminderOwnerLabel(reminder)}</td>
-                        <td className="px-2 py-2 text-xs">{reminderScheduleLabel(reminder)}</td>
-                        <td className="px-2 py-2">{reminder.is_active ? '✅' : '⏸️'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="split-right">
-          <div className={`panel ${editingReminderId !== null && selectedReminder ? 'entity-edit-panel' : ''}`}>
-          {editingReminderId !== null && selectedReminder ? (
-            <>
-              <h3 className="mb-4 text-lg font-semibold">Редактирование напоминания</h3>
-              <form onSubmit={handleSaveReminder} className="flex flex-col gap-5">
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Текст</label>
-                  <textarea
-                    rows={3}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                    value={form.message}
-                    onChange={(e) => setForm((prev) => ({ ...prev, message: e.target.value }))}
-                    placeholder="Текст напоминания"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Дата и время</label>
-                    <input
-                      type="datetime-local"
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                      value={form.runAtLocal}
-                      onChange={(e) => setForm((prev) => ({ ...prev, runAtLocal: e.target.value }))}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Тип повтора</label>
-                    <select
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                      value={form.repeatType}
-                      onChange={(e) =>
-                        setForm((prev) => ({ ...prev, repeatType: e.target.value as 'none' | 'interval' | 'cron' }))
-                      }
-                    >
-                      <option value="none">Однократно</option>
-                      <option value="interval">Интервал</option>
-                      <option value="cron">Cron</option>
-                    </select>
-                  </div>
-                </div>
-
-                {form.repeatType === 'interval' && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Интервал (минуты)</label>
-                    <input
-                      type="number"
-                      min={1}
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                      value={form.intervalMinutes}
-                      onChange={(e) => setForm((prev) => ({ ...prev, intervalMinutes: e.target.value }))}
-                    />
-                  </div>
-                )}
-
-                {form.repeatType === 'cron' && (
-                  <div>
-                    <label className="mb-2 block text-sm font-medium">Cron выражение</label>
-                    <input
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
-                      value={form.cronExpression}
-                      onChange={(e) => setForm((prev) => ({ ...prev, cronExpression: e.target.value }))}
-                      placeholder="0 9 * * *"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <EntityStateSwitch
-                    idPrefix="reminder-edit"
-                    enabled={form.isActive}
-                    onChange={(nextEnabled) => setForm((prev) => ({ ...prev, isActive: nextEnabled }))}
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] disabled:opacity-60"
-                  >
-                    {saving ? 'Сохранение...' : 'Сохранить'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingReminderId(null)}
-                    className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
-                  >
-                    Отмена
-                  </button>
-                </div>
-              </form>
-            </>
-          ) : selectedReminder ? (
-            <div className="entity-view">
-              <div>
-                <h4 className="entity-view-title">Информация</h4>
-                <div className="entity-view-card space-y-3">
-                  <div>
-                    <strong>ID:</strong>{' '}
-                    <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{selectedReminder.id}</code>
-                  </div>
-                  <div>
-                    <strong>Пользователь:</strong> {reminderOwnerLabel(selectedReminder)}
-                  </div>
-                  <div>
-                    <strong>Статус:</strong>{' '}
-                    <span
-                      className={`rounded px-2 py-1 text-xs ${
-                        selectedReminder.is_active
-                          ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                          : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                      }`}
-                    >
-                      {selectedReminder.is_active ? '✅ Активно' : '⏸️ Неактивно'}
-                    </span>
-                  </div>
-                  <div>
-                    <strong>Текст:</strong>
-                    <div className="mt-1 whitespace-pre-wrap break-words rounded bg-[hsl(var(--muted)_/_0.25)] p-2">
-                      {selectedReminder.message}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="entity-view-title">Расписание</h4>
-                <div className="entity-view-card space-y-3">
-                  <div>
-                    <strong>Запуск:</strong> {formatDateTime(selectedReminder.run_at)}
-                  </div>
-                  <div>
-                    <strong>Следующий запуск:</strong> {formatDateTime(selectedReminder.next_run_at)}
-                  </div>
-                  <div>
-                    <strong>Тип:</strong>{' '}
-                    <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">{selectedReminder.repeat_type}</code>
-                  </div>
-                  {selectedReminder.repeat_type === 'interval' && (
-                    <div>
-                      <strong>Интервал:</strong>{' '}
-                      {Math.max(1, Math.round(Number(selectedReminder.repeat_config?.interval_seconds || 0) / 60))} мин
-                    </div>
-                  )}
-                  {selectedReminder.repeat_type === 'cron' && (
-                    <div>
-                      <strong>Cron:</strong>{' '}
-                      <code className="rounded bg-[hsl(var(--muted)_/_0.5)] px-2 py-1">
-                        {selectedReminder.repeat_config?.cron || '—'}
-                      </code>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="entity-view-title">Мета</h4>
-                <div className="entity-view-card space-y-3">
-                  <div>
-                    <strong>Создано:</strong> {formatDateTime(selectedReminder.created_at)}
-                  </div>
-                  <div>
-                    <strong>Обновлено:</strong> {formatDateTime(selectedReminder.updated_at)}
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="entity-view-title">История отправок</h4>
-                <div className="entity-view-card space-y-2 text-sm">
-                  {historyLoading ? (
-                    <div className="text-[hsl(var(--muted-foreground))]">Загрузка...</div>
-                  ) : history.length === 0 ? (
-                    <div className="text-[hsl(var(--muted-foreground))]">Нет записей</div>
-                  ) : (
-                    history.map((h) => (
-                      <div key={h.id} className="rounded border border-[hsl(var(--border))] p-2">
-                        <div>
-                          <strong>{h.status === 'sent' ? '✅ sent' : '❌ failed'}</strong>{' '}
-                          {formatDateTime(h.sent_at)}
-                        </div>
-                        {h.error_message && (
-                          <div className="text-[hsl(var(--destructive))]">Ошибка: {h.error_message}</div>
-                        )}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--card))] p-10 text-center text-[hsl(var(--muted-foreground))]">
-              <Calendar className="mb-3 h-8 w-8" />
-              <p>Выберите напоминание слева для просмотра и редактирования</p>
-            </div>
-          )}
-          </div>
-        </div>
-      </div>
-    </div>
+    <FormPage
+      title="Напоминания"
+      items={items}
+      selectedId={editingId !== null ? null : selectedId}
+      onSelect={(id) => { setSelectedId(id); setEditingId(null); }}
+      onRefresh={load}
+      loading={loading}
+      canEdit={canEdit}
+      view={viewData}
+      edit={editData}
+      onExitEdit={() => setEditingId(null)}
+    />
   );
 }
