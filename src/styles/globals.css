@@ -19,6 +19,31 @@
   --success: 120 99% 38%;
   --warning: 45 100% 50%;
   --info: 210 100% 50%;
+
+  /* Form design tokens — light */
+  --form-bg: #f5f6f8;
+  --form-surface: #ffffff;
+  --form-elevated: #f0f1f3;
+  --form-input-bg: #ffffff;
+  --form-border-subtle: rgba(0,0,0,.06);
+  --form-border-default: rgba(0,0,0,.12);
+  --form-border-focus: #1a9e8f;
+  --form-border-error: #e85555;
+  --form-text-primary: #1a1c1f;
+  --form-text-secondary: #6b7080;
+  --form-text-disabled: #b0b5bf;
+  --form-text-label: #3a3f4a;
+  --form-text-hint: #8b9099;
+  --form-accent: #1a9e8f;
+  --form-accent-muted: rgba(26,158,143,.1);
+  --form-accent-hover: #17907f;
+  --form-amber: #c07820;
+  --form-danger: #dc3545;
+  --form-danger-muted: rgba(220,53,69,.08);
+  --form-shadow-focus: 0 0 0 3px rgba(26,158,143,.15);
+  --form-shadow-error: 0 0 0 3px rgba(232,85,85,.15);
+  --form-font: 'Inter', system-ui, sans-serif;
+  --form-mono: 'JetBrains Mono', 'Fira Code', monospace;
 }
 
 .dark-theme {
