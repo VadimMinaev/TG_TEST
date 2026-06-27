@@ -3817,15 +3817,23 @@ async function runCustomProviderForAiBot(aiBot, chatId, text, attachments = {}) 
 }
 
 function parseReminderMarker(text) {
-    const match = text.match(/\[\[REMINDER:(\{.*?\})\]\]/);
+    const cleaned = String(text || '');
+    const match = cleaned.match(/\[\[REMINDER:(\{.*?\})\]\]/s);
     if (!match) return null;
     try {
         const data = JSON.parse(match[1]);
         if (!data.message || !data.runAt) return null;
         const runAtDate = new Date(data.runAt);
-        if (Number.isisNaN(runAtDate.getTime())) return null;
+        if (Number.isNaN(runAtDate.getTime())) return null;
         return { message: String(data.message).trim(), runAt: runAtDate.toISOString() };
-    } catch { return null; }
+    } catch (e) {
+        console.error('[AI Bot] Failed to parse reminder marker:', e.message, match[1]);
+        return null;
+    }
+}
+
+function stripReminderMarkers(text) {
+    return String(text || '').replace(/\[\[REMINDER:\{.*?\}\]\]/gs, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 function buildReminderSystemInstruction() {
@@ -4233,7 +4241,9 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         let aiText = String(aiResponse?.text || '');
 
         const reminderData = parseReminderMarker(aiText);
+        console.log('[AI Bot] Reminder marker check:', reminderData ? 'FOUND' : 'not found', 'in text length:', aiText.length);
         if (reminderData) {
+            console.log('[AI Bot] Parsed reminder:', JSON.stringify(reminderData));
             const fromUser = message.from;
             if (fromUser?.id) {
                 const telegramUser = await getOrCreateTelegramUser({
@@ -4243,17 +4253,14 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
                     last_name: fromUser.last_name,
                     language_code: fromUser.language_code
                 });
+                console.log('[AI Bot] Telegram user:', telegramUser ? `id=${telegramUser.id}` : 'null');
                 if (telegramUser) {
                     const reminderResult = await createReminder(telegramUser.id, reminderData.message, reminderData.runAt);
-                    if (reminderResult.success) {
-                        console.log(`[AI Bot] Reminder created via AI: ${reminderData.message} at ${reminderData.runAt}`);
-                    } else {
-                        console.error('[AI Bot] Failed to create reminder:', reminderResult.error);
-                    }
+                    console.log('[AI Bot] Create reminder result:', reminderResult.success ? 'SUCCESS' : `FAILED: ${reminderResult.error}`);
                 }
             }
-            aiText = aiText.replace(/\[\[REMINDER:.*?\]\]/g, '').trim();
         }
+        aiText = stripReminderMarkers(aiText);
 
         pushAiBotSessionMessage(aiBot.id, chatId, 'user', text);
         if (aiText) {
