@@ -1833,7 +1833,7 @@ code {
   width: 100%;
   background: var(--form-border-subtle, rgba(0,0,0,.06));
   border-radius: 14px;
-  overflow: hidden;
+  overflow: visible;
 }
 
 /* ── Sidebar ── */
@@ -2117,10 +2117,20 @@ code {
   .fp { border-radius: 0; }
   .fp-fields-grid { grid-template-columns: 1fr; }
   .fp-field.span2 { grid-column: auto; }
-  .fp-panel-head { padding: 14px 16px; gap: 10px; }
+  .fp-panel-head { padding: 14px 16px; gap: 10px; flex-wrap: wrap; }
+  .fp-panel-meta { min-width: 0; flex: 1 1 0; }
+  .fp-panel-actions { gap: 6px; }
   .fp-form-body { padding: 16px; gap: 20px; }
   .fp-panel-name { font-size: 14px; }
-  .fp-footer { padding: 12px 16px; }
+  .fp-footer { padding: 12px 16px; gap: 8px; flex-wrap: wrap; }
   .fp-btn-text { display: none; }
-  .fp-btn { padding: 8px 10px; }
+  .fp-btn { padding: 8px 10px; font-size: 12px; }
+  .fp-btn svg { width: 13px; height: 13px; }
+  .fp-section-title { font-size: 10px; }
+  .fp-fv { font-size: 12.5px; padding: 8px 12px; word-break: break-all; }
+  .fp-fv.mono { font-size: 11px; }
+  .fp-fv.secret { font-size: 11px; }
+  .fp-status-row { gap: 6px; }
+  .fp-status-item { min-width: 100px; }
+  .fp-input, .fp-select, .fp-textarea { font-size: 16px; }
 }
