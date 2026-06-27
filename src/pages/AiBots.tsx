@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { Bot, Eye, EyeOff, RefreshCw, Save, Trash2, ChevronLeft, Plus } from 'lucide-react';
+import { Bot, Eye, EyeOff, RefreshCw, Save, Trash2, ChevronLeft, Plus, Pencil, Plug, Unplug } from 'lucide-react';
 import { api, AiBot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useToast } from '../components/ToastNotification';
@@ -24,21 +24,25 @@ const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai' | 'openrouter' | 'custo
 };
 
 const DEFAULT_FORM: AiBotForm = {
-  name: '',
-  enabled: true,
-  provider: 'gemini',
-  telegramBotToken: '',
-  apiKey: '',
-  model: PROVIDER_MODELS.gemini,
-  apiBase: '',
-  systemPrompt: '',
-  allowVoice: true,
-  webhookUrl: '',
-  webhookSet: false,
+  name: '', enabled: true, provider: 'gemini', telegramBotToken: '', apiKey: '',
+  model: PROVIDER_MODELS.gemini, apiBase: '', systemPrompt: '', allowVoice: true,
+  webhookUrl: '', webhookSet: false,
 };
 
-function getInitial(name: string) {
-  return (name || '?')[0].toUpperCase();
+function getInitial(name: string) { return (name || '?')[0].toUpperCase(); }
+
+function SecretValue({ value }: { value: string }) {
+  const [show, setShow] = useState(false);
+  if (!value) return <span className="fv-empty">—</span>;
+  const masked = `${value.slice(0, 4)}${'•'.repeat(Math.max(0, value.length - 8))}${value.slice(-4)}`;
+  return (
+    <span className="fv-secret">
+      <span className="fv-secret-dots">{show ? value : masked}</span>
+      <button type="button" className="fv-secret-reveal" onClick={() => setShow(!show)} title={show ? 'Скрыть' : 'Показать'}>
+        {show ? <EyeOff size={14} /> : <Eye size={14} />}
+      </button>
+    </span>
+  );
 }
 
 export function AiBots() {
@@ -58,33 +62,25 @@ export function AiBots() {
   const [openRouterModelsLoaded, setOpenRouterModelsLoaded] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
   const [showToken, setShowToken] = useState(false);
+  const [webhookBusy, setWebhookBusy] = useState(false);
 
-  const provider = (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter' | 'custom';
+  const provider = (form.provider || 'gemini') as keyof typeof MODEL_OPTIONS;
   const providerModels = provider === 'openrouter'
     ? (openRouterModels.length ? openRouterModels : MODEL_OPTIONS.openrouter)
     : (MODEL_OPTIONS[provider] || []);
   const isCustomModel = form.model ? !providerModels.includes(form.model) : false;
   const showCustomModelInput = forceCustomModelInput || isCustomModel;
-
-  const selectedBot = useMemo(() => bots.find((bot) => bot.id === selectedId) || null, [bots, selectedId]);
+  const selectedBot = useMemo(() => bots.find((b) => b.id === selectedId) || null, [bots, selectedId]);
 
   const loadBots = async () => {
     try {
       setLoading(true);
       const data = await api.getAiBots();
       setBots(data);
-      if (data.length && (selectedId == null || !data.some((item) => item.id === selectedId))) {
-        setSelectedId(data[0].id);
-      }
-      if (!data.length) {
-        setSelectedId(null);
-        setEditingId(null);
-      }
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось загрузить AI ботов', 'error');
-    } finally {
-      setLoading(false);
-    }
+      if (data.length && (selectedId == null || !data.some((i) => i.id === selectedId))) setSelectedId(data[0].id);
+      if (!data.length) { setSelectedId(null); setEditingId(null); }
+    } catch (e: any) { addToast(e.message || 'Ошибка загрузки', 'error'); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => { loadBots(); }, []);
@@ -92,462 +88,309 @@ export function AiBots() {
   useEffect(() => {
     if (provider !== 'openrouter' || openRouterModelsLoaded) return;
     (async () => {
-      try {
-        const models = await api.getAiProviderModels('openrouter');
-        if (models.length > 0) setOpenRouterModels(models);
-      } catch { /* keep fallback */ } finally {
-        setOpenRouterModelsLoaded(true);
-      }
+      try { const m = await api.getAiProviderModels('openrouter'); if (m.length) setOpenRouterModels(m); }
+      catch {} finally { setOpenRouterModelsLoaded(true); }
     })();
   }, [provider, openRouterModelsLoaded]);
 
   useEffect(() => {
-    const createParam = searchParams.get('create');
-    const selectParam = searchParams.get('select');
-    if (createParam === 'true') {
-      setSelectedId(null);
-      setEditingId(-1);
-      setForm(DEFAULT_FORM);
-      setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('create'); n.delete('select'); return n; }, { replace: true });
+    const cp = searchParams.get('create');
+    const sp = searchParams.get('select');
+    if (cp === 'true') {
+      setSelectedId(null); setEditingId(-1); setForm(DEFAULT_FORM);
+      setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('create'); n.delete('select'); return n; }, { replace: true });
       return;
     }
-    if (selectParam) {
-      const parsedId = Number(selectParam);
-      if (Number.isInteger(parsedId) && parsedId > 0) {
-        setSelectedId(parsedId);
-        setEditingId(null);
-      }
-      setSearchParams((prev) => { const n = new URLSearchParams(prev); n.delete('create'); n.delete('select'); return n; }, { replace: true });
+    if (sp) {
+      const id = Number(sp);
+      if (Number.isInteger(id) && id > 0) { setSelectedId(id); setEditingId(null); }
+      setSearchParams((p) => { const n = new URLSearchParams(p); n.delete('create'); n.delete('select'); return n; }, { replace: true });
     }
   }, [searchParams, setSearchParams]);
 
-  const handleStartCreate = () => {
-    setSelectedId(null);
-    setEditingId(-1);
-    setForm(DEFAULT_FORM);
-    setForceCustomModelInput(false);
-    setShowApiKey(false);
-    setShowToken(false);
-  };
+  const handleStartCreate = () => { setSelectedId(null); setEditingId(-1); setForm(DEFAULT_FORM); setForceCustomModelInput(false); setShowApiKey(false); setShowToken(false); };
 
   const handleEdit = (bot: AiBot) => {
-    const prov = bot.provider || 'gemini';
-    setSelectedId(bot.id);
-    setEditingId(bot.id);
-    setForceCustomModelInput(false);
-    setShowApiKey(false);
-    setShowToken(false);
+    const p = bot.provider || 'gemini';
+    setSelectedId(bot.id); setEditingId(bot.id); setForceCustomModelInput(false); setShowApiKey(false); setShowToken(false);
     setForm({
-      name: bot.name || '',
-      enabled: bot.enabled ?? true,
-      provider: prov,
-      telegramBotToken: bot.telegramBotToken || '',
-      apiKey: bot.apiKey || bot.geminiApiKey || '',
-      model: bot.model || bot.geminiModel || PROVIDER_MODELS[prov],
-      apiBase: bot.apiBase || '',
-      systemPrompt: bot.systemPrompt || '',
-      allowVoice: bot.allowVoice ?? true,
-      webhookSet: bot.webhookSet ?? false,
-      webhookUrl: bot.webhookUrl || '',
-      created_at: bot.created_at,
-      updated_at: bot.updated_at,
-      authorId: bot.authorId,
-      geminiApiKey: bot.geminiApiKey,
-      geminiModel: bot.geminiModel,
+      name: bot.name || '', enabled: bot.enabled ?? true, provider: p,
+      telegramBotToken: bot.telegramBotToken || '', apiKey: bot.apiKey || bot.geminiApiKey || '',
+      model: bot.model || bot.geminiModel || PROVIDER_MODELS[p], apiBase: bot.apiBase || '',
+      systemPrompt: bot.systemPrompt || '', allowVoice: bot.allowVoice ?? true,
+      webhookSet: bot.webhookSet ?? false, webhookUrl: bot.webhookUrl || '',
+      created_at: bot.created_at, updated_at: bot.updated_at, authorId: bot.authorId,
+      geminiApiKey: bot.geminiApiKey, geminiModel: bot.geminiModel,
     });
   };
 
-  const handleSave = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!form.name.trim()) { addToast('Введите название', 'error'); return; }
     if (!form.telegramBotToken.trim()) { addToast('Введите Telegram Bot Token', 'error'); return; }
-    if (!form.apiKey.trim()) { addToast('Введите API Key провайдера', 'error'); return; }
-    if (form.provider === 'custom' && !(form.apiBase || '').trim()) { addToast('Введите URL API (Base URL)', 'error'); return; }
+    if (!form.apiKey.trim()) { addToast('Введите API Key', 'error'); return; }
+    if (form.provider === 'custom' && !(form.apiBase || '').trim()) { addToast('Введите URL API', 'error'); return; }
     if (!form.model.trim()) { addToast('Введите модель', 'error'); return; }
 
     const payload = {
-      name: form.name.trim(),
-      enabled: !!form.enabled,
-      provider: (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter' | 'custom',
-      telegramBotToken: form.telegramBotToken.trim(),
-      apiKey: form.apiKey.trim(),
-      model: form.model.trim(),
-      apiBase: form.apiBase?.trim() || '',
-      systemPrompt: (form.systemPrompt || '').trim(),
-      allowVoice: !!form.allowVoice,
+      name: form.name.trim(), enabled: !!form.enabled,
+      provider: (form.provider || 'gemini') as AiBot['provider'],
+      telegramBotToken: form.telegramBotToken.trim(), apiKey: form.apiKey.trim(),
+      model: form.model.trim(), apiBase: form.apiBase?.trim() || '',
+      systemPrompt: (form.systemPrompt || '').trim(), allowVoice: !!form.allowVoice,
     };
 
     try {
       setSaving(true);
       if (editingId && editingId !== -1) {
-        const updated = await api.updateAiBot(editingId, payload);
-        setBots((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-        setSelectedId(updated.id);
-        setEditingId(null);
+        const u = await api.updateAiBot(editingId, payload);
+        setBots((p) => p.map((i) => i.id === u.id ? u : i)); setSelectedId(u.id); setEditingId(null);
         addToast('AI бот обновлен', 'success');
       } else {
-        const created = await api.createAiBot(payload);
-        setBots((prev) => [created, ...prev]);
-        setSelectedId(created.id);
-        setEditingId(null);
+        const c = await api.createAiBot(payload);
+        setBots((p) => [c, ...p]); setSelectedId(c.id); setEditingId(null);
         addToast('AI бот создан', 'success');
       }
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось сохранить AI бота', 'error');
-    } finally {
-      setSaving(false);
-    }
+    } catch (err: any) { addToast(err.message || 'Ошибка сохранения', 'error'); }
+    finally { setSaving(false); }
   };
 
   const handleDelete = async (bot: AiBot) => {
-    if (!confirm(`Удалить AI бота "${bot.name}"?`)) return;
-    try {
-      await api.deleteAiBot(bot.id);
-      setBots((prev) => prev.filter((item) => item.id !== bot.id));
-      if (selectedId === bot.id) { setSelectedId(null); setEditingId(null); }
-      addToast('AI бот удален', 'success');
-    } catch (error: any) {
-      addToast(error.message || 'Не удалось удалить AI бота', 'error');
-    }
+    if (!confirm(`Удалить "${bot.name}"?`)) return;
+    try { await api.deleteAiBot(bot.id); setBots((p) => p.filter((i) => i.id !== bot.id)); if (selectedId === bot.id) { setSelectedId(null); setEditingId(null); } addToast('Удален', 'success'); }
+    catch (e: any) { addToast(e.message || 'Ошибка', 'error'); }
   };
 
-  const handleDeleteFromForm = async () => {
+  const handleSetWebhook = async () => {
     if (!selectedBot) return;
-    await handleDelete(selectedBot);
+    try {
+      setWebhookBusy(true);
+      const r = await api.setAiBotWebhook(selectedBot.id);
+      setBots((p) => p.map((i) => i.id === selectedBot.id ? { ...i, webhookSet: true, webhookUrl: r.webhookUrl } : i));
+      addToast('Webhook установлен', 'success');
+    } catch (e: any) { addToast(e.message || 'Ошибка webhook', 'error'); }
+    finally { setWebhookBusy(false); }
   };
+
+  const handleDeleteWebhook = async () => {
+    if (!selectedBot || !confirm('Удалить webhook?')) return;
+    try {
+      setWebhookBusy(true);
+      await api.deleteAiBotWebhook(selectedBot.id);
+      setBots((p) => p.map((i) => i.id === selectedBot.id ? { ...i, webhookSet: false, webhookUrl: '' } : i));
+      addToast('Webhook удален', 'success');
+    } catch (e: any) { addToast(e.message || 'Ошибка', 'error'); }
+    finally { setWebhookBusy(false); }
+  };
+
+  const webhookUrl = selectedBot
+    ? (typeof window !== 'undefined' ? `${window.location.origin}/api/telegram/ai/${selectedBot.id}/webhook` : '')
+    : '';
 
   return (
-    <div className="form-page">
-      {/* Sidebar */}
-      <aside className="form-sidebar">
-        <div className="form-sidebar-header">
-          <span className="form-sidebar-title">AI Боты</span>
-          <div className="flex gap-1">
-            {canEdit && (
-              <button className="form-btn-icon" onClick={handleStartCreate} title="Создать">
-                <Plus size={14} />
-              </button>
-            )}
-            <button className="form-btn-icon" onClick={loadBots} title="Обновить">
-              <RefreshCw size={14} />
-            </button>
+    <div className="fp">
+      {/* ── Sidebar ── */}
+      <aside className="fp-sidebar">
+        <div className="fp-sidebar-head">
+          <span className="fp-sidebar-title">AI Боты</span>
+          <div className="fp-sidebar-actions">
+            {canEdit && <button className="fp-icon-btn" onClick={handleStartCreate} title="Добавить"><Plus size={13} /></button>}
+            <button className="fp-icon-btn" onClick={loadBots} title="Обновить"><RefreshCw size={13} /></button>
           </div>
         </div>
-        <div className="form-bot-list">
+        <div className="fp-bot-list">
           {loading ? (
-            <div className="flex items-center justify-center py-10">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-[var(--form-accent)] border-t-transparent" />
-            </div>
+            <div className="fp-loading"><div className="fp-spinner" /></div>
           ) : bots.length === 0 ? (
-            <p className="py-10 text-center text-xs" style={{ color: 'var(--form-text-secondary)' }}>AI ботов нет</p>
-          ) : (
-            bots.map((bot) => (
-              <div
-                key={bot.id}
-                className={`form-bot-item ${selectedId === bot.id ? 'active' : ''}`}
-                onClick={() => { setSelectedId(bot.id); setEditingId(null); }}
-              >
-                <div className="form-bot-avatar">{getInitial(bot.name)}</div>
-                <div className="form-bot-info">
-                  <div className="form-bot-name">{bot.name}</div>
-                  <div className="form-bot-model">{bot.provider || 'gemini'} / {bot.model || bot.geminiModel || '—'}</div>
-                </div>
-                <div className={`form-status-dot ${bot.enabled ? 'on' : ''}`} />
+            <div className="fp-empty">AI ботов нет</div>
+          ) : bots.map((bot) => (
+            <div key={bot.id} className={`fp-bot-item ${selectedId === bot.id ? 'active' : ''}`}
+              onClick={() => { setSelectedId(bot.id); setEditingId(null); }}>
+              <div className="fp-bot-avatar">{getInitial(bot.name)}</div>
+              <div className="fp-bot-info">
+                <div className="fp-bot-name">{bot.name}</div>
+                <div className="fp-bot-model">{bot.provider || 'gemini'} / {bot.model || bot.geminiModel || '—'}</div>
               </div>
-            ))
-          )}
+              <div className={`fp-dot ${bot.enabled ? 'on' : ''}`} />
+            </div>
+          ))}
         </div>
       </aside>
 
-      {/* Panel */}
-      <div className="form-panel">
+      {/* ── Panel ── */}
+      <div className="fp-panel">
         {editingId !== null ? (
+          /* ═══ EDIT MODE ═══ */
           <>
-            <div className="form-panel-header">
-              <button className="form-panel-back" onClick={() => setEditingId(null)} title="Назад">
-                <ChevronLeft size={14} />
-              </button>
-              <div>
-                <div className="form-panel-title">{editingId === -1 ? 'Создание AI бота' : 'Редактирование AI бота'}</div>
-                {editingId !== -1 && selectedBot && (
-                  <div className="form-panel-subtitle">{selectedBot.name} · {selectedBot.provider || 'gemini'} / {selectedBot.model || '—'}</div>
-                )}
+            <div className="fp-panel-head">
+              <button className="fp-back" onClick={() => setEditingId(null)}><ChevronLeft size={14} /></button>
+              <div className="fp-panel-meta">
+                <div className="fp-panel-name">{editingId === -1 ? 'Создание AI бота' : 'Редактирование'}</div>
+                {editingId !== -1 && selectedBot && <div className="fp-panel-sub">{selectedBot.name} · {selectedBot.provider}/{selectedBot.model}</div>}
               </div>
             </div>
 
-            <form onSubmit={handleSave} className="form-body">
-              {/* Группа: Общее */}
-              <div className="field-group">
-                <div className="group-label">Общее</div>
-
-                <div className="form-field">
-                  <label className="form-field-label">Название <span className="required">*</span></label>
-                  <input
-                    className="form-input"
-                    value={form.name}
-                    onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
-                    placeholder="Введите название бота"
-                  />
-                </div>
-
-                <div className="form-field">
-                  <label className="form-field-label">Провайдер</label>
-                  <select
-                    className="form-select"
-                    value={form.provider || 'gemini'}
-                    onChange={(e) => {
+            <form onSubmit={handleSave} className="fp-form-body">
+              <div className="fp-section">
+                <div className="fp-section-title">Общее</div>
+                <div className="fp-fields-grid">
+                  <div className="fp-field">
+                    <label className="fp-label">Название <span className="fp-required">*</span></label>
+                    <input className="fp-input" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="Название бота" />
+                  </div>
+                  <div className="fp-field">
+                    <label className="fp-label">Провайдер</label>
+                    <select className="fp-select" value={form.provider || 'gemini'} onChange={(e) => {
                       setForceCustomModelInput(false);
-                      setForm((prev) => {
-                        const next = (e.target.value as typeof prev.provider) || 'gemini';
-                        return { ...prev, provider: next, model: PROVIDER_MODELS[next], apiBase: next === 'custom' ? prev.apiBase : '' };
-                      });
-                    }}
-                  >
-                    <option value="gemini">Gemini</option>
-                    <option value="groq">Groq</option>
-                    <option value="openai">OpenAI</option>
-                    <option value="openrouter">OpenRouter</option>
-                    <option value="custom">Свой (OpenAI)</option>
-                  </select>
+                      setForm((p) => { const n = (e.target.value as typeof p.provider) || 'gemini'; return { ...p, provider: n, model: PROVIDER_MODELS[n], apiBase: n === 'custom' ? p.apiBase : '' }; });
+                    }}>
+                      <option value="gemini">Gemini</option><option value="groq">Groq</option><option value="openai">OpenAI</option><option value="openrouter">OpenRouter</option><option value="custom">Свой (OpenAI)</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              {/* Группа: Подключение */}
-              <div className="field-group">
-                <div className="group-label">Подключение</div>
-
-                {form.provider === 'custom' && (
-                  <div className="form-field">
-                    <label className="form-field-label">URL API (Base URL)</label>
-                    <input
-                      className="form-input mono"
-                      value={form.apiBase || ''}
-                      onChange={(e) => setForm((prev) => ({ ...prev, apiBase: e.target.value }))}
-                      placeholder="https://example.com/v1"
-                    />
-                    <span className="form-field-hint">Базовый адрес OpenAI-совместимого API</span>
+              <div className="fp-section">
+                <div className="fp-section-title">Подключение</div>
+                <div className="fp-fields-grid">
+                  {form.provider === 'custom' && (
+                    <div className="fp-field span2">
+                      <label className="fp-label">URL API (Base URL)</label>
+                      <input className="fp-input mono" value={form.apiBase || ''} onChange={(e) => setForm((p) => ({ ...p, apiBase: e.target.value }))} placeholder="https://example.com/v1" />
+                      <span className="fp-hint">Базовый адрес OpenAI-совместимого API</span>
+                    </div>
+                  )}
+                  <div className="fp-field">
+                    <label className="fp-label">Telegram Bot Token</label>
+                    <div className="fp-input-wrap">
+                      <input className="fp-input mono" type={showToken ? 'text' : 'password'} value={form.telegramBotToken} onChange={(e) => setForm((p) => ({ ...p, telegramBotToken: e.target.value }))} placeholder="123456789:ABCdef..." />
+                      <button type="button" className="fp-eye" onClick={() => setShowToken(!showToken)}>{showToken ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+                    </div>
+                    <span className="fp-hint">Получить у <a href="https://t.me/BotFather" target="_blank" rel="noopener" className="fp-link">@BotFather</a></span>
                   </div>
-                )}
-
-                <div className="form-field">
-                  <label className="form-field-label">Telegram Bot Token</label>
-                  <div className="form-input-wrap">
-                    <input
-                      className="form-input mono"
-                      type={showToken ? 'text' : 'password'}
-                      value={form.telegramBotToken}
-                      onChange={(e) => setForm((prev) => ({ ...prev, telegramBotToken: e.target.value }))}
-                      placeholder="123456789:ABCdef..."
-                    />
-                    <button type="button" className="input-icon-right" onClick={() => setShowToken(!showToken)} title="Показать/скрыть">
-                      {showToken ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
+                  <div className="fp-field">
+                    <label className="fp-label">API Key <span className="fp-required">*</span></label>
+                    <div className="fp-input-wrap">
+                      <input className="fp-input mono" type={showApiKey ? 'text' : 'password'} value={form.apiKey} onChange={(e) => setForm((p) => ({ ...p, apiKey: e.target.value }))}
+                        placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : form.provider === 'openrouter' ? 'sk-or-v1-...' : 'sk-...'} />
+                      <button type="button" className="fp-eye" onClick={() => setShowApiKey(!showApiKey)}>{showApiKey ? <EyeOff size={14} /> : <Eye size={14} />}</button>
+                    </div>
                   </div>
-                  <span className="form-field-hint">Получить токен можно у <a href="https://t.me/BotFather" target="_blank" rel="noopener" style={{ color: 'var(--form-accent)', textDecoration: 'none' }}>@BotFather</a></span>
-                </div>
-
-                <div className="form-field">
-                  <label className="form-field-label">API Key <span className="required">*</span></label>
-                  <div className="form-input-wrap">
-                    <input
-                      className="form-input mono"
-                      type={showApiKey ? 'text' : 'password'}
-                      value={form.apiKey}
-                      onChange={(e) => setForm((prev) => ({ ...prev, apiKey: e.target.value }))}
-                      placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : form.provider === 'openrouter' ? 'sk-or-v1-...' : form.provider === 'custom' ? 'sk-...' : 'AIza...'}
-                    />
-                    <button type="button" className="input-icon-right" onClick={() => setShowApiKey(!showApiKey)} title="Показать/скрыть">
-                      {showApiKey ? <EyeOff size={16} /> : <Eye size={16} />}
-                    </button>
-                  </div>
-                </div>
-
-                {form.provider === 'custom' ? (
-                  <div className="form-field">
-                    <label className="form-field-label">Название модели</label>
-                    <input
-                      className="form-input mono"
-                      value={form.model}
-                      onChange={(e) => setForm((prev) => ({ ...prev, model: e.target.value }))}
-                      placeholder="qwen3-72b, llama-3.1-405b..."
-                    />
-                  </div>
-                ) : (
-                  <div className="form-field">
-                    <label className="form-field-label">Модель</label>
-                    <select
-                      className="form-select"
-                      value={showCustomModelInput ? '__custom__' : form.model}
-                      onChange={(e) => {
+                  {form.provider === 'custom' ? (
+                    <div className="fp-field">
+                      <label className="fp-label">Название модели</label>
+                      <input className="fp-input mono" value={form.model} onChange={(e) => setForm((p) => ({ ...p, model: e.target.value }))} placeholder="qwen3-72b, llama-3.1-405b..." />
+                    </div>
+                  ) : (
+                    <div className="fp-field">
+                      <label className="fp-label">Модель</label>
+                      <select className="fp-select" value={showCustomModelInput ? '__custom__' : form.model} onChange={(e) => {
                         const v = e.target.value;
                         if (v === '__custom__') { setForceCustomModelInput(true); return; }
-                        setForceCustomModelInput(false);
-                        setForm((prev) => ({ ...prev, model: v }));
-                      }}
-                    >
-                      {providerModels.map((m) => <option key={m} value={m}>{m}</option>)}
-                      <option value="__custom__">Своя модель...</option>
-                    </select>
-                    {showCustomModelInput && (
-                      <input
-                        className="form-input mono mt-2"
-                        value={form.model}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setForm((prev) => ({ ...prev, model: v }));
-                          if (providerModels.includes(v)) setForceCustomModelInput(false);
-                        }}
-                        placeholder="Введите имя модели"
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
-
-              {/* Группа: Поведение */}
-              <div className="field-group">
-                <div className="group-label">Поведение</div>
-
-                <div className="form-field">
-                  <label className="form-field-label">System Prompt</label>
-                  <textarea
-                    className="form-textarea"
-                    rows={4}
-                    value={form.systemPrompt || ''}
-                    onChange={(e) => setForm((prev) => ({ ...prev, systemPrompt: e.target.value }))}
-                    placeholder="Инструкции для бота..."
-                  />
-                  <span className="form-field-hint">Контекст, который будет добавляться перед каждым диалогом</span>
+                        setForceCustomModelInput(false); setForm((p) => ({ ...p, model: v }));
+                      }}>
+                        {providerModels.map((m) => <option key={m} value={m}>{m}</option>)}
+                        <option value="__custom__">Своя модель...</option>
+                      </select>
+                      {showCustomModelInput && <input className="fp-input mono fp-mt-2" value={form.model} onChange={(e) => { const v = e.target.value; setForm((p) => ({ ...p, model: v })); if (providerModels.includes(v)) setForceCustomModelInput(false); }} placeholder="Имя модели" />}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              {/* Группа: Состояние */}
-              <div className="field-group">
-                <div className="group-label">Состояние</div>
-
-                <div className="form-toggle-row">
-                  <div className="form-toggle-info">
-                    <div className="form-toggle-name">Бот активен</div>
-                    <div className="form-toggle-desc">Принимает и обрабатывает входящие сообщения</div>
+              <div className="fp-section">
+                <div className="fp-section-title">Поведение</div>
+                <div className="fp-fields-grid">
+                  <div className="fp-field span2">
+                    <label className="fp-label">System Prompt</label>
+                    <textarea className="fp-textarea" rows={4} value={form.systemPrompt || ''} onChange={(e) => setForm((p) => ({ ...p, systemPrompt: e.target.value }))} placeholder="Инструкции для бота..." />
+                    <span className="fp-hint">Контекст перед каждым диалогом</span>
                   </div>
-                  <label className="form-toggle">
-                    <input type="checkbox" checked={!!form.enabled} onChange={(e) => setForm((prev) => ({ ...prev, enabled: e.target.checked }))} />
-                    <div className="form-toggle-track"><div className="form-toggle-thumb" /></div>
-                  </label>
                 </div>
+              </div>
 
-                <div className="form-toggle-row">
-                  <div className="form-toggle-info">
-                    <div className="form-toggle-name">Голосовые сообщения</div>
-                    <div className="form-toggle-desc">Распознавание и обработка голосовых вложений</div>
-                  </div>
-                  <label className="form-toggle">
-                    <input type="checkbox" checked={!!form.allowVoice} onChange={(e) => setForm((prev) => ({ ...prev, allowVoice: e.target.checked }))} />
-                    <div className="form-toggle-track"><div className="form-toggle-thumb" /></div>
-                  </label>
+              <div className="fp-section">
+                <div className="fp-section-title">Состояние</div>
+                <div className="fp-toggle-row">
+                  <div className="fp-toggle-info"><div className="fp-toggle-name">Бот активен</div><div className="fp-toggle-desc">Принимает входящие сообщения</div></div>
+                  <label className="fp-toggle"><input type="checkbox" checked={!!form.enabled} onChange={(e) => setForm((p) => ({ ...p, enabled: e.target.checked }))} /><div className="fp-toggle-track"><div className="fp-toggle-thumb" /></div></label>
+                </div>
+                <div className="fp-toggle-row">
+                  <div className="fp-toggle-info"><div className="fp-toggle-name">Голосовые сообщения</div><div className="fp-toggle-desc">Распознавание голосовых вложений</div></div>
+                  <label className="fp-toggle"><input type="checkbox" checked={!!form.allowVoice} onChange={(e) => setForm((p) => ({ ...p, allowVoice: e.target.checked }))} /><div className="fp-toggle-track"><div className="fp-toggle-thumb" /></div></label>
                 </div>
               </div>
             </form>
 
-            <div className="form-footer">
-              {editingId !== -1 && canEdit && (
-                <button type="button" className="form-btn form-btn-danger" onClick={handleDeleteFromForm}>
-                  <Trash2 size={15} /> Удалить
-                </button>
-              )}
-              <button type="button" className="form-btn form-btn-ghost" onClick={() => setEditingId(null)}>Отмена</button>
-              <button type="submit" form={undefined} className="form-btn form-btn-primary" disabled={saving} onClick={(e) => { e.preventDefault(); document.querySelector<HTMLFormElement>('.form-body')?.requestSubmit(); }}>
-                <Save size={15} /> {saving ? 'Сохранение...' : 'Сохранить'}
+            <div className="fp-footer">
+              {editingId !== -1 && canEdit && <button type="button" className="fp-btn fp-btn-danger" onClick={() => selectedBot && handleDelete(selectedBot)}><Trash2 size={14} /> Удалить</button>}
+              <button type="button" className="fp-btn fp-btn-ghost" onClick={() => setEditingId(null)}>Отмена</button>
+              <button type="button" className="fp-btn fp-btn-primary" disabled={saving} onClick={() => document.querySelector<HTMLFormElement>('.fp-form-body')?.requestSubmit()}>
+                <Save size={14} /> {saving ? 'Сохранение...' : 'Сохранить'}
               </button>
             </div>
           </>
         ) : selectedBot ? (
+          /* ═══ VIEW MODE ═══ */
           <>
-            <div className="form-panel-header">
-              <div>
-                <div className="form-panel-title">{selectedBot.name}</div>
-                <div className="form-panel-subtitle">{selectedBot.provider || 'gemini'} / {selectedBot.model || selectedBot.geminiModel || '—'}</div>
+            <div className="fp-panel-head">
+              <div className="fp-panel-avatar">{getInitial(selectedBot.name)}</div>
+              <div className="fp-panel-meta">
+                <div className="fp-panel-name">{selectedBot.name}</div>
+                <div className="fp-panel-sub">{selectedBot.provider || 'gemini'} / {selectedBot.model || selectedBot.geminiModel || '—'}</div>
               </div>
-              <div className="ml-auto flex gap-2">
-                {canEdit && (
-                  <button className="form-btn form-btn-primary" onClick={() => handleEdit(selectedBot)}>
-                    Редактировать
-                  </button>
+              <div className="fp-panel-actions">
+                {selectedBot.webhookSet ? (
+                  <button className="fp-btn fp-btn-ghost" onClick={handleDeleteWebhook} disabled={webhookBusy} title="Удалить webhook"><Unplug size={14} /></button>
+                ) : (
+                  <button className="fp-btn fp-btn-ghost" onClick={handleSetWebhook} disabled={webhookBusy} title="Установить webhook"><Plug size={14} /></button>
                 )}
+                {canEdit && <button className="fp-btn fp-btn-primary" onClick={() => handleEdit(selectedBot)}><Pencil size={14} /> <span className="fp-btn-text">Редактировать</span></button>}
               </div>
             </div>
 
-            <div className="form-body">
-              <div className="field-group">
-                <div className="group-label">Общее</div>
-                <div className="form-field">
-                  <label className="form-field-label">Название</label>
-                  <div className="form-input" style={{ background: 'var(--form-elevated)', cursor: 'default' }}>{selectedBot.name}</div>
-                </div>
-                <div className="form-field">
-                  <label className="form-field-label">Провайдер</label>
-                  <div className="form-input" style={{ background: 'var(--form-elevated)', cursor: 'default' }}>{selectedBot.provider || 'gemini'}</div>
-                </div>
-                <div className="form-field">
-                  <label className="form-field-label">Модель</label>
-                  <div className="form-input mono" style={{ background: 'var(--form-elevated)', cursor: 'default' }}>{selectedBot.model || selectedBot.geminiModel || '—'}</div>
+            <div className="fp-form-body">
+              <div className="fp-section">
+                <div className="fp-section-title">Общее</div>
+                <div className="fp-fields-grid">
+                  <div className="fp-field"><div className="fp-label">Название</div><div className="fp-fv">{selectedBot.name}</div></div>
+                  <div className="fp-field"><div className="fp-label">Провайдер</div><div className="fp-fv">{selectedBot.provider || 'gemini'}</div></div>
+                  <div className="fp-field"><div className="fp-label">Модель</div><div className="fp-fv mono">{selectedBot.model || selectedBot.geminiModel || '—'}</div></div>
                 </div>
               </div>
 
-              <div className="field-group">
-                <div className="group-label">Подключение</div>
-                {selectedBot.provider === 'custom' && selectedBot.apiBase && (
-                  <div className="form-field">
-                    <label className="form-field-label">API Base URL</label>
-                    <div className="form-input mono" style={{ background: 'var(--form-elevated)', cursor: 'default' }}>{selectedBot.apiBase}</div>
-                  </div>
-                )}
-                <div className="form-field">
-                  <label className="form-field-label">Telegram Token</label>
-                  <div className="form-input mono" style={{ background: 'var(--form-elevated)', cursor: 'default' }}>
-                    {selectedBot.telegramBotToken ? `${selectedBot.telegramBotToken.slice(0, 8)}...${selectedBot.telegramBotToken.slice(-4)}` : '—'}
-                  </div>
-                </div>
-                <div className="form-field">
-                  <label className="form-field-label">API Key</label>
-                  <div className="form-input mono" style={{ background: 'var(--form-elevated)', cursor: 'default' }}>
-                    {selectedBot.apiKey ? `${selectedBot.apiKey.slice(0, 4)}...${selectedBot.apiKey.slice(-4)}` : '—'}
-                  </div>
+              <div className="fp-section">
+                <div className="fp-section-title">Подключение</div>
+                <div className="fp-fields-grid">
+                  {(selectedBot.provider === 'custom' && selectedBot.apiBase) && (
+                    <div className="fp-field span2"><div className="fp-label">API Base URL</div><div className="fp-fv mono">{selectedBot.apiBase}</div></div>
+                  )}
+                  <div className="fp-field"><div className="fp-label">Telegram Token</div><div className="fp-fv secret"><SecretValue value={selectedBot.telegramBotToken} /></div></div>
+                  <div className="fp-field"><div className="fp-label">API Key</div><div className="fp-fv secret"><SecretValue value={selectedBot.apiKey || selectedBot.geminiApiKey || ''} /></div></div>
                 </div>
               </div>
 
-              <div className="field-group">
-                <div className="group-label">Поведение</div>
-                <div className="form-field">
-                  <label className="form-field-label">System Prompt</label>
-                  <div className="form-textarea" style={{ background: 'var(--form-elevated)', cursor: 'default', minHeight: 'auto' }}>{selectedBot.systemPrompt || '—'}</div>
+              <div className="fp-section">
+                <div className="fp-section-title">Поведение</div>
+                <div className="fp-fields-grid">
+                  <div className="fp-field span2"><div className="fp-label">System Prompt</div><div className="fp-fv multiline">{selectedBot.systemPrompt || '—'}</div></div>
                 </div>
               </div>
 
-              <div className="field-group">
-                <div className="group-label">Состояние</div>
-                <div className="form-toggle-row">
-                  <div className="form-toggle-info">
-                    <div className="form-toggle-name">Бот активен</div>
-                    <div className="form-toggle-desc">{selectedBot.enabled ? 'Включен' : 'Выключен'}</div>
-                  </div>
-                  <div className={`form-status-dot ${selectedBot.enabled ? 'on' : ''}`} />
-                </div>
-                <div className="form-toggle-row">
-                  <div className="form-toggle-info">
-                    <div className="form-toggle-name">Webhook</div>
-                    <div className="form-toggle-desc">{selectedBot.webhookSet ? 'Установлен' : 'Не установлен'}</div>
-                  </div>
-                  <div className={`form-status-dot ${selectedBot.webhookSet ? 'on' : ''}`} />
+              <div className="fp-section">
+                <div className="fp-section-title">Состояние</div>
+                <div className="fp-status-row">
+                  <div className="fp-status-item"><div className="fp-label">Бот</div><span className={`fp-badge ${selectedBot.enabled ? 'on' : 'off'}`}><span className="fp-badge-dot" />{selectedBot.enabled ? 'Активен' : 'Выключен'}</span></div>
+                  <div className="fp-status-item"><div className="fp-label">Webhook</div><span className={`fp-badge ${selectedBot.webhookSet ? 'on' : 'off'}`}><span className="fp-badge-dot" />{selectedBot.webhookSet ? 'Установлен' : 'Не установлен'}</span></div>
+                  {selectedBot.webhookSet && (
+                    <div className="fp-status-item span2"><div className="fp-label">URL Webhook</div><div className="fp-fv mono small">{webhookUrl}</div></div>
+                  )}
                 </div>
               </div>
             </div>
           </>
         ) : (
-          <div className="flex flex-col items-center justify-center flex-1" style={{ color: 'var(--form-text-secondary)' }}>
-            <Bot size={40} strokeWidth={1.5} style={{ opacity: 0.4, marginBottom: 12 }} />
-            <p className="text-sm">Выберите AI бота или создайте нового</p>
-          </div>
+          <div className="fp-placeholder"><Bot size={40} strokeWidth={1.5} /><p>Выберите AI бота или создайте нового</p></div>
         )}
       </div>
     </div>
