@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { Bot, KeyRound, Pencil, RefreshCw, Save, Trash2, Unplug, Webhook } from 'lucide-react';
 import { api, AiBot } from '../lib/api';
@@ -9,14 +9,15 @@ import { EntityStateSwitch } from '../components/StateToggle';
 
 type AiBotForm = Omit<AiBot, 'id'>;
 
-const PROVIDER_MODELS: Record<'gemini' | 'groq' | 'openai' | 'openrouter', string> = {
+const PROVIDER_MODELS: Record<'gemini' | 'groq' | 'openai' | 'openrouter' | 'custom', string> = {
   gemini: 'gemini-2.0-flash',
   groq: 'llama-3.3-70b-versatile',
   openai: 'gpt-4o-mini',
   openrouter: 'openai/gpt-4o-mini',
+  custom: '',
 };
 
-const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai' | 'openrouter', string[]> = {
+const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai' | 'openrouter' | 'custom', string[]> = {
   gemini: [
     'gemini-2.0-flash',
     'gemini-2.0-flash-lite',
@@ -41,6 +42,7 @@ const MODEL_OPTIONS: Record<'gemini' | 'groq' | 'openai' | 'openrouter', string[
     'anthropic/claude-3.5-sonnet',
     'google/gemini-2.0-flash-001',
   ],
+  custom: [],
 };
 
 const DEFAULT_FORM: AiBotForm = {
@@ -50,6 +52,7 @@ const DEFAULT_FORM: AiBotForm = {
   telegramBotToken: '',
   apiKey: '',
   model: PROVIDER_MODELS.gemini,
+  apiBase: '',
   systemPrompt: '',
   allowVoice: true,
   webhookUrl: '',
@@ -81,7 +84,7 @@ export function AiBots() {
   const [openRouterModels, setOpenRouterModels] = useState<string[]>([]);
   const [openRouterModelsLoaded, setOpenRouterModelsLoaded] = useState(false);
 
-  const provider = (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter';
+  const provider = (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter' | 'custom';
   const providerModels = provider === 'openrouter'
     ? (openRouterModels.length ? openRouterModels : MODEL_OPTIONS.openrouter)
     : (MODEL_OPTIONS[provider] || []);
@@ -179,6 +182,7 @@ export function AiBots() {
       telegramBotToken: bot.telegramBotToken || '',
       apiKey: bot.apiKey || bot.geminiApiKey || '',
       model: bot.model || bot.geminiModel || PROVIDER_MODELS[provider],
+      apiBase: bot.apiBase || '',
       systemPrompt: bot.systemPrompt || '',
       allowVoice: bot.allowVoice ?? true,
       webhookSet: bot.webhookSet ?? false,
@@ -206,6 +210,10 @@ export function AiBots() {
       addToast('Введите API Key провайдера', 'error');
       return;
     }
+    if (form.provider === 'custom' && !(form.apiBase || '').trim()) {
+      addToast('Введите URL API (Base URL)', 'error');
+      return;
+    }
     if (!form.model.trim()) {
       addToast('Введите модель', 'error');
       return;
@@ -214,10 +222,11 @@ export function AiBots() {
     const payload = {
       name: form.name.trim(),
       enabled: !!form.enabled,
-      provider: (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter',
+      provider: (form.provider || 'gemini') as 'gemini' | 'groq' | 'openai' | 'openrouter' | 'custom',
       telegramBotToken: form.telegramBotToken.trim(),
       apiKey: form.apiKey.trim(),
       model: form.model.trim(),
+      apiBase: form.apiBase?.trim() || '',
       systemPrompt: (form.systemPrompt || '').trim(),
       allowVoice: !!form.allowVoice,
     };
@@ -437,11 +446,12 @@ export function AiBots() {
                     onChange={(event) => {
                       setForceCustomModelInput(false);
                       setForm((prev) => {
-                        const nextProvider = (event.target.value as 'gemini' | 'groq' | 'openai' | 'openrouter') || 'gemini';
+                        const nextProvider = (event.target.value as 'gemini' | 'groq' | 'openai' | 'openrouter' | 'custom') || 'gemini';
                         return {
                           ...prev,
                           provider: nextProvider,
                           model: PROVIDER_MODELS[nextProvider],
+                          apiBase: nextProvider === 'custom' ? prev.apiBase : '',
                         };
                       });
                     }}
@@ -451,8 +461,21 @@ export function AiBots() {
                     <option value="groq">Groq</option>
                     <option value="openai">OpenAI</option>
                     <option value="openrouter">OpenRouter</option>
+                    <option value="custom">Свой (OpenAI)</option>
                   </select>
                 </div>
+
+                {form.provider === 'custom' && (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">URL API (Base URL)</label>
+                    <input
+                      value={form.apiBase || ''}
+                      onChange={(event) => setForm((prev) => ({ ...prev, apiBase: event.target.value }))}
+                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
+                      placeholder="https://example.com/v1"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">Telegram Bot Token</label>
@@ -466,53 +489,65 @@ export function AiBots() {
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">
-                    API Key ({form.provider === 'groq' ? 'Groq' : form.provider === 'openai' ? 'OpenAI' : form.provider === 'openrouter' ? 'OpenRouter' : 'Gemini'})
+                    API Key ({form.provider === 'groq' ? 'Groq' : form.provider === 'openai' ? 'OpenAI' : form.provider === 'openrouter' ? 'OpenRouter' : form.provider === 'custom' ? 'Custom' : 'Gemini'})
                   </label>
                   <input
                     value={form.apiKey}
                     onChange={(event) => setForm((prev) => ({ ...prev, apiKey: event.target.value }))}
                     className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
-                    placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : form.provider === 'openrouter' ? 'sk-or-v1-...' : 'AIza...'}
+                    placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : form.provider === 'openrouter' ? 'sk-or-v1-...' : form.provider === 'custom' ? 'sk-...' : 'AIza...'}
                   />
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm font-medium">Модель</label>
-                  <select
-                    value={showCustomModelInput ? '__custom__' : form.model}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      if (value === '__custom__') {
-                        setForceCustomModelInput(true);
-                        return;
-                      }
-                      setForceCustomModelInput(false);
-                      setForm((prev) => ({ ...prev, model: value }));
-                    }}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                  >
-                    {providerModels.map((modelName) => (
-                      <option key={modelName} value={modelName}>
-                        {modelName}
-                      </option>
-                    ))}
-                    <option value="__custom__">Своя модель...</option>
-                  </select>
-                  {showCustomModelInput && (
+                {form.provider === 'custom' ? (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Название модели</label>
                     <input
                       value={form.model}
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        setForm((prev) => ({ ...prev, model: nextValue }));
-                        if (providerModels.includes(nextValue)) {
-                          setForceCustomModelInput(false);
-                        }
-                      }}
-                      className="mt-2 w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
-                      placeholder="Введите имя своей модели"
+                      onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}
+                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                      placeholder="qwen3-72b, llama-3.1-405b..."
                     />
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="mb-2 block text-sm font-medium">Модель</label>
+                    <select
+                      value={showCustomModelInput ? '__custom__' : form.model}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        if (value === '__custom__') {
+                          setForceCustomModelInput(true);
+                          return;
+                        }
+                        setForceCustomModelInput(false);
+                        setForm((prev) => ({ ...prev, model: value }));
+                      }}
+                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                    >
+                      {providerModels.map((modelName) => (
+                        <option key={modelName} value={modelName}>
+                          {modelName}
+                        </option>
+                      ))}
+                      <option value="__custom__">Своя модель...</option>
+                    </select>
+                    {showCustomModelInput && (
+                      <input
+                        value={form.model}
+                        onChange={(event) => {
+                          const nextValue = event.target.value;
+                          setForm((prev) => ({ ...prev, model: nextValue }));
+                          if (providerModels.includes(nextValue)) {
+                            setForceCustomModelInput(false);
+                          }
+                        }}
+                        className="mt-2 w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                        placeholder="Введите имя своей модели"
+                      />
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label className="mb-2 block text-sm font-medium">System Prompt (опционально)</label>
@@ -594,6 +629,11 @@ export function AiBots() {
                     <KeyRound className="h-4 w-4" />
                     <strong>Telegram Token:</strong> <code>{maskSecret(selectedBot.telegramBotToken)}</code>
                   </div>
+                  {selectedBot.provider === 'custom' && selectedBot.apiBase && (
+                    <div>
+                      <strong>API Base URL:</strong> <code>{selectedBot.apiBase}</code>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
                     <KeyRound className="h-4 w-4" />
                     <strong>Provider API Key:</strong> <code>{maskSecret(selectedBot.apiKey || selectedBot.geminiApiKey)}</code>

@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
@@ -3195,13 +3195,14 @@ function normalizeAiBot(input = {}) {
     const provider =
         providerRaw === 'groq'
             ? 'groq'
-            : (providerRaw === 'openai' ? 'openai' : (providerRaw === 'openrouter' ? 'openrouter' : 'gemini'));
+            : (providerRaw === 'openai' ? 'openai' : (providerRaw === 'openrouter' ? 'openrouter' : (providerRaw === 'custom' ? 'custom' : 'gemini')));
     const apiKey = String(input.apiKey || input.geminiApiKey || '').trim();
     const defaultModel =
         provider === 'groq'
             ? 'llama-3.3-70b-versatile'
-            : (provider === 'openai' ? 'gpt-4o-mini' : (provider === 'openrouter' ? 'openai/gpt-4o-mini' : 'gemini-2.0-flash'));
+            : (provider === 'openai' ? 'gpt-4o-mini' : (provider === 'openrouter' ? 'openai/gpt-4o-mini' : (provider === 'custom' ? '' : 'gemini-2.0-flash')));
     const model = String(input.model || input.geminiModel || defaultModel).trim();
+    const apiBase = String(input.apiBase || '').trim();
     return {
         id: input.id,
         name: String(input.name || '').trim(),
@@ -3210,6 +3211,7 @@ function normalizeAiBot(input = {}) {
         telegramBotToken: String(input.telegramBotToken || '').trim(),
         apiKey,
         model,
+        apiBase,
         // Backward compatibility for existing frontend/data paths.
         geminiApiKey: apiKey,
         geminiModel: model,
@@ -3759,6 +3761,61 @@ async function runOpenRouterForAiBot(aiBot, chatId, text, attachments = {}) {
     return parsed;
 }
 
+async function runCustomProviderForAiBot(aiBot, chatId, text, attachments = {}) {
+    const apiKey = String(aiBot.apiKey || '').trim();
+    const model = String(aiBot.model || '').trim();
+    const apiBase = String(aiBot.apiBase || '').trim().replace(/\/+$/, '');
+    if (!apiBase) throw new Error('Custom provider API Base URL is missing');
+    if (!model) throw new Error('Custom provider model is missing');
+    if (attachments.audioData?.base64) {
+        throw new Error('Custom provider does not support Telegram audio in this path');
+    }
+
+    const history = getAiBotSessionMessages(aiBot.id, chatId);
+    const messages = [];
+
+    const systemPrompt = String(aiBot.systemPrompt || '').trim();
+    if (systemPrompt) {
+        messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    for (const item of history) {
+        messages.push({
+            role: item.role === 'assistant' ? 'assistant' : 'user',
+            content: item.text
+        });
+    }
+
+    messages.push({ role: 'user', content: buildOpenAiStyleUserContent(text, attachments.imageData) });
+
+    const headers = {
+        'Content-Type': 'application/json'
+    };
+    if (apiKey) {
+        headers['Authorization'] = `Bearer ${apiKey}`;
+    }
+
+    const response = await axios.post(
+        `${apiBase}/chat/completions`,
+        {
+            model,
+            messages,
+            temperature: 0.7,
+            max_tokens: 1024
+        },
+        {
+            timeout: 90000,
+            headers
+        }
+    );
+
+    const parsed = parseOpenAiCompatibleChoice(response.data?.choices?.[0] || {});
+    if (!parsed.text && parsed.imageUrls.length === 0 && parsed.inlineImages.length === 0) {
+        throw new Error('Custom provider returned empty response');
+    }
+    return parsed;
+}
+
 async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
     const rawResult = provider === 'groq'
@@ -3767,7 +3824,9 @@ async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
             ? await runOpenAiForAiBot(aiBot, chatId, text, attachments)
             : provider === 'openrouter'
                 ? await runOpenRouterForAiBot(aiBot, chatId, text, attachments)
-                : await runGeminiForAiBot(aiBot, chatId, text, attachments);
+                : provider === 'custom'
+                    ? await runCustomProviderForAiBot(aiBot, chatId, text, attachments)
+                    : await runGeminiForAiBot(aiBot, chatId, text, attachments);
 
     if (typeof rawResult === 'string') {
         return { text: rawResult, imageUrls: [], inlineImages: [] };
