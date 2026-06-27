@@ -8,6 +8,7 @@ import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
+import { Button } from '../components/ui/button';
 import {
   Tooltip,
   TooltipContent,
@@ -528,7 +529,7 @@ export function Integrations() {
                 <h3 className="mb-4 text-lg font-semibold">
                   {editingId === -1 ? 'Создание интеграции' : 'Редактирование'}
                 </h3>
-                <form className="entity-edit-form" onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <form className="entity-edit-form flex flex-col gap-5" onSubmit={handleSave}>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
@@ -839,23 +840,12 @@ export function Integrations() {
                     />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                    <button
-                      type="submit"
-                      style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-                    >
-                      Сохранить
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditingId(null);
-                        if (!selectedId) setForm(DEFAULT_FORM);
-                      }}
-                      style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-                    >
-                      Отмена
-                    </button>
+                  <div className="flex gap-3 pt-2">
+                    <Button type="submit" className="flex-1">Сохранить</Button>
+                    <Button type="button" variant="secondary" className="flex-1" onClick={() => {
+                      setEditingId(null);
+                      if (!selectedId) setForm(DEFAULT_FORM);
+                    }}>Отмена</Button>
                   </div>
                 </form>
               </>

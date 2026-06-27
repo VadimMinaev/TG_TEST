@@ -8,6 +8,7 @@ import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
+
 import {
   Tooltip,
   TooltipContent,
@@ -478,7 +479,7 @@ export function Polling() {
               <h3 className="mb-4 text-lg font-semibold">
                 {editingPollId === -1 ? 'Создание задачи' : 'Редактирование задачи'}
               </h3>
-              <form className="entity-edit-form" onSubmit={handleSavePoll} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form className="entity-edit-form flex flex-col gap-5" onSubmit={handleSavePoll}>
                 <div>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название
                     <TooltipProvider delayDuration={200}>

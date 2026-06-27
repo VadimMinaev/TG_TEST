@@ -3,6 +3,10 @@ import { useSearchParams } from 'react-router';
 import { Bot, KeyRound, Pencil, RefreshCw, Save, Trash2, Unplug, Webhook } from 'lucide-react';
 import { api, AiBot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
+import { Button } from '../components/ui/button';
+import { Textarea } from '../components/ui/textarea';
 import { useToast } from '../components/ToastNotification';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { EntityStateSwitch } from '../components/StateToggle';
@@ -430,17 +434,16 @@ export function AiBots() {
                 <h3 className="text-lg font-semibold">{editingId === -1 ? 'Создание AI бота' : 'Редактирование AI бота'}</h3>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Название</label>
-                  <input
+                  <Label className="mb-2 block">Название</Label>
+                  <Input
                     value={form.name}
                     onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                     placeholder="AI Ассистент"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Провайдер</label>
+                  <Label className="mb-2 block">Провайдер</Label>
                   <select
                     value={form.provider || 'gemini'}
                     onChange={(event) => {
@@ -455,7 +458,7 @@ export function AiBots() {
                         };
                       });
                     }}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                    className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                   >
                     <option value="gemini">Gemini</option>
                     <option value="groq">Groq</option>
@@ -467,51 +470,50 @@ export function AiBots() {
 
                 {form.provider === 'custom' && (
                   <div>
-                    <label className="mb-2 block text-sm font-medium">URL API (Base URL)</label>
-                    <input
+                    <Label className="mb-2 block">URL API (Base URL)</Label>
+                    <Input
                       value={form.apiBase || ''}
                       onChange={(event) => setForm((prev) => ({ ...prev, apiBase: event.target.value }))}
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
+                      className="font-mono"
                       placeholder="https://example.com/v1"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">Telegram Bot Token</label>
-                  <input
+                  <Label className="mb-2 block">Telegram Bot Token</Label>
+                  <Input
                     value={form.telegramBotToken}
                     onChange={(event) => setForm((prev) => ({ ...prev, telegramBotToken: event.target.value }))}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
+                    className="font-mono"
                     placeholder="123456789:ABCdef..."
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">
+                  <Label className="mb-2 block">
                     API Key ({form.provider === 'groq' ? 'Groq' : form.provider === 'openai' ? 'OpenAI' : form.provider === 'openrouter' ? 'OpenRouter' : form.provider === 'custom' ? 'Custom' : 'Gemini'})
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     value={form.apiKey}
                     onChange={(event) => setForm((prev) => ({ ...prev, apiKey: event.target.value }))}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 font-mono"
+                    className="font-mono"
                     placeholder={form.provider === 'groq' ? 'gsk_...' : form.provider === 'openai' ? 'sk-...' : form.provider === 'openrouter' ? 'sk-or-v1-...' : form.provider === 'custom' ? 'sk-...' : 'AIza...'}
                   />
                 </div>
 
                 {form.provider === 'custom' ? (
                   <div>
-                    <label className="mb-2 block text-sm font-medium">Название модели</label>
-                    <input
+                    <Label className="mb-2 block">Название модели</Label>
+                    <Input
                       value={form.model}
                       onChange={(event) => setForm((prev) => ({ ...prev, model: event.target.value }))}
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                       placeholder="qwen3-72b, llama-3.1-405b..."
                     />
                   </div>
                 ) : (
                   <div>
-                    <label className="mb-2 block text-sm font-medium">Модель</label>
+                    <Label className="mb-2 block">Модель</Label>
                     <select
                       value={showCustomModelInput ? '__custom__' : form.model}
                       onChange={(event) => {
@@ -523,7 +525,7 @@ export function AiBots() {
                         setForceCustomModelInput(false);
                         setForm((prev) => ({ ...prev, model: value }));
                       }}
-                      className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                      className="w-full rounded-md border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                     >
                       {providerModels.map((modelName) => (
                         <option key={modelName} value={modelName}>
@@ -533,7 +535,7 @@ export function AiBots() {
                       <option value="__custom__">Своя модель...</option>
                     </select>
                     {showCustomModelInput && (
-                      <input
+                      <Input
                         value={form.model}
                         onChange={(event) => {
                           const nextValue = event.target.value;
@@ -542,7 +544,7 @@ export function AiBots() {
                             setForceCustomModelInput(false);
                           }
                         }}
-                        className="mt-2 w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
+                        className="mt-2"
                         placeholder="Введите имя своей модели"
                       />
                     )}
@@ -550,12 +552,11 @@ export function AiBots() {
                 )}
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium">System Prompt (опционально)</label>
-                  <textarea
+                  <Label className="mb-2 block">System Prompt (опционально)</Label>
+                  <Textarea
                     rows={4}
                     value={form.systemPrompt || ''}
                     onChange={(event) => setForm((prev) => ({ ...prev, systemPrompt: event.target.value }))}
-                    className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2"
                     placeholder="Короткая системная инструкция..."
                   />
                 </div>
@@ -574,23 +575,13 @@ export function AiBots() {
                 </div>
 
                 <div className="flex gap-3">
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] disabled:opacity-60"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <Save className="h-4 w-4" />
-                      {saving ? 'Сохранение...' : 'Сохранить'}
-                    </span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditingId(null)}
-                    className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
-                  >
+                  <Button type="submit" disabled={saving} className="flex-1">
+                    <Save className="h-4 w-4" />
+                    {saving ? 'Сохранение...' : 'Сохранить'}
+                  </Button>
+                  <Button type="button" variant="secondary" className="flex-1" onClick={() => setEditingId(null)}>
                     Отмена
-                  </button>
+                  </Button>
                 </div>
               </form>
             ) : selectedBot ? (

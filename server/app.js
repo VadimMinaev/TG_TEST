@@ -3284,7 +3284,7 @@ function getAiBotSessionMessages(aiBotId, chatId) {
     const key = getAiBotSessionKey(aiBotId, chatId);
     const session = aiBotSessions.get(key);
     if (!session || !Array.isArray(session.messages)) return [];
-    return session.messages.slice(-12);
+    return session.messages.slice(-30);
 }
 
 function pushAiBotSessionMessage(aiBotId, chatId, role, text) {
@@ -3292,7 +3292,7 @@ function pushAiBotSessionMessage(aiBotId, chatId, role, text) {
     if (!normalizedText) return;
     const key = getAiBotSessionKey(aiBotId, chatId);
     const previous = aiBotSessions.get(key) || { messages: [], updatedAt: Date.now() };
-    const nextMessages = [...previous.messages, { role, text: normalizedText }].slice(-12);
+    const nextMessages = [...previous.messages, { role, text: normalizedText }].slice(-30);
     aiBotSessions.set(key, { messages: nextMessages, updatedAt: Date.now() });
 }
 
@@ -4192,6 +4192,12 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
 
         const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, { audioData: audioPayload, imageData: imagePayload });
         const aiText = String(aiResponse?.text || '');
+
+        pushAiBotSessionMessage(aiBot.id, chatId, 'user', text);
+        if (aiText) {
+            pushAiBotSessionMessage(aiBot.id, chatId, 'assistant', aiText);
+        }
+
         const imageUrls = Array.from(new Set([
             ...extractImageUrlsFromAiText(aiText),
             ...(Array.isArray(aiResponse?.imageUrls) ? aiResponse.imageUrls : [])
