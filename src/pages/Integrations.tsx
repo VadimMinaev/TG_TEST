@@ -8,12 +8,7 @@ import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '../components/ui/tooltip';
+import { AiFieldAssist } from '../components/AIFieldAssist';
 import { useToast } from '../components/ToastNotification';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
@@ -579,7 +574,10 @@ export function Integrations() {
                         </div>
                       )}
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                          <span>Условие срабатывания</span>
+                          <AiFieldAssist fieldName="Условие срабатывания" fieldDescription="Напиши на русском условие для webhook. Например: срабатывать когда type = order и status = new" currentValue={form.triggerCondition} onApply={(v) => setForm({ ...form, triggerCondition: v })} />
+                        </label>
                         <input
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                           value={form.triggerCondition}
@@ -683,7 +681,10 @@ export function Integrations() {
                         </div>
                       )}
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условие срабатывания</label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                          <span>Условие срабатывания</span>
+                          <AiFieldAssist fieldName="Условие срабатывания (polling)" fieldDescription="Напиши на русском условие для polling. Например: срабатывать когда status = ready и progress = 100" currentValue={form.pollingCondition} onApply={(v) => setForm({ ...form, pollingCondition: v })} />
+                        </label>
                         <input
                           style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
                           value={form.pollingCondition}
@@ -810,9 +811,10 @@ export function Integrations() {
                           </div>
                         </div>
                         <div style={{ marginTop: '16px' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                            Шаблон сообщения
+                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                            <span>Шаблон сообщения</span>
                             <TemplateHelp context="integration" />
+                            <AiFieldAssist fieldName="Шаблон сообщения" fieldDescription="Опиши сообщение для Telegram. Можно использовать переменные из payload. Например: пришел новый заказ {{name}}, статус {{status}}" currentValue={form.messageTemplate} onApply={(v) => setForm({ ...form, messageTemplate: v })} />
                           </label>
                           <textarea
                             rows={2}

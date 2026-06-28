@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../lib/api';
+import { AiFieldAssist } from '../components/AIFieldAssist';
 
 export function Testing() {
   const [testCondition, setTestCondition] = useState('payload.category === "incident"');
@@ -88,8 +89,9 @@ export function Testing() {
           </div>
           <div style={{ padding: '16px' }} className="space-y-4">
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500, color: 'hsl(var(--muted-foreground))' }}>
-                Условие (JavaScript)
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '13px', fontWeight: 500, color: 'hsl(var(--muted-foreground))' }}>
+                <span>Условие (JavaScript)</span>
+                <AiFieldAssist fieldName="Условие (JS)" fieldDescription="Напиши на русском условие для проверки. Например: проверь что category = incident и priority = high" currentValue={testCondition} onApply={setTestCondition} />
               </label>
               <input
                 type="text"
@@ -101,8 +103,9 @@ export function Testing() {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: 500, color: 'hsl(var(--muted-foreground))' }}>
-                Тестовый payload (JSON)
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', fontSize: '13px', fontWeight: 500, color: 'hsl(var(--muted-foreground))' }}>
+                <span>Тестовый payload (JSON)</span>
+                <AiFieldAssist fieldName="Тестовый payload" fieldDescription="Опиши структуру JSON, которую нужно сгенерировать. Например: заявка с полями team_id, category, impact, subject" currentValue={testPayload} onApply={setTestPayload} />
               </label>
               <textarea
                 value={testPayload}

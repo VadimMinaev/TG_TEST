@@ -8,13 +8,13 @@ import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
-
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '../components/ui/tooltip';
+import { AiFieldAssist } from '../components/AIFieldAssist';
 import { useToast } from '../components/ToastNotification';
 
 const DEFAULT_FORM = {
@@ -701,7 +701,9 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Условия (JSON)
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                    <span>Условия (JSON)</span>
+                    <AiFieldAssist fieldName="Условия (JSON)" fieldDescription="Опиши на русском условия для проверки ответа API. Например: срабатывать когда status = ok и priority >= 3. Будет сгенерирован JSON с logic, conditions, path, op, value." currentValue={form.conditionJson} onApply={(v) => setForm({ ...form, conditionJson: v })} />
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -747,9 +749,10 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                    Шаблон сообщения (опционально)
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                    <span>Шаблон сообщения (опционально)</span>
                     <TemplateHelp context="poll" />
+                    <AiFieldAssist fieldName="Шаблон сообщения" fieldDescription="Опиши сообщение для Telegram при срабатывании polling. Можно использовать переменные из ответа API через payload. Например: Статус задачи: {{status}}, прогресс: {{progress}}%" currentValue={form.messageTemplate} onApply={(v) => setForm({ ...form, messageTemplate: v })} />
                   </label>
                   <textarea
                     rows={3}

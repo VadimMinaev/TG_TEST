@@ -797,4 +797,17 @@ export const api = {
     }
     return res.json();
   },
+
+  aiAssist: async (aiBotId: number, prompt: string, context?: string): Promise<{ text: string }> => {
+    const res = await fetch(`${API_BASE}/ai/assist`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ aiBotId, prompt, context }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'AI assist request failed');
+    }
+    return res.json();
+  },
 };

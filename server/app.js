@@ -3886,6 +3886,94 @@ async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
     };
 }
 
+/* ── AI Assist (in-app helper, no Telegram sessions) ── */
+async function callAiProvider(providerOpts) {
+    const { provider, apiKey, model, apiBase, systemPrompt, prompt } = providerOpts;
+    const p = String(provider || 'gemini').toLowerCase();
+
+    if (p === 'gemini') {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model || 'gemini-2.0-flash')}:generateContent?key=${encodeURIComponent(apiKey)}`;
+        const contents = [{ role: 'user', parts: [{ text: String(prompt).trim() }] }];
+        const payload = { contents, generationConfig: { temperature: 0.3, maxOutputTokens: 2048 } };
+        if (systemPrompt) {
+            payload.systemInstruction = { role: 'system', parts: [{ text: String(systemPrompt).trim() }] };
+        }
+        const resp = await axios.post(url, payload, { timeout: 90000 });
+        const parts = resp.data?.candidates?.[0]?.content?.parts || [];
+        const text = parts.map((p) => p?.text || '').join('\n').trim();
+        if (!text) throw new Error('Gemini returned empty response');
+        return text;
+    }
+
+    const isOpenAiCompat = p === 'groq' || p === 'openai' || p === 'openrouter' || p === 'custom';
+    if (!isOpenAiCompat) throw new Error(`Unknown provider: ${provider}`);
+
+    const endpoints = {
+        groq: 'https://api.groq.com/openai/v1/chat/completions',
+        openai: 'https://api.openai.com/v1/chat/completions',
+        openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+        custom: `${(apiBase || '').replace(/\/+$/, '')}/chat/completions`,
+    };
+    const url = endpoints[p];
+    if (!url) throw new Error(`Cannot determine endpoint for provider: ${provider}`);
+
+    const messages = [];
+    const sp = String(systemPrompt || '').trim();
+    if (sp) messages.push({ role: 'system', content: sp });
+    messages.push({ role: 'user', content: String(prompt).trim() });
+
+    const headers = {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+    };
+    if (p === 'openrouter') headers['X-Title'] = 'TG_TEST AI Assist';
+
+    const resp = await axios.post(url, {
+        model: String(model || 'gpt-4o-mini').trim(),
+        messages,
+        temperature: 0.3,
+        max_tokens: 2048,
+    }, { timeout: 90000, headers });
+
+    const choice = resp.data?.choices?.[0];
+    const text = choice?.message?.content || '';
+    if (!text) throw new Error(`${provider} returned empty response`);
+    return text;
+}
+
+app.post('/api/ai/assist', auth, async (req, res) => {
+    try {
+        const { aiBotId, prompt, systemPrompt: spOverride, context } = req.body;
+        if (!aiBotId) return res.status(400).json({ error: 'aiBotId is required' });
+        if (!prompt || !String(prompt).trim()) return res.status(400).json({ error: 'prompt is required' });
+
+        const bot = await fetchAiBotForWebhook(Number(aiBotId));
+        if (!bot) return res.status(404).json({ error: 'AI bot not found' });
+        if (!bot.enabled) return res.status(400).json({ error: 'AI bot is disabled' });
+
+        const finalPrompt = context
+            ? `[Context: ${String(context).trim()}]\n\n${String(prompt).trim()}`
+            : String(prompt).trim();
+
+        const systemPrompt = spOverride || String(bot.systemPrompt || '').trim() ||
+            'You are a helpful assistant for a webhook/telegram integration management system. Answer concisely in Russian. When generating code or templates, use clean formatting.';
+
+        const text = await callAiProvider({
+            provider: bot.provider || 'gemini',
+            apiKey: bot.apiKey || bot.geminiApiKey,
+            model: bot.model || bot.geminiModel,
+            apiBase: bot.apiBase,
+            systemPrompt,
+            prompt: finalPrompt,
+        });
+
+        return res.json({ text });
+    } catch (err) {
+        console.error('AI assist error:', err?.response?.data || err.message || err);
+        return res.status(500).json({ error: err.message || 'AI assist failed' });
+    }
+});
+
 async function fetchAiBotForWebhook(aiBotId) {
     if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
         const result = await db.query('SELECT id, data, account_id FROM ai_bots WHERE id = $1', [aiBotId]);

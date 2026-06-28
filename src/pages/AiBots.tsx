@@ -4,6 +4,7 @@ import { Bot, Eye, EyeOff, RefreshCw, Save, Trash2, ChevronLeft, Plus, Pencil, P
 import { api, AiBot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { useToast } from '../components/ToastNotification';
+import { AiFieldAssist } from '../components/AIFieldAssist';
 
 type AiBotForm = Omit<AiBot, 'id'>;
 
@@ -323,7 +324,10 @@ export function AiBots() {
                 <div className="fp-section-title">Поведение</div>
                 <div className="fp-fields-grid">
                   <div className="fp-field span2">
-                    <label className="fp-label">System Prompt</label>
+                    <label className="fp-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>System Prompt</span>
+                      <AiFieldAssist fieldName="System Prompt" fieldDescription="Опиши поведение AI-бота на русском. Например: Ты консультант техподдержки, отвечай вежливо и по делу. Используй данные из диалога." currentValue={form.systemPrompt || ''} onApply={(v) => setForm((p) => ({ ...p, systemPrompt: v }))} />
+                    </label>
                     <textarea className="fp-textarea" rows={4} value={form.systemPrompt || ''} onChange={(e) => setForm((p) => ({ ...p, systemPrompt: e.target.value }))} placeholder="Инструкции для бота..." />
                     <span className="fp-hint">Контекст перед каждым диалогом</span>
                   </div>

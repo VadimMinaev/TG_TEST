@@ -11,6 +11,7 @@ import { StatusRadio } from './StatusRadio';
 import { EntityStateSwitch } from './StateToggle';
 import { TemplateHelp } from './TemplateHelp';
 import { TelegramPreviewWithToggle } from './TelegramPreviewWithToggle';
+import { AiFieldAssist } from './AIFieldAssist';
 
 function InfoTooltip({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -168,8 +169,8 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          Условие (JavaScript выражение)
+        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+          <span>Условие (JS)</span>
           <InfoTooltip>
             <div className="space-y-2">
               <p>JavaScript выражение, которое должно вернуть <code className="rounded bg-[hsl(var(--muted))] px-1">true</code> для срабатывания Webhook.</p>
@@ -185,6 +186,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
               </ul>
             </div>
           </InfoTooltip>
+          <AiFieldAssist fieldName="Условие (JS)" fieldDescription="Напиши на русском, при каком условии должно срабатывать правило. Например: когда category = incident и priority > 3" currentValue={condition} onApply={setCondition} />
         </label>
         <textarea
           id="condition"
@@ -260,9 +262,10 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-          Шаблон сообщения
+        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+          <span>Шаблон сообщения</span>
           <TemplateHelp context="rule" />
+          <AiFieldAssist fieldName="Шаблон сообщения" fieldDescription="Опиши, какое сообщение должно отправляться в Telegram. Можно использовать переменные из payload. Например: отправлять subject и category заявки" currentValue={messageTemplate} onApply={setMessageTemplate} />
         </label>
         <textarea
           id="messageTemplate"

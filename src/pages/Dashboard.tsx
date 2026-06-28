@@ -24,6 +24,8 @@ import { GlobalSearch } from '../components/GlobalSearch';
 import { Operations } from './Operations';
 import { api } from '../lib/api';
 import { useToast } from '../components/ToastNotification';
+import { AiAssistantProvider } from '../lib/ai-assistant-context';
+import { AiAssistantToggle } from '../components/AIAssistantPanel';
 
 export function Dashboard() {
   const { user, logout, isLoading } = useAuth();
@@ -164,6 +166,7 @@ export function Dashboard() {
   }
 
   return (
+    <AiAssistantProvider>
     <div className="app-shell">
       <aside className="sidebar" aria-label="Основная навигация">
         <div className="sidebar-brand">
@@ -347,6 +350,8 @@ export function Dashboard() {
         </div>
       )}
     </div>
+      <AiAssistantToggle />
+    </AiAssistantProvider>
   );
 }
 
