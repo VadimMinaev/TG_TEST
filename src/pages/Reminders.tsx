@@ -137,7 +137,9 @@ export function Reminders() {
         { type: 'view' as const, label: 'ID', value: `#${selected.id}` },
         { type: 'view' as const, label: 'Пользователь', value: ownerLabel(selected) },
         { type: 'badge' as const, label: 'Статус', value: selected.is_active ? 'Активно' : 'Неактивно', active: selected.is_active },
-        { type: 'view' as const, label: 'Текст', value: selected.message, span2: true, multiline: true },
+      ] },
+      { title: 'Текст', fields: [
+        { type: 'view' as const, label: '', value: selected.message, span2: true, multiline: true },
       ] },
       { title: 'Расписание', fields: [
         { type: 'view' as const, label: 'Запуск', value: fmt(selected.run_at) },
