@@ -524,7 +524,7 @@ export function Integrations() {
                   {editingId === -1 ? 'Создание интеграции' : 'Редактирование'}
                 </h3>
                 <form className="entity-edit-form flex flex-col gap-5" onSubmit={handleSave}>
-                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
                       <input
@@ -615,8 +615,8 @@ export function Integrations() {
                           </p>
                         </div>
                       )}
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="col-span-2">
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2">
                           <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL для опроса</label>
                           <input
                             style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
@@ -638,7 +638,7 @@ export function Integrations() {
                           </select>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
                           <input
@@ -707,7 +707,7 @@ export function Integrations() {
 
                   <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
                     <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>🚀 Action (вызов API)</h4>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
                         <input
@@ -778,7 +778,7 @@ export function Integrations() {
                     
                     {form.sendToTelegram && (
                       <div style={{ paddingLeft: '30px', opacity: form.sendToTelegram ? 1 : 0.5 }}>
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
                             <input
@@ -910,7 +910,7 @@ export function Integrations() {
                             </code>
                           </div>
                         )}
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <strong>Интервал:</strong>{' '}
                             <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.pollingInterval || 60}s</code>

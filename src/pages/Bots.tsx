@@ -539,7 +539,7 @@ export function Bots() {
               </h3>
               <form onSubmit={handleSaveBot} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 {/* Название и Chat ID */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
                       Название
@@ -834,7 +834,7 @@ export function Bots() {
                     )}
 
                     {/* Time and timezone */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
                           Время отправки
