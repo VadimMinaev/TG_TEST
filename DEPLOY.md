@@ -26,6 +26,21 @@ docker compose build app
 docker compose up -d app
 
 
+------------------------------------------------------------------------
+Чистка
+
+# 1. Удалить dangling образы (<none>) — освободит ~2GB
+docker image prune -f
+
+# 2. Очистить build cache — освободит ~2.4GB  
+docker builder prune -f
+
+# Проверить результат
+docker system df
+df -h
+
+--------------------------------------------------------------------------
+
 
 4) Проверить логи 
 docker compose logs -f app
