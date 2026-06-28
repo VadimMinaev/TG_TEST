@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../components/ToastNotification';
-import { Save, Bot, Key, Link as LinkIcon, RefreshCw } from 'lucide-react';
+import { Save, Bot, Key, Link as LinkIcon, RefreshCw, Check, Copy, Trash2 } from 'lucide-react';
+import { useSearchParams } from 'react-router';
 
 interface ReminderSettings {
   botToken: string;
@@ -11,8 +12,11 @@ interface ReminderSettings {
 
 export function ReminderSettingsPage() {
   const { addToast } = useToast();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tokenCopied, setTokenCopied] = useState(false);
+  const [webhookCopied, setWebhookCopied] = useState(false);
   const [settings, setSettings] = useState<ReminderSettings>({
     botToken: '',
     botUsername: '',
@@ -23,7 +27,6 @@ export function ReminderSettingsPage() {
   const loadSettings = async () => {
     try {
       setLoading(true);
-      // Пока загружаем только маску токена
       const response = await fetch('/api/reminders/settings', {
         headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
       });
@@ -44,16 +47,13 @@ export function ReminderSettingsPage() {
     }
   };
 
-  useEffect(() => {
-    loadSettings();
-  }, []);
+  useEffect(() => { loadSettings(); }, []);
 
   const handleSaveToken = async () => {
     if (!settings.botToken || settings.botToken === 'YOUR_TOKEN') {
       addToast('Введите корректный токен бота', 'error');
       return;
     }
-
     try {
       setSaving(true);
       const response = await fetch('/api/reminders/settings/token', {
@@ -64,14 +64,13 @@ export function ReminderSettingsPage() {
         },
         body: JSON.stringify({ botToken: settings.botToken })
       });
-
       if (response.ok) {
         const data = await response.json();
         setSettings(prev => ({ ...prev, botUsername: data.botUsername }));
-        addToast('✅ Токен сохранён!', 'success');
+        addToast('Токен сохранён', 'success');
       } else {
         const error = await response.json();
-        addToast(`❌ ${error.error || 'Ошибка сохранения'}`, 'error');
+        addToast(error.error || 'Ошибка сохранения', 'error');
       }
     } catch (error: any) {
       addToast(error.message || 'Ошибка сохранения токена', 'error');
@@ -85,7 +84,6 @@ export function ReminderSettingsPage() {
       addToast('Сначала сохраните токен бота', 'error');
       return;
     }
-
     try {
       setSaving(true);
       const response = await fetch('/api/reminders/settings/webhook', {
@@ -96,18 +94,13 @@ export function ReminderSettingsPage() {
         },
         body: JSON.stringify({})
       });
-
       if (response.ok) {
         const data = await response.json();
-        setSettings(prev => ({
-          ...prev,
-          webhookUrl: data.webhookUrl,
-          webhookSet: data.ok,
-        }));
-        addToast(`✅ Webhook установлен: ${data.webhookUrl}`, 'success');
+        setSettings(prev => ({ ...prev, webhookUrl: data.webhookUrl, webhookSet: data.ok }));
+        addToast(`Webhook установлен: ${data.webhookUrl}`, 'success');
       } else {
         const error = await response.json();
-        addToast(`❌ ${error.error || 'Ошибка установки webhook'}`, 'error');
+        addToast(error.error || 'Ошибка установки webhook', 'error');
       }
     } catch (error: any) {
       addToast(error.message || 'Ошибка установки webhook', 'error');
@@ -118,20 +111,18 @@ export function ReminderSettingsPage() {
 
   const handleDeleteWebhook = async () => {
     if (!window.confirm('Удалить webhook? Бот перестанет получать сообщения.')) return;
-
     try {
       setSaving(true);
       const response = await fetch('/api/reminders/settings/webhook', {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${localStorage.getItem('authToken')}` }
       });
-
       if (response.ok) {
         setSettings(prev => ({ ...prev, webhookSet: false }));
-        addToast('✅ Webhook удалён', 'success');
+        addToast('Webhook удалён', 'success');
       } else {
         const error = await response.json();
-        addToast(`❌ ${error.error || 'Ошибка'}`, 'error');
+        addToast(error.error || 'Ошибка', 'error');
       }
     } catch (error: any) {
       addToast(error.message || 'Ошибка', 'error');
@@ -140,126 +131,293 @@ export function ReminderSettingsPage() {
     }
   };
 
+  const webhookUrl = `${window.location.origin}/api/telegram/webhook`;
+
+  const handleCopyWebhook = () => {
+    navigator.clipboard?.writeText(webhookUrl).then(() => {
+      setWebhookCopied(true);
+      setTimeout(() => setWebhookCopied(false), 2000);
+    });
+  };
+
+  const tabs = [
+    { id: 'automation', label: 'Автоматизация', icon: 'bolt' },
+    { id: 'ai-bots', label: 'AI-боты', icon: 'robot' },
+    { id: 'reminders', label: 'Напоминания', icon: 'clock', active: true },
+    { id: 'reminders-settings', label: 'К напоминаниям', icon: 'settings' },
+  ];
+
+  const switchTab = (id: string) => {
+    const next = new URLSearchParams(searchParams);
+    if (id === 'reminders-settings') {
+      next.set('tab', 'reminders');
+      next.set('settings', 'true');
+    } else if (id === 'reminders') {
+      next.set('tab', 'reminders');
+      next.delete('settings');
+    } else {
+      next.set('tab', id);
+      next.delete('settings');
+    }
+    setSearchParams(next);
+  };
+
   if (loading) {
     return (
-      <div className="card" style={{ overflow: 'clip' }}>
-        <div className="p-6">
-          <div className="flex items-center gap-2 text-[hsl(var(--muted-foreground))]">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
-            Загрузка...
-          </div>
-        </div>
+      <div className="flex items-center justify-center py-20">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-current border-t-transparent" style={{ color: 'hsl(var(--muted-foreground))' }} />
       </div>
     );
   }
 
   return (
-    <div className="card" style={{ overflow: 'clip' }}>
-      <div className="card-header">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <Bot className="h-5 w-5" />
-              Настройки бота напоминаний
-            </h2>
-          </div>
+    <div style={{ maxWidth: '680px' }}>
+      {/* Card */}
+      <div style={{
+        background: 'hsl(var(--card))',
+        border: '1px solid hsl(var(--border) / 0.5)',
+        borderRadius: '12px',
+        padding: '24px',
+      }}>
+        {/* Card title */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          fontSize: '15px',
+          fontWeight: 500,
+          color: 'hsl(var(--foreground))',
+          marginBottom: '24px',
+        }}>
+          <Bot size={17} style={{ color: 'hsl(var(--muted-foreground))' }} />
+          Настройки бота напоминаний
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={loadSettings} className="icon-button" title="Обновить">
-            <RefreshCw className="h-4 w-4" />
+
+        {/* Токен бота */}
+        <div style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: 'hsl(var(--muted-foreground))',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase' as const,
+          marginBottom: '5px',
+        }}>
+          Токен бота
+        </div>
+        <div style={{
+          fontSize: '12px',
+          color: 'hsl(var(--muted-foreground) / 0.6)',
+          marginBottom: '10px',
+          lineHeight: 1.5,
+        }}>
+          Токен из @BotFather — хранится только в базе данных
+        </div>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input
+            type="password"
+            value={settings.botToken === '*****' ? '' : settings.botToken}
+            onChange={(e) => setSettings({ ...settings, botToken: e.target.value })}
+            placeholder="Вставьте токен из @BotFather"
+            style={{
+              flex: 1,
+              height: '36px',
+              background: 'hsl(var(--background))',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '8px',
+              padding: '0 12px',
+              fontSize: '13px',
+              fontFamily: 'var(--font-mono)',
+              color: 'hsl(var(--foreground))',
+              outline: 'none',
+              transition: 'border-color 0.15s',
+            }}
+          />
+          <button
+            onClick={handleSaveToken}
+            disabled={saving}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              height: '36px',
+              padding: '0 16px',
+              background: saving ? 'hsl(var(--primary) / 0.6)' : 'hsl(var(--primary))',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: 500,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap' as const,
+              flexShrink: 0,
+              transition: 'background 0.15s',
+            }}
+          >
+            {saving ? <RefreshCw size={15} className="animate-spin" /> : <Save size={15} />}
+            Сохранить
           </button>
         </div>
-      </div>
 
-      <div className="p-6">
-        <div className="panel max-w-4xl">
-          <div className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
-            Отдельный бот для системы напоминаний
+        {settings.botUsername && (
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '5px',
+            marginTop: '10px',
+            padding: '4px 10px',
+            background: 'hsl(var(--success) / 0.1)',
+            border: '1px solid hsl(var(--success) / 0.25)',
+            borderRadius: '20px',
+            fontSize: '12px',
+            color: 'hsl(var(--success))',
+            fontWeight: 500,
+          }}>
+            <Check size={14} />
+            @{settings.botUsername} подключён
           </div>
+        )}
 
-          <div className="flex flex-col gap-5">
-            <div>
-              <h3 className="mb-3 text-lg font-semibold flex items-center gap-2">
-                <Key className="h-5 w-5" />
-                Токен бота
-              </h3>
-              <label className="form-label-simple">
-                Токен из @BotFather
-              </label>
-              <div className="grid grid-cols-[1fr_auto] gap-3">
-                <input
-                  type="password"
-                  value={settings.botToken === '*****' ? '' : settings.botToken}
-                  onChange={(e) => setSettings({ ...settings, botToken: e.target.value })}
-                  placeholder="123456789:ABCdefGHIjkl..."
-                  className="input-field input-field-mono"
-                />
-                <button
-                  onClick={handleSaveToken}
-                  disabled={saving}
-                  className="btn-primary"
-                  style={{ opacity: saving ? 0.65 : 1 }}
-                >
-                  <span className="inline-flex items-center gap-2">
-                    <Save className="h-4 w-4" />
-                    Сохранить
-                  </span>
-                </button>
-              </div>
-              <p className="form-hint">
-                Токен хранится в базе данных и используется только для напоминаний
-              </p>
+        {/* Divider */}
+        <hr style={{ border: 'none', borderTop: '1px solid hsl(var(--border) / 0.5)', margin: '22px 0' }} />
+
+        {/* Webhook */}
+        <div style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          color: 'hsl(var(--muted-foreground))',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase' as const,
+          marginBottom: '5px',
+        }}>
+          Webhook
+        </div>
+        <div style={{
+          fontSize: '12px',
+          color: 'hsl(var(--muted-foreground) / 0.6)',
+          marginBottom: '10px',
+          lineHeight: 1.5,
+        }}>
+          URL для входящих сообщений от Telegram
+        </div>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'hsl(var(--background))',
+          border: '1px solid hsl(var(--border) / 0.5)',
+          borderRadius: '8px',
+          padding: '10px 14px',
+          gap: '12px',
+        }}>
+          <span style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '12px',
+            color: 'hsl(var(--muted-foreground))',
+            wordBreak: 'break-all',
+            lineHeight: 1.5,
+          }}>
+            {webhookUrl}
+          </span>
+          <button
+            onClick={handleCopyWebhook}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              height: '28px',
+              padding: '0 10px',
+              background: 'transparent',
+              border: '1px solid hsl(var(--border))',
+              borderRadius: '6px',
+              fontSize: '12px',
+              color: webhookCopied ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap' as const,
+              flexShrink: 0,
+              transition: 'all 0.15s',
+            }}
+          >
+            {webhookCopied ? <Check size={14} /> : <Copy size={14} />}
+            {webhookCopied ? 'Скопировано' : 'Копировать'}
+          </button>
+        </div>
+
+        {/* Webhook row */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: '12px',
+          flexWrap: 'wrap' as const,
+          gap: '8px',
+        }}>
+          {settings.webhookSet ? (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px',
+              padding: '4px 10px',
+              background: 'hsl(var(--success) / 0.1)',
+              border: '1px solid hsl(var(--success) / 0.25)',
+              borderRadius: '20px',
+              fontSize: '12px',
+              color: 'hsl(var(--success))',
+              fontWeight: 500,
+            }}>
+              <Check size={14} />
+              Webhook установлен
             </div>
+          ) : (
+            <div />
+          )}
 
-            {settings.botUsername && (
-              <div className="rounded-lg border border-[hsl(var(--success)_/_0.35)] bg-[hsl(var(--success)_/_0.08)] p-3 text-sm text-[hsl(var(--success))]">
-                ✅ Бот: <strong>@{settings.botUsername}</strong>
-              </div>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {settings.webhookSet ? (
+              <button
+                onClick={handleDeleteWebhook}
+                disabled={saving}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  height: '30px',
+                  padding: '0 12px',
+                  background: 'transparent',
+                  border: '1px solid hsl(var(--destructive) / 0.3)',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: 'hsl(var(--destructive))',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s',
+                  opacity: saving ? 0.6 : 1,
+                }}
+              >
+                <Trash2 size={14} />
+                Удалить webhook
+              </button>
+            ) : (
+              <button
+                onClick={handleSetWebhook}
+                disabled={saving || !settings.botToken}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  height: '30px',
+                  padding: '0 12px',
+                  background: 'transparent',
+                  border: '1px solid hsl(var(--success) / 0.3)',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: 'hsl(var(--success))',
+                  cursor: saving || !settings.botToken ? 'not-allowed' : 'pointer',
+                  transition: 'background 0.15s',
+                  opacity: saving || !settings.botToken ? 0.6 : 1,
+                }}
+              >
+                Установить webhook
+              </button>
             )}
-
-            <div className="h-px bg-[hsl(var(--border))]" />
-
-            <div>
-              <h3 className="mb-3 text-lg font-semibold flex items-center gap-2">
-                <LinkIcon className="h-5 w-5" />
-                Webhook
-              </h3>
-              <div style={{ padding: '12px 14px', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}>
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                  URL для сообщений от Telegram:
-                </p>
-                <code className="mt-1 block break-all rounded bg-[hsl(var(--muted)_/_0.35)] px-2 py-1 text-xs font-mono">
-                  {window.location.origin}/api/telegram/webhook
-                </code>
-              </div>
-
-              <div className="mt-3 flex flex-wrap items-center gap-3">
-                {settings.webhookSet ? (
-                  <>
-                    <span className="badge badge-success">
-                      ✅ Webhook установлен
-                    </span>
-                    <button
-                      onClick={handleDeleteWebhook}
-                      disabled={saving}
-                      className="btn-primary"
-                      style={{ background: 'hsl(var(--destructive))', opacity: saving ? 0.65 : 1 }}
-                    >
-                      Удалить webhook
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    onClick={handleSetWebhook}
-                    disabled={saving || !settings.botToken}
-                    className="btn-primary"
-                    style={{ opacity: saving || !settings.botToken ? 0.65 : 1 }}
-                  >
-                    Установить webhook
-                  </button>
-                )}
-              </div>
-            </div>
           </div>
         </div>
       </div>
