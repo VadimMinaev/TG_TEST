@@ -591,7 +591,7 @@ code {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 20px 24px;
+  padding: 20px 28px;
   border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
@@ -620,7 +620,7 @@ code {
   border-radius: var(--radius-lg);
   border: 1px solid hsl(var(--border) / 0.6);
   background: hsl(var(--background));
-  padding: 24px;
+  padding: 24px 28px;
 }
 
 /* ═══════════════════════════════════════════════
@@ -690,14 +690,14 @@ code {
   border-radius: var(--radius-lg);
   border: 1px solid hsl(var(--border) / 0.7);
   background: hsl(var(--card));
-  padding: 20px;
+  padding: 20px 24px;
 }
 
 .entity-view-card-muted {
   border-radius: var(--radius-lg);
   border: 1px solid hsl(var(--border) / 0.7);
   background: hsl(var(--muted) / 0.2);
-  padding: 20px;
+  padding: 20px 24px;
 }
 
 .entity-edit-panel {
@@ -1262,11 +1262,11 @@ input, textarea, select { font-size: 16px; }
   background: var(--form-surface);
   display: flex;
   flex-direction: column;
-  padding: 20px 0;
+  padding: 16px 12px;
 }
 
 .fp-sidebar-head {
-  padding: 0 16px 16px;
+  padding: 0 4px 14px;
   border-bottom: 1px solid var(--form-border-subtle);
   display: flex;
   align-items: center;
@@ -1301,13 +1301,15 @@ input, textarea, select { font-size: 16px; }
   color: var(--form-accent);
 }
 
-.fp-bot-list { padding: 10px 0; flex: 1; overflow-y: auto; }
+.fp-bot-list { padding: 8px 0; flex: 1; overflow-y: auto; }
 
 .fp-bot-item {
-  padding: 10px 16px; cursor: pointer;
-  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px; cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
   transition: background var(--transition-fast);
   border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  margin-bottom: 2px;
 }
 
 .fp-bot-item:hover { background: var(--form-elevated); }
@@ -1384,8 +1386,8 @@ input, textarea, select { font-size: 16px; }
 .fp-back:hover { border-color: var(--form-border-focus); color: var(--form-accent); }
 
 .fp-form-body {
-  padding: 28px; flex: 1; overflow-y: auto;
-  display: flex; flex-direction: column; gap: 32px;
+  padding: 24px 28px; flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 28px;
 }
 
 .fp-section { display: flex; flex-direction: column; gap: 16px; }
@@ -1551,7 +1553,7 @@ input, textarea, select { font-size: 16px; }
 .fp-badge.off .fp-badge-dot { background: var(--form-text-disabled); }
 
 .fp-footer {
-  padding: 20px 28px; border-top: 1px solid var(--form-border-subtle);
+  padding: 18px 28px; border-top: 1px solid var(--form-border-subtle);
   display: flex; align-items: center; justify-content: flex-end; gap: 12px;
   background: var(--form-surface);
 }
@@ -2329,19 +2331,19 @@ input, textarea, select { font-size: 16px; }
 .form-label {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 8px;
-  font-size: 0.875rem;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
   font-weight: 500;
-  color: hsl(var(--foreground));
+  color: hsl(var(--foreground) / 0.85);
 }
 
 .form-label-simple {
   display: block;
-  margin-bottom: 8px;
-  font-size: 0.875rem;
+  margin-bottom: 6px;
+  font-size: 0.8125rem;
   font-weight: 500;
-  color: hsl(var(--foreground));
+  color: hsl(var(--foreground) / 0.85);
 }
 
 .form-section-divider {
@@ -2637,16 +2639,16 @@ input, textarea, select { font-size: 16px; }
    ═══════════════════════════════════════════════ */
 
 .view-code {
-  padding: 4px 10px;
-  margin-left: 8px;
+  padding: 3px 8px;
+  margin-left: 6px;
   border-radius: 4px;
   background: hsl(var(--muted) / 0.5);
   font-family: var(--font-mono);
-  font-size: 0.875em;
+  font-size: 0.85em;
 }
 
 .view-badge {
-  padding: 4px 10px;
+  padding: 3px 10px;
   border-radius: 4px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -2689,14 +2691,15 @@ input, textarea, select { font-size: 16px; }
 }
 
 .view-code-block {
-  padding: 16px;
-  margin-top: 10px;
+  padding: 14px 16px;
+  margin-top: 8px;
   border-radius: var(--radius-lg);
   background: hsl(var(--muted) / 0.3);
   white-space: pre-wrap;
   word-break: break-word;
-  font-size: 0.875rem;
+  font-size: 0.85rem;
   line-height: 1.6;
+  font-family: var(--font-mono);
 }
 
 .modal-overlay {
@@ -2725,16 +2728,16 @@ input, textarea, select { font-size: 16px; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24px 28px;
+  padding: 20px 24px;
   border-bottom: 1px solid hsl(var(--border) / 0.6);
 }
 
-.modal-body { padding: 28px; }
+.modal-body { padding: 24px; }
 
 .modal-footer {
   display: flex;
-  gap: 12px;
-  padding: 20px 28px;
+  gap: 10px;
+  padding: 16px 24px;
   border-top: 1px solid hsl(var(--border) / 0.6);
   justify-content: flex-end;
 }
