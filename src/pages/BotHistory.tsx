@@ -54,8 +54,8 @@ export function BotHistory() {
   }, []);
 
   return (
-    <div className="card">
-      <div className="card-header">
+    <div className="card" style={{ overflow: 'clip' }}>
+      <div className="card-header" style={{ padding: '12px 20px' }}>
         <div className="flex flex-col gap-2">
           <div>
             <h2 className="text-xl font-semibold">🤖 История ботов</h2>
@@ -79,12 +79,16 @@ export function BotHistory() {
         </div>
       </div>
 
-      <div className="split-layout p-6">
-        <div className="split-left">
-          <div className="panel">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список запусков</h3>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">{runs.length} записей</span>
+      <div className="split-layout" style={{ padding: '20px', gap: '20px', border: 'none', background: 'transparent', borderRadius: 0 }}>
+        <div className="split-left" style={{ paddingRight: 0 }}>
+          <div className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <div className="flex items-center justify-between" style={{ padding: '10px 14px', borderBottom: '1px solid hsl(var(--border))' }}>
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>📋 Список запусков</span>
+              <span style={{
+                fontSize: '11px', color: 'hsl(var(--muted-foreground))',
+                background: 'hsl(var(--muted) / 0.5)', borderRadius: '20px',
+                padding: '2px 8px', border: '1px solid hsl(var(--border))',
+              }}>{runs.length}</span>
             </div>
             {loading ? (
               <div className="flex items-center justify-center py-10">
