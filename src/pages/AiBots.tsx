@@ -324,7 +324,7 @@ export function AiBots() {
                 <div className="fp-section-title">Поведение</div>
                 <div className="fp-fields-grid">
                   <div className="fp-field span2">
-                    <label className="fp-label" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <label className="fp-label form-label">
                       <span>System Prompt</span>
                       <AiFieldAssist fieldName="System Prompt" fieldDescription="Опиши поведение AI-бота на русском. Например: Ты консультант техподдержки, отвечай вежливо и по делу. Используй данные из диалога." currentValue={form.systemPrompt || ''} onApply={(v) => setForm((p) => ({ ...p, systemPrompt: v }))} />
                     </label>

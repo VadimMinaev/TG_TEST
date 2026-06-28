@@ -151,7 +151,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       )}
 
       <div>
-        <label htmlFor="ruleName" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="ruleName" className="form-label">
           Название Webhook
           <InfoTooltip>
             Уникальное имя для идентификации Webhook в списке. Рекомендуется использовать понятные названия, например: «Инциденты в основной чат» или «Уведомления о задачах».
@@ -164,12 +164,12 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setName(e.target.value)}
           placeholder="Например: Отправить в основной чат"
           required
-          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+          className="input-field"
         />
       </div>
 
       <div>
-        <label htmlFor="condition" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="condition" className="form-label">
           <span>Условие (JS)</span>
           <InfoTooltip>
             <div className="space-y-2">
@@ -195,12 +195,12 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           placeholder='payload.category === "incident"'
           required
           rows={4}
-          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+          className="textarea-field input-field-mono"
         />
       </div>
 
       <div>
-        <label htmlFor="chatId" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="chatId" className="form-label">
           ID Telegram чата
           <InfoTooltip>
             <div className="space-y-2">
@@ -221,12 +221,12 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setChatId(e.target.value)}
           placeholder="Например: -1001234567890"
           required
-          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+          className="input-field"
         />
       </div>
 
       <div>
-        <label htmlFor="botToken" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="botToken" className="form-label">
           Токен Telegram бота
           <InfoTooltip>
             <div className="space-y-2">
@@ -247,22 +247,22 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setBotToken(e.target.value)}
           placeholder={accountBotTokenLoading ? 'Загрузка...' : (accountBotToken ? 'Используется токен аккаунта' : 'Оставьте пустым для использования токена аккаунта')}
           disabled={accountBotTokenLoading}
-          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+          className="input-field"
         />
         {!accountBotTokenLoading && accountBotToken && (
-          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+          <div className="form-hint">
             ✓ Токен аккаунта установлен. Оставьте поле пустым для его использования или введите локальный токен.
           </div>
         )}
         {!accountBotTokenLoading && !accountBotToken && (
-          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+          <div className="form-hint">
             ⚠ Токен аккаунта не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
           </div>
         )}
       </div>
 
       <div>
-        <label htmlFor="messageTemplate" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label htmlFor="messageTemplate" className="form-label">
           <span>Шаблон сообщения</span>
           <TemplateHelp context="rule" />
           <AiFieldAssist fieldName="Шаблон сообщения" fieldDescription="Опиши, какое сообщение должно отправляться в Telegram. Можно использовать переменные из payload. Например: отправлять subject и category заявки" currentValue={messageTemplate} onApply={setMessageTemplate} />
@@ -273,7 +273,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
           onChange={(e) => setMessageTemplate(e.target.value)}
           placeholder="Оставьте пусто для автоформатирования"
           rows={4}
-          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+          className="textarea-field input-field-mono"
         />
       </div>
 
@@ -286,7 +286,7 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
       </div>
 
       <div>
-        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+        <label className="form-label-simple">
           Статус
         </label>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -302,14 +302,15 @@ export function RuleForm({ ruleId, onSave, onCancel }: RuleFormProps) {
         <button
           type="submit"
           disabled={loading}
-          style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: loading ? 0.5 : 1 }}
+          className="btn-primary"
+          style={{ opacity: loading ? 0.5 : 1 }}
         >
           {loading ? 'Сохранение...' : 'Сохранить Webhook'}
         </button>
         <button
           type="button"
           onClick={onCancel}
-          style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+          className="btn-secondary"
         >
           Отмена
         </button>

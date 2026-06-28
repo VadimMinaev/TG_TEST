@@ -473,7 +473,7 @@ export function Polling() {
               </h3>
               <form className="entity-edit-form flex flex-col gap-5" onSubmit={handleSavePoll}>
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название
+                    <label className="form-label">Название
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -494,14 +494,14 @@ export function Polling() {
                     </TooltipProvider>
                     </label>
                   <input
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      className="input-field"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="Например: Проверка статуса заказа"
                   />
                 </div>
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL
+                    <label className="form-label">URL
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -522,7 +522,7 @@ export function Polling() {
                     </TooltipProvider>
                     </label>
                   <input
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      className="input-field"
                     value={form.url}
                     onChange={(e) => setForm({ ...form, url: e.target.value })}
                     placeholder="https://api.example.com/status"
@@ -530,7 +530,7 @@ export function Polling() {
                 </div>
 
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод
+                    <label className="form-label">Метод
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -554,7 +554,7 @@ export function Polling() {
                     </TooltipProvider>
                     </label>
                   <select
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      className="input-field"
                     value={form.method}
                     onChange={(e) => setForm({ ...form, method: e.target.value })}
                   >
@@ -568,7 +568,7 @@ export function Polling() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)
+                    <label className="form-label">Интервал (сек)
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -592,13 +592,13 @@ export function Polling() {
                   <input
                     type="number"
                     min={5}
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      className="input-field"
                     value={form.intervalSec}
                     onChange={(e) => setForm({ ...form, intervalSec: Number(e.target.value) })}
                   />
                 </div>
                 <div>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)
+                    <label className="form-label">Таймаут (сек)
                     <TooltipProvider delayDuration={200}>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -622,7 +622,7 @@ export function Polling() {
                   <input
                     type="number"
                     min={3}
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      className="input-field"
                     value={form.timeoutSec}
                     onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
                   />
@@ -630,7 +630,7 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)
+                  <label className="form-label">Headers (JSON)
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -656,7 +656,7 @@ export function Polling() {
                   </label>
                   <textarea
                     rows={3}
-                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    className="textarea-field input-field-mono"
                     value={form.headersJson}
                     onChange={(e) => setForm({ ...form, headersJson: e.target.value })}
                     placeholder='{"Authorization": "Bearer token"}'
@@ -667,7 +667,7 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)
+                  <label className="form-label">Body (JSON)
                   <TooltipProvider delayDuration={200}>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -693,7 +693,7 @@ export function Polling() {
                   </label>
                   <textarea
                     rows={3}
-                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    className="textarea-field input-field-mono"
                     value={form.bodyJson}
                     onChange={(e) => setForm({ ...form, bodyJson: e.target.value })}
                     placeholder='{"id": 123}'
@@ -701,7 +701,7 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                  <label className="form-label">
                     <span>Условия (JSON)</span>
                     <AiFieldAssist fieldName="Условия (JSON)" fieldDescription="Опиши на русском условия для проверки ответа API. Например: срабатывать когда status = ok и priority >= 3. Будет сгенерирован JSON с logic, conditions, path, op, value." currentValue={form.conditionJson} onApply={(v) => setForm({ ...form, conditionJson: v })} />
                   <TooltipProvider delayDuration={200}>
@@ -733,12 +733,12 @@ export function Polling() {
                   </label>
                   <textarea
                     rows={4}
-                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    className="textarea-field input-field-mono"
                     value={form.conditionJson}
                     onChange={(e) => setForm({ ...form, conditionJson: e.target.value })}
                     placeholder='{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"}]}'
                   />
-                  <div style={{ padding: '12px 16px', marginTop: '8px' }} className="rounded-lg border border-[hsl(var(--border)_/_0.6)] bg-[hsl(var(--muted)_/_0.2)] text-xs">
+                  <div className="form-code-block">
                     <div className="mb-1 font-semibold">Пример:</div>
                     <pre className="whitespace-pre-wrap">{`{"logic":"AND","conditions":[{"path":"data.status","op":"==","value":"ok"},{"path":"data.priority","op":">=","value":3}]}`}</pre>
                     <div className="mt-2 text-[hsl(var(--muted-foreground))]">
@@ -749,34 +749,34 @@ export function Polling() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                  <label className="form-label">
                     <span>Шаблон сообщения (опционально)</span>
                     <TemplateHelp context="poll" />
                     <AiFieldAssist fieldName="Шаблон сообщения" fieldDescription="Опиши сообщение для Telegram при срабатывании polling. Можно использовать переменные из ответа API через payload. Например: Статус задачи: {{status}}, прогресс: {{progress}}%" currentValue={form.messageTemplate} onApply={(v) => setForm({ ...form, messageTemplate: v })} />
                   </label>
                   <textarea
                     rows={3}
-                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                    className="textarea-field input-field-mono"
                     value={form.messageTemplate}
                     onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
                     placeholder="${payload.name} — ${payload.status}"
                   />
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '4px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                <div className="form-row">
+                  <label className="form-checkbox-label">
                     <EntityStateSwitch
                       idPrefix="poll-edit"
                       enabled={form.enabled}
                       onChange={(nextEnabled) => setForm({ ...form, enabled: nextEnabled })}
                     />
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                  <label className="form-checkbox-label">
                     <input
                       type="checkbox"
                       checked={form.onlyOnChange}
                       onChange={(e) => setForm({ ...form, onlyOnChange: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      className="form-checkbox"
                     />
                     Только при изменении
                     <TooltipProvider delayDuration={200}>
@@ -798,12 +798,12 @@ export function Polling() {
                       </Tooltip>
                     </TooltipProvider>
                   </label>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                  <label className="form-checkbox-label">
                     <input
                       type="checkbox"
                       checked={form.continueAfterMatch}
                       onChange={(e) => setForm({ ...form, continueAfterMatch: e.target.checked })}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      className="form-checkbox"
                     />
                     Продолжать после совпадения
                     <TooltipProvider delayDuration={200}>
@@ -826,8 +826,8 @@ export function Polling() {
                     </TooltipProvider>
                   </label>
                 </div>
-                <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                <div className="form-section-divider">
+                  <div className="form-checkbox-row">
                     <input
                       type="checkbox"
                       id="sendToTelegram"
@@ -841,9 +841,9 @@ export function Polling() {
                           messageTemplate: enabled ? form.messageTemplate : '',
                         });
                       }}
-                      style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                      className="form-checkbox"
                     />
-                    <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+                    <label htmlFor="sendToTelegram" className="form-checkbox-label" style={{ fontWeight: 600 }}>
                       Telegram notifications
                     </label>
                     <TooltipProvider delayDuration={200}>
@@ -868,46 +868,46 @@ export function Polling() {
                   </div>
 
                   {form.sendToTelegram && (
-                    <div style={{ paddingLeft: '30px', opacity: 1 }}>
+                    <div className="form-indent">
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
+                          <label className="form-label-simple">Chat ID</label>
                           <input
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            className="input-field"
                             value={form.chatId}
                             onChange={(e) => setForm({ ...form, chatId: e.target.value })}
                             placeholder="-1001234567890"
                           />
                         </div>
                         <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (optional)</label>
+                        <label className="form-label-simple">Bot Token (optional)</label>
                         <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          className="input-field"
                           value={form.botToken}
                           onChange={(e) => setForm({ ...form, botToken: e.target.value })}
                           placeholder={accountBotTokenLoading ? 'Загрузка...' : (accountBotToken ? 'Используется токен аккаунта' : 'Оставьте пустым для использования токена аккаунта')}
                           disabled={accountBotTokenLoading}
                         />
                         {!accountBotTokenLoading && accountBotToken && (
-                          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                          <div className="form-hint">
                             ✓ Токен аккаунта установлен. Оставьте поле пустым для его использования или введите локальный токен.
                           </div>
                         )}
                         {!accountBotTokenLoading && !accountBotToken && (
-                          <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                          <div className="form-hint">
                             ⚠ Токен аккаунта не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
                           </div>
                         )}
                         </div>
                       </div>
                       <div style={{ marginTop: '16px' }}>
-                        <label style={{ display: 'flex', alignItems: 'center', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                        <label className="form-label">
                           Message template
                           <TemplateHelp context="poll" />
                         </label>
                         <textarea
                           rows={2}
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                          className="textarea-field input-field-mono"
                           value={form.messageTemplate}
                           onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
                           placeholder="${payload.name} - ${payload.status}"
@@ -917,11 +917,8 @@ export function Polling() {
                   )}
                 </div>
 
-                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
-                  <button
-                    type="submit"
-                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
-                  >
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" className="btn-primary flex-1">
                     Сохранить
                   </button>
                   <button
@@ -932,7 +929,7 @@ export function Polling() {
                         setForm(normalizeForm(selectedPoll));
                       }
                     }}
-                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                    className="btn-secondary flex-1"
                   >
                     Отмена
                   </button>
@@ -945,48 +942,40 @@ export function Polling() {
                 <div>
                   <h4 className="entity-view-title">Информация о задаче</h4>
                   <div className="entity-view-card">
-                    <div style={{ marginBottom: '12px' }}>
-                      <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.id}</code>
-              </div>
-                    <div style={{ marginBottom: '12px' }}>
-                  <strong>Название:</strong> {selectedPoll.name}
-                </div>
-                    <div style={{ marginBottom: '12px' }}>
+                    <div className="view-field">
+                      <strong>ID:</strong> <code className="view-code">{selectedPoll.id}</code>
+                    </div>
+                    <div className="view-field">
+                      <strong>Название:</strong> {selectedPoll.name}
+                    </div>
+                    <div className="view-field">
                       <strong>Статус:</strong>{' '}
-                      <span
-                        style={{ padding: '4px 8px' }}
-                        className={`rounded text-xs ${
-                          selectedPoll.enabled
-                            ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                            : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                        }`}
-                      >
+                      <span className={`view-badge ${selectedPoll.enabled ? 'view-badge-success' : 'view-badge-error'}`}>
                         {selectedPoll.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
                     </div>
                   </div>
                 </div>
 
-
                 <div>
                   <h4 className="entity-view-title">Настройки опроса</h4>
                   <div className="entity-view-card space-y-3">
                     <div>
                       <strong>URL:</strong>{' '}
-                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.url}</code>
+                      <code className="view-code">{selectedPoll.url}</code>
                     </div>
                     <div>
                       <strong>Метод:</strong>{' '}
-                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.method}</code>
+                      <code className="view-code">{selectedPoll.method}</code>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
                         <strong>Интервал:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.intervalSec}s</code>
+                        <code className="view-code">{selectedPoll.intervalSec}s</code>
                       </div>
                       <div>
                         <strong>Таймаут:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.timeoutSec}s</code>
+                        <code className="view-code">{selectedPoll.timeoutSec}s</code>
                       </div>
                     </div>
                   </div>
@@ -997,41 +986,32 @@ export function Polling() {
                   <div className="entity-view-card space-y-3">
                     <div>
                       <strong>Статус:</strong>{' '}
-                      <span
-                        style={{ padding: '4px 8px' }}
-                        className={`rounded text-xs ${
-                          selectedPoll.sendToTelegram !== false
-                            ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                            : 'bg-[hsl(var(--muted)_/_0.3)] text-[hsl(var(--muted-foreground))]'
-                        }`}
-                      >
+                      <span className={`view-badge ${selectedPoll.sendToTelegram !== false ? 'view-badge-success' : 'view-badge-neutral'}`}>
                         {selectedPoll.sendToTelegram !== false ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
                     </div>
                     {selectedPoll.chatId && (
                       <div>
                         <strong>Chat ID:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedPoll.chatId}</code>
+                        <code className="view-code">{selectedPoll.chatId}</code>
                       </div>
                     )}
                     {selectedPoll.botToken && (
                       <div>
                         <strong>Bot Token:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***set***</code>
+                        <code className="view-code">***set***</code>
                       </div>
                     )}
                     {!selectedPoll.botToken && selectedPoll.sendToTelegram !== false && (
                       <div>
                         <strong>Bot Token:</strong>{' '}
-                        <span className="text-sm text-[hsl(var(--muted-foreground))]">Using account token</span>
+                        <span className="form-hint" style={{ margin: 0 }}>Using account token</span>
                       </div>
                     )}
                     {selectedPoll.messageTemplate && (
                       <div>
                         <strong>Шаблон сообщения:</strong>
-                        <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
-                          {selectedPoll.messageTemplate}
-                        </div>
+                        <div className="view-code-block">{selectedPoll.messageTemplate}</div>
                       </div>
                     )}
                   </div>
@@ -1039,13 +1019,10 @@ export function Polling() {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[420px] w-full flex-col items-center justify-center text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Выберите задачу слева или создайте новую</p>
-              <button
-                onClick={handleStartCreate}
-                className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
-              >
-                <Plus className="h-4 w-4" /> Создать задачу
+            <div className="fp-placeholder">
+              <p>Выберите задачу слева или создайте новую</p>
+              <button onClick={handleStartCreate} className="fp-btn fp-btn-primary">
+                <Plus size={14} /> Создать задачу
               </button>
             </div>
           )}

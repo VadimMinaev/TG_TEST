@@ -17,6 +17,7 @@ import {
   Sun,
   Users,
   MessageSquare,
+  X,
 } from 'lucide-react';
 import { useAuth } from '../lib/auth-context';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
@@ -294,48 +295,59 @@ export function Dashboard() {
 
         {accountTokenModalOpen && (
           <div
-            className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/60 pt-[100px] animate-fade-in"
+            className="modal-overlay"
             onClick={() => setAccountTokenModalOpen(false)}
           >
             <div
-              className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-2xl animate-fade-in-scale"
+              className="modal-content"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="mb-2 text-lg font-semibold tracking-tight">Telegram token for account</h3>
-              <p className="mb-4 text-sm text-muted-foreground">
-                Used by default for rules, polling, integrations and bots if local token is empty.
-              </p>
-              <div className="mb-4 rounded-lg border bg-muted/20 p-3 text-sm">
-                {accountTokenLoading ? (
-                  <span className="text-muted-foreground">Loading...</span>
-                ) : accountTokenIsSet ? (
-                  <span>Current: {accountTokenMasked}</span>
-                ) : (
-                  <span className="text-muted-foreground">Not set</span>
-                )}
+              <div className="modal-header">
+                <h3 className="text-lg font-semibold tracking-tight">Telegram token for account</h3>
+                <button
+                  onClick={() => setAccountTokenModalOpen(false)}
+                  className="icon-button"
+                  style={{ width: '32px', height: '32px', border: 'none' }}
+                >
+                  <X size={16} />
+                </button>
               </div>
-              <label className="mb-2 block text-sm font-medium">New token (empty = clear)</label>
-              <input
-                className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm transition-all file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-                value={accountTokenValue}
-                onChange={(e) => setAccountTokenValue(e.target.value)}
-                placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-              />
-              <div className="mt-5 flex gap-2">
+              <div className="modal-body">
+                <p className="mb-4 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
+                  Used by default for rules, polling, integrations and bots if local token is empty.
+                </p>
+                <div className="mb-4 rounded-lg border p-3 text-sm" style={{ borderColor: 'hsl(var(--border))', background: 'hsl(var(--muted) / 0.2)' }}>
+                  {accountTokenLoading ? (
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>Loading...</span>
+                  ) : accountTokenIsSet ? (
+                    <span>Current: {accountTokenMasked}</span>
+                  ) : (
+                    <span style={{ color: 'hsl(var(--muted-foreground))' }}>Not set</span>
+                  )}
+                </div>
+                <label className="mb-2 block text-sm font-medium">New token (empty = clear)</label>
+                <input
+                  className="input-field"
+                  value={accountTokenValue}
+                  onChange={(e) => setAccountTokenValue(e.target.value)}
+                  placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+                />
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  onClick={() => setAccountTokenModalOpen(false)}
+                  className="btn-secondary"
+                >
+                  Cancel
+                </button>
                 <button
                   type="button"
                   onClick={handleSaveAccountBotToken}
                   disabled={accountTokenSaving}
-                  className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50 active:scale-[0.97]"
+                  className="btn-primary"
                 >
                   {accountTokenSaving ? 'Saving...' : 'Save'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAccountTokenModalOpen(false)}
-                  className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border bg-secondary px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.97]"
-                >
-                  Cancel
                 </button>
               </div>
             </div>

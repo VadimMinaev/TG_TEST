@@ -541,22 +541,22 @@ export function Bots() {
                 {/* Название и Chat ID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                    <label className="form-label-simple">
                       Название
                     </label>
                     <input
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      className="input-field"
                       value={form.name}
                       onChange={(e) => setForm({ ...form, name: e.target.value })}
                       placeholder="Голосование в школьный чат"
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                    <label className="form-label-simple">
                       Chat ID
                     </label>
                     <input
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                      className="input-field"
                       value={form.chatId}
                       onChange={(e) => setForm({ ...form, chatId: e.target.value })}
                       placeholder="-1001234567890"
@@ -566,49 +566,27 @@ export function Bots() {
 
                 {/* Тип сообщения */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                  <label className="form-label-simple">
                     Тип сообщения
                   </label>
-                  <div style={{ display: 'flex', gap: '12px' }}>
+                  <div className="form-row">
                     <label
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        border: `2px solid ${form.messageType === 'poll' ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
-                        cursor: 'pointer',
-                        background: form.messageType === 'poll' ? 'hsl(var(--primary) / 0.05)' : 'hsl(var(--background))',
-                      }}
+                      className={`radio-card ${form.messageType === 'poll' ? 'selected' : ''}`}
                     >
                       <input
                         type="radio"
                         checked={form.messageType === 'poll'}
                         onChange={() => setForm({ ...form, messageType: 'poll' })}
-                        style={{ width: '18px', height: '18px' }}
                       />
                       <span>📊 Голосование</span>
                     </label>
                     <label
-                      style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px',
-                        padding: '12px 16px',
-                        borderRadius: '8px',
-                        border: `2px solid ${form.messageType === 'text' ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
-                        cursor: 'pointer',
-                        background: form.messageType === 'text' ? 'hsl(var(--primary) / 0.05)' : 'hsl(var(--background))',
-                      }}
+                      className={`radio-card ${form.messageType === 'text' ? 'selected' : ''}`}
                     >
                       <input
                         type="radio"
                         checked={form.messageType === 'text'}
                         onChange={() => setForm({ ...form, messageType: 'text' })}
-                        style={{ width: '18px', height: '18px' }}
                       />
                       <span>💬 Текстовое сообщение</span>
                     </label>
@@ -619,27 +597,25 @@ export function Bots() {
                 {form.messageType === 'poll' && (
                   <>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                        Вопрос голосования
-                      </label>
-                      <input
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                    <label className="form-label-simple">
+                      Вопрос голосования
+                    </label>
+                    <input
+                      className="input-field"
                         value={form.pollQuestion}
                         onChange={(e) => setForm({ ...form, pollQuestion: e.target.value })}
                         placeholder="Кто сегодня забирает ребёнка из школы?"
                       />
                     </div>
 
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                        Варианты ответа
-                      </label>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div className="fp-section">
+                      <div className="fp-fields-grid">
                         {getPollOptionsArray().map((opt, idx) => (
-                          <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span style={{ minWidth: '24px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>{idx + 1}.</span>
+                          <div key={idx} className="fp-field" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                            <span className="form-hint" style={{ minWidth: '24px', marginTop: 0 }}>{idx + 1}.</span>
                             <input
-                              style={{ padding: '10px 14px', flex: 1, borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                              className="input-field"
+                              style={{ flex: 1 }}
                               value={opt}
                               onChange={(e) => {
                                 const opts = getPollOptionsArray();
@@ -656,45 +632,45 @@ export function Bots() {
                                   opts.splice(idx, 1);
                                   setPollOptionsArray(opts);
                                 }}
-                                style={{ padding: '8px', borderRadius: '6px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', color: 'hsl(var(--destructive))' }}
+                                className="remove-option-btn"
                               >
                                 ✕
                               </button>
                             )}
                           </div>
                         ))}
-                        {getPollOptionsArray().length < 10 && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const opts = getPollOptionsArray();
-                              opts.push('');
-                              setPollOptionsArray(opts);
-                            }}
-                            style={{ padding: '10px 14px', borderRadius: '8px', border: '1px dashed hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '14px', color: 'hsl(var(--muted-foreground))' }}
-                          >
-                            + Добавить вариант
-                          </button>
-                        )}
                       </div>
+                      {getPollOptionsArray().length < 10 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const opts = getPollOptionsArray();
+                            opts.push('');
+                            setPollOptionsArray(opts);
+                          }}
+                          className="add-option-btn"
+                        >
+                          + Добавить вариант
+                        </button>
+                      )}
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                    <div className="form-checkbox-row">
+                      <label className="form-checkbox-label">
                         <input
                           type="checkbox"
                           checked={form.pollIsAnonymous}
                           onChange={(e) => setForm({ ...form, pollIsAnonymous: e.target.checked })}
-                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                          className="form-checkbox"
                         />
                         Анонимное
                       </label>
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                      <label className="form-checkbox-label">
                         <input
                           type="checkbox"
                           checked={form.pollAllowsMultipleAnswers}
                           onChange={(e) => setForm({ ...form, pollAllowsMultipleAnswers: e.target.checked })}
-                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                          className="form-checkbox"
                         />
                         Множественный выбор
                       </label>
@@ -705,12 +681,12 @@ export function Bots() {
                 {/* Text message field */}
                 {form.messageType === 'text' && (
                   <div>
-                    <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                    <label className="form-label-simple">
                       Текст сообщения
                     </label>
                     <textarea
                       rows={4}
-                      style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                      className="textarea-field input-field-mono"
                       value={form.messageText}
                       onChange={(e) => setForm({ ...form, messageText: e.target.value })}
                       placeholder="Доброе утро! 🌅 Напоминание..."
@@ -720,53 +696,25 @@ export function Bots() {
 
                 {/* Schedule section */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
-                    📅 Расписание
-                  </label>
-                  <div style={{ padding: '16px', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}>
+                    <label className="form-label-simple">
+                      📅 Расписание
+                    </label>
+                  <div className="schedule-container">
                     {/* Schedule type selector */}
-                    <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                      <label
-                        style={{
-                          flex: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: `2px solid ${form.scheduleType === 'recurring' ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
-                          cursor: 'pointer',
-                          background: form.scheduleType === 'recurring' ? 'hsl(var(--primary) / 0.05)' : 'transparent',
-                          fontSize: '13px',
-                        }}
-                      >
+                    <div className="radio-card-group" style={{ marginBottom: '16px' }}>
+                      <label className={`radio-card radio-card-sm ${form.scheduleType === 'recurring' ? 'selected' : ''}`}>
                         <input
                           type="radio"
                           checked={form.scheduleType === 'recurring'}
                           onChange={() => setForm({ ...form, scheduleType: 'recurring' })}
-                          style={{ width: '16px', height: '16px' }}
                         />
                         🔄 По дням недели
                       </label>
-                      <label
-                        style={{
-                          flex: 1,
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '10px 14px',
-                          borderRadius: '8px',
-                          border: `2px solid ${form.scheduleType === 'once' ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
-                          cursor: 'pointer',
-                          background: form.scheduleType === 'once' ? 'hsl(var(--primary) / 0.05)' : 'transparent',
-                          fontSize: '13px',
-                        }}
-                      >
+                      <label className={`radio-card radio-card-sm ${form.scheduleType === 'once' ? 'selected' : ''}`}>
                         <input
                           type="radio"
                           checked={form.scheduleType === 'once'}
                           onChange={() => setForm({ ...form, scheduleType: 'once' })}
-                          style={{ width: '16px', height: '16px' }}
                         />
                         📆 На конкретную дату
                       </label>
@@ -775,41 +723,18 @@ export function Bots() {
                     {/* Days of week (recurring) */}
                     {form.scheduleType === 'recurring' && (
                       <div style={{ marginBottom: '16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                          <span style={{ fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>Дни недели:</span>
-                          <button
-                            type="button"
-                            onClick={setWeekdays}
-                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
-                          >
-                            Будни
-                          </button>
-                          <button
-                            type="button"
-                            onClick={setAllDays}
-                            style={{ padding: '4px 8px', borderRadius: '4px', border: '1px solid hsl(var(--border))', cursor: 'pointer', background: 'transparent', fontSize: '12px', color: 'hsl(var(--primary))' }}
-                          >
-                            Все дни
-                          </button>
+                        <div className="form-checkbox-row" style={{ marginBottom: '12px' }}>
+                          <span className="form-hint" style={{ margin: 0 }}>Дни недели:</span>
+                          <button type="button" onClick={setWeekdays} className="quick-link-btn">Будни</button>
+                          <button type="button" onClick={setAllDays} className="quick-link-btn">Все дни</button>
                         </div>
-                        <div style={{ display: 'flex', gap: '6px' }}>
+                        <div className="day-picker">
                           {[1, 2, 3, 4, 5, 6, 0].map((day) => (
                             <button
                               key={day}
                               type="button"
                               onClick={() => toggleDay(day)}
-                              style={{
-                                flex: 1,
-                                padding: '10px 4px',
-                                borderRadius: '8px',
-                                border: `2px solid ${form.scheduleDays.includes(day) ? 'hsl(var(--primary))' : 'hsl(var(--input))'}`,
-                                cursor: 'pointer',
-                                background: form.scheduleDays.includes(day) ? 'hsl(var(--primary))' : 'transparent',
-                                color: form.scheduleDays.includes(day) ? 'hsl(var(--primary-foreground))' : 'inherit',
-                                fontWeight: form.scheduleDays.includes(day) ? 600 : 400,
-                                fontSize: '13px',
-                                transition: 'all 0.15s ease',
-                              }}
+                              className={`day-btn ${form.scheduleDays.includes(day) ? 'active' : ''}`}
                             >
                               {DAY_NAMES[day]}
                             </button>
@@ -821,12 +746,12 @@ export function Bots() {
                     {/* Date picker (once) */}
                     {form.scheduleType === 'once' && (
                       <div style={{ marginBottom: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                        <label className="form-label-simple">
                           Дата запуска
                         </label>
                         <input
                           type="date"
-                          style={{ padding: '10px 14px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          className="input-field"
                           value={form.scheduleDate}
                           onChange={(e) => setForm({ ...form, scheduleDate: e.target.value })}
                         />
@@ -836,22 +761,22 @@ export function Bots() {
                     {/* Time and timezone */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                        <label className="form-hint">
                           Время отправки
                         </label>
                         <input
                           type="time"
-                          style={{ padding: '10px 14px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          className="input-field"
                           value={form.scheduleTime}
                           onChange={(e) => setForm({ ...form, scheduleTime: e.target.value })}
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                        <label className="form-hint">
                           Часовой пояс
                         </label>
                         <select
-                          style={{ padding: '10px 14px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          className="input-field"
                           value={form.scheduleTimezone}
                           onChange={(e) => setForm({ ...form, scheduleTimezone: e.target.value })}
                         >
@@ -866,23 +791,23 @@ export function Bots() {
 
                 {/* Bot token (optional) */}
                 <div>
-                  <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                  <label className="form-label-simple">
                     Bot Token (опционально)
                   </label>
                   <input
-                    style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
+                    className="input-field input-field-mono"
                     value={form.botToken}
                     onChange={(e) => setForm({ ...form, botToken: e.target.value })}
                     placeholder={accountBotTokenLoading ? 'Загрузка...' : (accountBotToken ? 'Используется токен аккаунта' : 'Оставьте пустым для использования токена аккаунта')}
                     disabled={accountBotTokenLoading}
                   />
                   {!accountBotTokenLoading && accountBotToken && (
-                    <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                    <div className="form-hint">
                       ✓ Токен аккаунта установлен. Оставьте поле пустым для его использования или введите локальный токен.
                     </div>
                   )}
                   {!accountBotTokenLoading && !accountBotToken && (
-                    <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                    <div className="form-hint">
                       ⚠ Токен аккаунта не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
                     </div>
                   )}
@@ -890,7 +815,7 @@ export function Bots() {
 
                 {/* Enabled toggle */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '4px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                  <label className="form-checkbox-label">
                     <EntityStateSwitch
                       idPrefix="bot-edit"
                       enabled={form.enabled}
@@ -903,7 +828,7 @@ export function Bots() {
                 <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
                   <button
                     type="submit"
-                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                    className="btn-primary"
                   >
                     Сохранить
                   </button>
@@ -913,7 +838,7 @@ export function Bots() {
                       setEditingBotId(null);
                       if (selectedBot) setForm(normalizeForm(selectedBot));
                     }}
-                    style={{ flex: 1, padding: '14px 24px', borderRadius: '8px', background: 'hsl(var(--secondary))', color: 'hsl(var(--secondary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none' }}
+                    className="btn-secondary"
                   >
                     Отмена
                   </button>
@@ -926,29 +851,20 @@ export function Bots() {
                 <div>
                   <h4 className="entity-view-title">Информация о боте</h4>
                   <div className="entity-view-card">
-                    <div style={{ marginBottom: '12px' }}>
+                    <div className="view-field">
                       <strong>ID:</strong>{' '}
-                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
-                        {selectedBot.id}
-                      </code>
+                      <code className="view-code">{selectedBot.id}</code>
                     </div>
-                    <div style={{ marginBottom: '12px' }}>
+                    <div className="view-field">
                       <strong>Название:</strong> {selectedBot.name}
                     </div>
-                    <div style={{ marginBottom: '12px' }}>
+                    <div className="view-field">
                       <strong>Статус:</strong>{' '}
-                      <span
-                        style={{ padding: '4px 8px' }}
-                        className={`rounded text-xs ${
-                          selectedBot.enabled
-                            ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                            : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                        }`}
-                      >
+                      <span className={`view-badge ${selectedBot.enabled ? 'view-badge-success' : 'view-badge-error'}`}>
                         {selectedBot.enabled ? '✅ Включено' : '⏸️ Отключено'}
                       </span>
                     </div>
-                    <div style={{ marginBottom: '12px' }}>
+                    <div className="view-field">
                       <strong>Тип:</strong>{' '}
                       {selectedBot.messageType === 'poll' ? '📊 Голосование' : '💬 Текст'}
                     </div>
@@ -999,14 +915,14 @@ export function Bots() {
                   <div className="entity-view-card space-y-3">
                     <div>
                       <strong>Режим:</strong>{' '}
-                      <span style={{ padding: '4px 8px' }} className="rounded bg-[hsl(var(--muted)_/_0.3)] text-xs">
+                      <span className="view-badge view-badge-neutral">
                         {selectedBot.scheduleType === 'once' ? '📆 Одноразовый' : '🔄 Повторяющийся'}
                       </span>
                     </div>
                     {selectedBot.scheduleType === 'once' ? (
                       <div>
                         <strong>Дата:</strong>{' '}
-                        <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                        <code className="view-code">
                           {selectedBot.scheduleDate || '—'}
                         </code>
                       </div>
@@ -1018,13 +934,13 @@ export function Bots() {
                     )}
                     <div>
                       <strong>Время:</strong>{' '}
-                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                      <code className="view-code">
                         {selectedBot.scheduleTime}
                       </code>
                     </div>
                     <div>
                       <strong>Часовой пояс:</strong>{' '}
-                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                      <code className="view-code">
                         {selectedBot.scheduleTimezone}
                       </code>
                     </div>
@@ -1036,7 +952,7 @@ export function Bots() {
                   <div className="entity-view-card space-y-3">
                     <div>
                       <strong>Chat ID:</strong>{' '}
-                      <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                      <code className="view-code">
                         {selectedBot.chatId}
                       </code>
                     </div>
@@ -1056,13 +972,10 @@ export function Bots() {
               </div>
             </div>
           ) : (
-            <div className="flex min-h-[420px] w-full flex-col items-center justify-center text-center text-[hsl(var(--muted-foreground))]">
-              <p className="mb-4">Выберите бота слева или создайте нового</p>
-              <button
-                onClick={handleStartCreate}
-                className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
-              >
-                <Plus className="h-4 w-4" /> Создать бота
+            <div className="fp-placeholder">
+              <p>Выберите бота слева или создайте нового</p>
+              <button onClick={handleStartCreate} className="fp-btn fp-btn-primary">
+                <Plus size={14} /> Создать бота
               </button>
             </div>
           )}

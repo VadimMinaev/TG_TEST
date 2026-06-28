@@ -521,18 +521,18 @@ export function Integrations() {
                 <form className="entity-edit-form flex flex-col gap-5" onSubmit={handleSave}>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Название</label>
+                      <label className="form-label-simple">Название</label>
                       <input
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                        className="input-field"
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
                         placeholder="Моя интеграция"
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Тип триггера</label>
+                      <label className="form-label-simple">Тип триггера</label>
                       <select
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                        className="input-field"
                         value={form.triggerType}
                         onChange={(e) => {
                           const newTriggerType = e.target.value as 'webhook' | 'polling';
@@ -555,9 +555,9 @@ export function Integrations() {
                     <>
                       {rules.length > 0 && (
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>📥 Использовать Webhook</label>
+                          <label className="form-label-simple">📥 Использовать Webhook</label>
                           <select
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            className="input-field"
                             value={selectedSourceId}
                             onChange={(e) => handleApplySource(e.target.value)}
                           >
@@ -574,12 +574,12 @@ export function Integrations() {
                         </div>
                       )}
                       <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                        <label className="form-label">
                           <span>Условие срабатывания</span>
                           <AiFieldAssist fieldName="Условие срабатывания" fieldDescription="Напиши на русском условие для webhook. Например: срабатывать когда type = order и status = new" currentValue={form.triggerCondition} onApply={(v) => setForm({ ...form, triggerCondition: v })} />
                         </label>
                         <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
+                          className="input-field input-field-mono"
                           value={form.triggerCondition}
                           onChange={(e) => setForm({ ...form, triggerCondition: e.target.value })}
                           placeholder='payload.type === "order"'
@@ -595,9 +595,9 @@ export function Integrations() {
                     <>
                       {polls.length > 0 && (
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>🔄 Использовать пуллинг</label>
+                          <label className="form-label-simple">🔄 Использовать пуллинг</label>
                           <select
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            className="input-field"
                             value={selectedSourceId}
                             onChange={(e) => handleApplySource(e.target.value)}
                           >
@@ -615,18 +615,18 @@ export function Integrations() {
                       )}
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-2">
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL для опроса</label>
+                          <label className="form-label-simple">URL для опроса</label>
                           <input
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            className="input-field"
                             value={form.pollingUrl}
                             onChange={(e) => setForm({ ...form, pollingUrl: e.target.value })}
                             placeholder="https://api.example.com/status"
                           />
                         </div>
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
+                          <label className="form-label-simple">Метод</label>
                           <select
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            className="input-field"
                             value={form.pollingMethod}
                             onChange={(e) => setForm({ ...form, pollingMethod: e.target.value })}
                           >
@@ -638,31 +638,31 @@ export function Integrations() {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Интервал (сек)</label>
+                          <label className="form-label-simple">Интервал (сек)</label>
                           <input
                             type="number"
                             min={5}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            className="input-field"
                             value={form.pollingInterval}
                             onChange={(e) => setForm({ ...form, pollingInterval: Number(e.target.value) })}
                           />
                         </div>
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Таймаут (сек)</label>
+                          <label className="form-label-simple">Таймаут (сек)</label>
                           <input
                             type="number"
                             min={1}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                            className="input-field"
                             value={form.timeoutSec}
                             onChange={(e) => setForm({ ...form, timeoutSec: Number(e.target.value) })}
                           />
                         </div>
                       </div>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
+                        <label className="form-label-simple">Headers (JSON)</label>
                         <textarea
                           rows={2}
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                          className="textarea-field input-field-mono"
                           value={form.pollingHeaders}
                           onChange={(e) => setForm({ ...form, pollingHeaders: e.target.value })}
                           placeholder='{"Authorization": "Bearer token"}'
@@ -670,10 +670,10 @@ export function Integrations() {
                       </div>
                       {form.pollingMethod !== 'GET' && (
                         <div>
-                          <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
+                          <label className="form-label-simple">Body (JSON)</label>
                           <textarea
                             rows={2}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                            className="textarea-field input-field-mono"
                             value={form.pollingBody}
                             onChange={(e) => setForm({ ...form, pollingBody: e.target.value })}
                             placeholder='{"query": "status"}'
@@ -681,24 +681,24 @@ export function Integrations() {
                         </div>
                       )}
                       <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                        <label className="form-label">
                           <span>Условие срабатывания</span>
                           <AiFieldAssist fieldName="Условие срабатывания (polling)" fieldDescription="Напиши на русском условие для polling. Например: срабатывать когда status = ready и progress = 100" currentValue={form.pollingCondition} onApply={(v) => setForm({ ...form, pollingCondition: v })} />
                         </label>
                         <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
+                          className="input-field input-field-mono"
                           value={form.pollingCondition}
                           onChange={(e) => setForm({ ...form, pollingCondition: e.target.value })}
                           placeholder='response.status === "ready"'
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', cursor: 'pointer' }}>
+                        <label className="form-checkbox-label">
                           <input
                             type="checkbox"
                             checked={form.pollingContinueAfterMatch}
                             onChange={(e) => setForm({ ...form, pollingContinueAfterMatch: e.target.checked })}
-                            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            className="form-checkbox"
                           />
                           Продолжать после совпадения
                         </label>
@@ -706,22 +706,22 @@ export function Integrations() {
                     </>
                   )}
 
-                  <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
+                  <div className="form-section-divider">
                     <h4 style={{ marginBottom: '16px', fontSize: '14px', fontWeight: 600 }}>🚀 Action (вызов API)</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>URL</label>
+                        <label className="form-label-simple">URL</label>
                         <input
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          className="input-field"
                           value={form.actionUrl}
                           onChange={(e) => setForm({ ...form, actionUrl: e.target.value })}
                           placeholder="https://api.example.com/action"
                         />
                       </div>
                       <div>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Метод</label>
+                        <label className="form-label-simple">Метод</label>
                         <select
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                          className="input-field"
                           value={form.actionMethod}
                           onChange={(e) => setForm({ ...form, actionMethod: e.target.value })}
                         >
@@ -734,10 +734,10 @@ export function Integrations() {
                       </div>
                     </div>
                     <div style={{ marginTop: '16px' }}>
-                      <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Headers (JSON)</label>
+                      <label className="form-label-simple">Headers (JSON)</label>
                       <textarea
                         rows={2}
-                        style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                        className="textarea-field input-field-mono"
                         value={form.actionHeaders}
                         onChange={(e) => setForm({ ...form, actionHeaders: e.target.value })}
                         placeholder='{"Authorization": "Bearer token", "X-Api-Key": "key"}'
@@ -748,10 +748,10 @@ export function Integrations() {
                     </div>
                     {form.actionMethod !== 'GET' && (
                       <div style={{ marginTop: '16px' }}>
-                        <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Body (JSON)</label>
+                        <label className="form-label-simple">Body (JSON)</label>
                         <textarea
                           rows={3}
-                          style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                          className="textarea-field input-field-mono"
                           value={form.actionBody}
                           onChange={(e) => setForm({ ...form, actionBody: e.target.value })}
                           placeholder={'{"orderId": "{{payload.id}}"}'}
@@ -763,62 +763,62 @@ export function Integrations() {
                     )}
                   </div>
 
-                  <div style={{ borderTop: '1px solid hsl(var(--border))', paddingTop: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                  <div className="form-section-divider">
+                    <div className="form-checkbox-row">
                       <input
                         type="checkbox"
                         id="sendToTelegram"
                         checked={form.sendToTelegram}
                         onChange={(e) => setForm({ ...form, sendToTelegram: e.target.checked })}
-                        style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        className="form-checkbox"
                       />
-                      <label htmlFor="sendToTelegram" style={{ fontSize: '14px', fontWeight: 600, cursor: 'pointer' }}>
+                      <label htmlFor="sendToTelegram" className="form-checkbox-label">
                         📱 Telegram уведомление
                       </label>
                     </div>
                     
                     {form.sendToTelegram && (
-                      <div style={{ paddingLeft: '30px', opacity: form.sendToTelegram ? 1 : 0.5 }}>
+                      <div className="form-indent" style={{ opacity: form.sendToTelegram ? 1 : 0.5 }}>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
-                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Chat ID</label>
+                            <label className="form-label-simple">Chat ID</label>
                             <input
-                              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                              className="input-field"
                               value={form.chatId}
                               onChange={(e) => setForm({ ...form, chatId: e.target.value })}
                               placeholder="-1001234567890"
                             />
                           </div>
                           <div>
-                            <label style={{ display: 'block', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>Bot Token (опц.)</label>
+                            <label className="form-label-simple">Bot Token (опц.)</label>
                             <input
-                              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
+                              className="input-field"
                               value={form.botToken}
                               onChange={(e) => setForm({ ...form, botToken: e.target.value })}
                               placeholder={accountBotTokenLoading ? 'Загрузка...' : (accountBotToken ? 'Используется токен аккаунта' : 'Оставьте пустым для использования токена аккаунта')}
                               disabled={accountBotTokenLoading}
                             />
                             {!accountBotTokenLoading && accountBotToken && (
-                              <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                              <div className="form-hint">
                                 ✓ Токен аккаунта установлен. Оставьте поле пустым для его использования или введите локальный токен.
                               </div>
                             )}
                             {!accountBotTokenLoading && !accountBotToken && (
-                              <div style={{ marginTop: '8px', fontSize: '13px', color: 'hsl(var(--muted-foreground))' }}>
+                              <div className="form-hint">
                                 ⚠ Токен аккаунта не установлен. Укажите токен в настройках аккаунта или введите локальный токен.
                               </div>
                             )}
                           </div>
                         </div>
                         <div style={{ marginTop: '16px' }}>
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', fontSize: '14px', fontWeight: 500 }}>
+                          <label className="form-label">
                             <span>Шаблон сообщения</span>
                             <TemplateHelp context="integration" />
                             <AiFieldAssist fieldName="Шаблон сообщения" fieldDescription="Опиши сообщение для Telegram. Можно использовать переменные из payload. Например: пришел новый заказ {{name}}, статус {{status}}" currentValue={form.messageTemplate} onApply={(v) => setForm({ ...form, messageTemplate: v })} />
                           </label>
                           <textarea
                             rows={2}
-                            style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace', fontSize: '14px', resize: 'vertical' }}
+                            className="textarea-field input-field-mono"
                             value={form.messageTemplate}
                             onChange={(e) => setForm({ ...form, messageTemplate: e.target.value })}
                             placeholder="${payload.name} — ${payload.status}"
@@ -837,10 +837,7 @@ export function Integrations() {
                   </div>
 
                   <div className="flex gap-3 pt-2">
-                    <button
-                      type="submit"
-                      className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
-                    >
+                    <button type="submit" className="btn-primary flex-1">
                       Сохранить
                     </button>
                     <button
@@ -849,7 +846,7 @@ export function Integrations() {
                         setEditingId(null);
                         if (!selectedId) setForm(DEFAULT_FORM);
                       }}
-                      className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))]"
+                      className="btn-secondary flex-1"
                     >
                       Отмена
                     </button>
@@ -862,28 +859,21 @@ export function Integrations() {
                   <div>
                     <h4 className="entity-view-title">Информация об интеграции</h4>
                     <div className="entity-view-card">
-                      <div style={{ marginBottom: '12px' }}>
-                        <strong>ID:</strong> <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.id}</code>
+                      <div className="view-field">
+                        <strong>ID:</strong> <code className="view-code">{selectedIntegration.id}</code>
                       </div>
-                      <div style={{ marginBottom: '12px' }}>
+                      <div className="view-field">
                         <strong>Название:</strong> {selectedIntegration.name}
                       </div>
-                      <div style={{ marginBottom: '12px' }}>
+                      <div className="view-field">
                         <strong>Статус:</strong>{' '}
-                        <span
-                          style={{ padding: '4px 8px' }}
-                          className={`rounded text-xs ${
-                            selectedIntegration.enabled
-                              ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                              : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                          }`}
-                        >
+                        <span className={`view-badge ${selectedIntegration.enabled ? 'view-badge-success' : 'view-badge-error'}`}>
                           {selectedIntegration.enabled ? '✅ Включена' : '⏸️ Отключена'}
                         </span>
                       </div>
-                      <div>
+                      <div className="view-field">
                         <strong>Тип триггера:</strong>{' '}
-                        <span style={{ padding: '4px 8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)] text-xs">
+                        <span className="view-badge view-badge-neutral">
                           {selectedIntegration.triggerType === 'webhook' ? '📥 Webhook' : '🔄 Polling'}
                         </span>
                       </div>
@@ -907,7 +897,7 @@ export function Integrations() {
                         {selectedIntegration.pollingUrl && (
                           <div>
                             <strong>URL:</strong>{' '}
-                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">
+                            <code className="view-code">
                               {selectedIntegration.pollingMethod || 'GET'} {selectedIntegration.pollingUrl}
                             </code>
                           </div>
@@ -915,17 +905,17 @@ export function Integrations() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div>
                             <strong>Интервал:</strong>{' '}
-                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.pollingInterval || 60}s</code>
+                            <code className="view-code">{selectedIntegration.pollingInterval || 60}s</code>
                           </div>
                           <div>
                             <strong>Таймаут:</strong>{' '}
-                            <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.timeoutSec || 30}s</code>
+                            <code className="view-code">{selectedIntegration.timeoutSec || 30}s</code>
                           </div>
                         </div>
                         {selectedIntegration.pollingCondition && (
                           <div>
                             <strong>Условие:</strong>
-                            <div style={{ padding: '12px', marginTop: '8px' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
+                            <div className="view-code-block">
                               <code className="text-sm break-all">{selectedIntegration.pollingCondition}</code>
                             </div>
                           </div>
@@ -940,8 +930,8 @@ export function Integrations() {
                       <div className="entity-view-card space-y-3">
                         <div>
                           <strong>URL:</strong>
-                          <div style={{ padding: '12px', marginTop: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
-                            <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} className="text-sm">
+                          <div className="view-code-block">
+                            <code className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>
                               {selectedIntegration.actionMethod || 'POST'} {selectedIntegration.actionUrl}
                             </code>
                           </div>
@@ -949,16 +939,16 @@ export function Integrations() {
                         {selectedIntegration.actionHeaders && (
                           <div>
                             <strong>Headers:</strong>
-                            <div style={{ padding: '12px', marginTop: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
-                              <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} className="text-sm">{selectedIntegration.actionHeaders}</code>
+                            <div className="view-code-block">
+                              <code className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>{selectedIntegration.actionHeaders}</code>
                             </div>
                           </div>
                         )}
                         {selectedIntegration.actionBody && (
                           <div>
                             <strong>Body:</strong>
-                            <div style={{ padding: '12px', marginTop: '8px', wordBreak: 'break-word', overflowWrap: 'anywhere' }} className="rounded-lg bg-[hsl(var(--muted)_/_0.3)]">
-                              <code style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }} className="text-sm">{selectedIntegration.actionBody}</code>
+                            <div className="view-code-block">
+                              <code className="text-sm" style={{ whiteSpace: 'pre-wrap' }}>{selectedIntegration.actionBody}</code>
                             </div>
                           </div>
                         )}
@@ -971,14 +961,7 @@ export function Integrations() {
                     <div className="entity-view-card space-y-3">
                       <div>
                         <strong>Статус:</strong>{' '}
-                        <span
-                          style={{ padding: '4px 8px' }}
-                          className={`rounded text-xs ${
-                            selectedIntegration.sendToTelegram
-                              ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                              : 'bg-[hsl(var(--muted)_/_0.3)] text-[hsl(var(--muted-foreground))]'
-                          }`}
-                        >
+                        <span className={`view-badge ${selectedIntegration.sendToTelegram ? 'view-badge-success' : 'view-badge-neutral'}`}>
                           {selectedIntegration.sendToTelegram ? '✅ Включено' : '⏸️ Отключено'}
                         </span>
                       </div>
@@ -987,21 +970,19 @@ export function Integrations() {
                           {selectedIntegration.chatId && (
                             <div>
                               <strong>Chat ID:</strong>{' '}
-                              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{selectedIntegration.chatId}</code>
+                              <code className="view-code">{selectedIntegration.chatId}</code>
                             </div>
                           )}
                           {selectedIntegration.botToken && (
                             <div>
                               <strong>Bot Token:</strong>{' '}
-                              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">***настроен***</code>
+                              <code className="view-code">***настроен***</code>
                             </div>
                           )}
                           {selectedIntegration.messageTemplate && (
                             <div>
                               <strong>Шаблон сообщения:</strong>
-                              <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
-                                {selectedIntegration.messageTemplate}
-                              </div>
+                              <div className="view-code-block">{selectedIntegration.messageTemplate}</div>
                             </div>
                           )}
                         </>
@@ -1011,14 +992,10 @@ export function Integrations() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-16 text-center text-[hsl(var(--muted-foreground))]">
-                <p className="mb-4">Выберите интеграцию или создайте новую</p>
-                <button
-                  onClick={handleStartCreate}
-                  className="inline-flex items-center gap-2 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))]"
-                >
-                  <Plus className="h-4 w-4" />
-                  Создать интеграцию
+              <div className="fp-placeholder">
+                <p>Выберите интеграцию или создайте новую</p>
+                <button onClick={handleStartCreate} className="fp-btn fp-btn-primary">
+                  <Plus size={14} /> Создать интеграцию
                 </button>
               </div>
             )}

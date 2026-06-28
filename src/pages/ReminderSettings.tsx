@@ -177,13 +177,13 @@ export function ReminderSettingsPage() {
             Отдельный бот для системы напоминаний
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div className="flex flex-col gap-5">
             <div>
               <h3 className="mb-3 text-lg font-semibold flex items-center gap-2">
                 <Key className="h-5 w-5" />
                 Токен бота
               </h3>
-              <label style={{ display: 'block', marginBottom: '12px', fontSize: '14px', fontWeight: 500 }}>
+              <label className="form-label-simple">
                 Токен из @BotFather
               </label>
               <div className="grid grid-cols-[1fr_auto] gap-3">
@@ -192,12 +192,13 @@ export function ReminderSettingsPage() {
                   value={settings.botToken === '*****' ? '' : settings.botToken}
                   onChange={(e) => setSettings({ ...settings, botToken: e.target.value })}
                   placeholder="123456789:ABCdefGHIjkl..."
-                  style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))', fontFamily: 'monospace' }}
+                  className="input-field input-field-mono"
                 />
                 <button
                   onClick={handleSaveToken}
                   disabled={saving}
-                  style={{ padding: '12px 18px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: saving ? 0.65 : 1 }}
+                  className="btn-primary"
+                  style={{ opacity: saving ? 0.65 : 1 }}
                 >
                   <span className="inline-flex items-center gap-2">
                     <Save className="h-4 w-4" />
@@ -205,7 +206,7 @@ export function ReminderSettingsPage() {
                   </span>
                 </button>
               </div>
-              <p className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
+              <p className="form-hint">
                 Токен хранится в базе данных и используется только для напоминаний
               </p>
             </div>
@@ -235,13 +236,14 @@ export function ReminderSettingsPage() {
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 {settings.webhookSet ? (
                   <>
-                    <span className="rounded bg-[hsl(var(--success)_/_0.15)] px-2 py-1 text-xs text-[hsl(var(--success))]">
+                    <span className="badge badge-success">
                       ✅ Webhook установлен
                     </span>
                     <button
                       onClick={handleDeleteWebhook}
                       disabled={saving}
-                      style={{ padding: '10px 14px', borderRadius: '8px', background: 'hsl(var(--destructive))', color: 'white', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: saving ? 0.65 : 1 }}
+                      className="btn-primary"
+                      style={{ background: 'hsl(var(--destructive))', opacity: saving ? 0.65 : 1 }}
                     >
                       Удалить webhook
                     </button>
@@ -250,7 +252,8 @@ export function ReminderSettingsPage() {
                   <button
                     onClick={handleSetWebhook}
                     disabled={saving || !settings.botToken}
-                    style={{ padding: '10px 14px', borderRadius: '8px', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, cursor: 'pointer', border: 'none', opacity: saving || !settings.botToken ? 0.65 : 1 }}
+                    className="btn-primary"
+                    style={{ opacity: saving || !settings.botToken ? 0.65 : 1 }}
                   >
                     Установить webhook
                   </button>

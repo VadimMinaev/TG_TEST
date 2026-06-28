@@ -41,27 +41,28 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+    <div className="modal-overlay" onClick={onClose}>
       <div
-        className="w-full max-w-md rounded-lg border border-[hsl(var(--border)_/_0.7)] bg-[hsl(var(--card)_/_0.95)] shadow-2xl backdrop-blur-md"
+        className="modal-content"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between border-b border-[hsl(var(--border))] p-6">
-          <h2 className="flex items-center gap-2 text-xl font-semibold">🔐 Сменить пароль</h2>
+        <div className="modal-header">
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }} className="text-xl font-semibold">Сменить пароль</h2>
           <button
             onClick={onClose}
-            className="rounded-full p-1 transition-colors hover:bg-[hsl(var(--accent))]"
+            className="icon-button"
+            style={{ width: '32px', height: '32px', border: 'none' }}
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6">
+        <form onSubmit={handleSubmit} className="modal-body">
           {message && (
             <div
               className={`mb-4 animate-fade-in rounded border p-3 text-sm ${
                 message.type === 'success'
-                  ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
+                  ? 'border-[hsl(var(--success)_/_0.3)] bg-[hsl(var(--success)_/_0.12)] text-[hsl(var(--success))]'
                   : 'border-[hsl(var(--destructive)_/_0.2)] bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
               }`}
             >
@@ -80,7 +81,7 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
               onChange={(e) => setOldPassword(e.target.value)}
               placeholder="••••••"
               required
-              className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+              className="input-field"
             />
           </div>
 
@@ -95,7 +96,7 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
               onChange={(e) => setNewPassword(e.target.value)}
               placeholder="••••••"
               required
-              className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+              className="input-field"
             />
           </div>
 
@@ -110,22 +111,15 @@ export function ChangePasswordModal({ onClose }: ChangePasswordModalProps) {
               onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••"
               required
-              className="w-full rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 transition-all focus:border-[hsl(var(--ring))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring)_/_0.2)]"
+              className="input-field"
             />
           </div>
 
           <div className="flex gap-3">
-            <button
-              type="submit"
-              className="flex-1 rounded bg-[hsl(var(--primary))] px-4 py-2 font-semibold text-[hsl(var(--primary-foreground))] transition-all hover:bg-[hsl(var(--primary)_/_0.9)]"
-            >
+            <button type="submit" className="btn-primary flex-1">
               Изменить пароль
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded bg-[hsl(var(--secondary))] px-4 py-2 font-semibold text-[hsl(var(--secondary-foreground))] transition-all hover:bg-[hsl(var(--accent))]"
-            >
+            <button type="button" onClick={onClose} className="btn-secondary flex-1">
               Отмена
             </button>
           </div>
