@@ -325,7 +325,7 @@ export function Polling() {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ overflow: 'clip' }}>
       <div className="card-header">
         <h2 className="text-xl font-semibold">🔁 Пуллинг</h2>
         <div className="flex items-center gap-2">

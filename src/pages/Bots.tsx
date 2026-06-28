@@ -401,7 +401,7 @@ export function Bots() {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ overflow: 'clip' }}>
       <div className="card-header">
         <div className="flex flex-col gap-2">
           <h2 className="text-xl font-semibold">Bots</h2>

@@ -316,7 +316,7 @@ export function Operations() {
 
   return (
     <div className="operations-page">
-      <div className="card operations-tabs-card">
+      <div className="card operations-tabs-card" style={{ overflow: 'clip' }}>
         <div className="card-header">
           <div className="flex items-center gap-3">
             <h2 className="text-xl font-semibold">Операции</h2>

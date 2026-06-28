@@ -262,7 +262,7 @@ export function Rules() {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ overflow: 'clip' }}>
       <div className="card-header">
         <div className="flex items-center gap-3">
         <h2 className="text-xl font-semibold">📥 Webhook</h2>

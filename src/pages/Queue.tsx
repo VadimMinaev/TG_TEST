@@ -51,7 +51,7 @@ export function Queue() {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ overflow: 'clip' }}>
       <div className="card-header">
         <div className="flex flex-col gap-2">
           <div>

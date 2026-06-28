@@ -142,7 +142,7 @@ export function ReminderSettingsPage() {
 
   if (loading) {
     return (
-      <div className="card">
+      <div className="card" style={{ overflow: 'clip' }}>
         <div className="p-6">
           <div className="flex items-center gap-2 text-[hsl(var(--muted-foreground))]">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -154,7 +154,7 @@ export function ReminderSettingsPage() {
   }
 
   return (
-    <div className="card">
+    <div className="card" style={{ overflow: 'clip' }}>
       <div className="card-header">
         <div className="flex flex-col gap-2">
           <div>

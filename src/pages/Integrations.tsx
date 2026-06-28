@@ -371,7 +371,7 @@ export function Integrations() {
   };
 
   return (
-    <div className="card">
+    <div className="card" style={{ overflow: 'clip' }}>
       <div className="card-header">
         <h2 className="text-xl font-semibold">🔗 Интегратор</h2>
         <div className="flex items-center gap-2">
