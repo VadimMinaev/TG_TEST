@@ -65,28 +65,28 @@ export function IntegrationHistory() {
     selectedRun?.action_status != null && selectedRun.action_status >= 400;
 
   return (
-    <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
-      <div className="card-header">
-        <h2 className="text-xl font-semibold">История интеграций</h2>
-        <div className="flex items-center gap-2">
-          <button onClick={loadHistory} className="icon-button" title="Обновить">
-            <RefreshCw className="h-4 w-4" />
-          </button>
-          <button
-            onClick={handleClearHistory}
-            className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/_0.1)]"
-            title="Очистить"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'clip' }}>
+        {/* Header */}
+        <div className="card-header" style={{ padding: '12px 20px' }}>
+          <h2 className="text-xl font-semibold">История интеграций</h2>
+          <div className="flex items-center gap-2">
+            <button onClick={loadHistory} className="icon-button" title="Обновить">
+              <RefreshCw className="h-4 w-4" />
+            </button>
+            <button
+              onClick={handleClearHistory}
+              className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/_0.1)]"
+              title="Очистить"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
 
-      {/* Split layout */}
-      <div className="split-layout p-6" style={{ flex: 1, minHeight: 0 }}>
-        {/* ── LEFT: список ── */}
-        <div className="split-left" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        {/* Split layout */}
+        <div className="split-layout" style={{ flex: 1, minHeight: 0, padding: '20px', gap: '20px', border: 'none', background: 'transparent', borderRadius: 0 }}>
+          {/* ── LEFT: список ── */}
+          <div className="split-left" style={{ display: 'flex', flexDirection: 'column', minHeight: 0, paddingRight: 0 }}>
           <div
             className="panel"
             style={{
