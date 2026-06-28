@@ -30,7 +30,20 @@ export function Reminders() {
   const selected = useMemo(() => reminders.find((r) => r.id === selectedId) || null, [reminders, selectedId]);
 
   const load = async () => {
-    try { setLoading(true); const d = await api.getReminders(); setReminders(d); if (d.length && (selectedId == null || !d.some((r) => r.id === selectedId))) setSelectedId(d[0].id); if (!d.length) { setSelectedId(null); setEditingId(null); } }
+    try {
+      setLoading(true);
+      const d = await api.getReminders();
+      setReminders(d);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 860;
+      if (d.length) {
+        if (!isMobile && (selectedId == null || !d.some((r) => r.id === selectedId))) {
+          setSelectedId(d[0].id);
+        }
+      } else {
+        setSelectedId(null);
+        setEditingId(null);
+      }
+    }
     catch (e: any) { addToast(e.message || 'Ошибка', 'error'); } finally { setLoading(false); }
   };
 

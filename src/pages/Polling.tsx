@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, Info } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, Info, ChevronLeft } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
@@ -414,7 +414,7 @@ export function Polling() {
       </div>
 
 
-      <div className="fp">
+      <div className={`fp ${selectedPollId !== null || editingPollId !== null ? 'fp-has-selection' : ''}`}>
         <div className="fp-sidebar">
           <div className="fp-sidebar-head">
             <span className="fp-sidebar-title">Пуллинг</span>
@@ -443,8 +443,25 @@ export function Polling() {
 
         <div className="fp-panel">
           <div className="fp-panel-head">
+            {(selectedPollId !== null || editingPollId !== null) && (
+              <button 
+                type="button"
+                className="fp-back fp-back-mobile" 
+                onClick={() => {
+                  if (editingPollId !== null && editingPollId !== -1 && selectedPollId !== null) {
+                    setEditingPollId(null);
+                  } else {
+                    setSelectedPollId(null);
+                    setEditingPollId(null);
+                  }
+                }}
+                style={{ marginRight: '8px' }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+            )}
             <div className="fp-panel-meta">
-              <div className="fp-panel-name">{editingPollId !== null ? (editingPollId === -1 ? 'Создание задачи' : 'Редактирование') : 'Пуллинг'}</div>
+              <div className="fp-panel-name">{editingPollId !== null ? (editingPollId === -1 ? 'Создание задачи' : 'Редактирование') : selectedPollId ? 'Просмотр задачи' : 'Пуллинг'}</div>
             </div>
           </div>
 

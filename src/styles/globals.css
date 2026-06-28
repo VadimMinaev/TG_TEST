@@ -2140,7 +2140,34 @@ code {
 /* ── Responsive ── */
 @media (max-width: 860px) {
   .fp { grid-template-columns: 1fr; }
-  .fp-sidebar { display: none; }
+  
+  /* Show sidebar by default, hide panel */
+  .fp:not(.fp-has-selection) .fp-sidebar {
+    display: flex;
+    width: 100%;
+  }
+  .fp:not(.fp-has-selection) .fp-panel {
+    display: none;
+  }
+  
+  /* Show panel when selected, hide sidebar */
+  .fp.fp-has-selection .fp-sidebar {
+    display: none;
+  }
+  .fp.fp-has-selection .fp-panel {
+    display: flex;
+    width: 100%;
+  }
+  
+  .fp-back-mobile {
+    display: flex !important;
+  }
+}
+
+@media (min-width: 861px) {
+  .fp-back-mobile {
+    display: none !important;
+  }
 }
 @media (max-width: 600px) {
   .fp { border-radius: 0; }

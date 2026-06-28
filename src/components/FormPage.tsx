@@ -33,7 +33,7 @@ export interface FormPageProps {
   title: string;
   items: FormPageItem[];
   selectedId: number | null;
-  onSelect: (id: number) => void;
+  onSelect: (id: number | null) => void;
   onRefresh: () => void;
   onCreate?: () => void;
   loading?: boolean;
@@ -192,8 +192,9 @@ function PasswordInput({ value, onChange, placeholder }: { value: string; onChan
 /* ─── Main Component ───────────────────────────────────────────────────── */
 
 export function FormPage({ title, items, selectedId, onSelect, onRefresh, onCreate, loading, canEdit, view, edit, onExitEdit, empty }: FormPageProps) {
+  const hasSelection = !!(selectedId !== null || edit || view);
   return (
-    <div className="fp">
+    <div className={`fp ${hasSelection ? 'fp-has-selection' : ''}`}>
       {/* Sidebar */}
       <aside className="fp-sidebar">
         <div className="fp-sidebar-head">
@@ -259,6 +260,7 @@ export function FormPage({ title, items, selectedId, onSelect, onRefresh, onCrea
           /* ═══ VIEW MODE ═══ */
           <>
             <div className="fp-panel-head">
+              <button className="fp-back fp-back-mobile" style={{ marginRight: '8px' }} onClick={() => onSelect(null)}><ChevronLeft size={14} /></button>
               <div className="fp-panel-avatar">{view.avatar || getInitial(view.name)}</div>
               <div className="fp-panel-meta">
                 <div className="fp-panel-name">{view.name}</div>

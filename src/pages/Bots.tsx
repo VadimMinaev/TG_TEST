@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Bot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, ChevronLeft } from 'lucide-react';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
@@ -480,7 +480,7 @@ export function Bots() {
       </div>
 
 
-      <div className="fp">
+      <div className={`fp ${selectedBotId !== null || editingBotId !== null ? 'fp-has-selection' : ''}`}>
         <div className="fp-sidebar">
           <div className="fp-sidebar-head">
             <span className="fp-sidebar-title">Телеграм боты</span>
@@ -509,6 +509,23 @@ export function Bots() {
 
         <div className="fp-panel">
           <div className="fp-panel-head">
+            {(selectedBotId !== null || editingBotId !== null) && (
+              <button 
+                type="button"
+                className="fp-back fp-back-mobile" 
+                onClick={() => {
+                  if (editingBotId !== null && editingBotId !== -1 && selectedBotId !== null) {
+                    setEditingBotId(null);
+                  } else {
+                    setSelectedBotId(null);
+                    setEditingBotId(null);
+                  }
+                }}
+                style={{ marginRight: '8px' }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+            )}
             <div className="fp-panel-meta">
               <div className="fp-panel-name">{editingBotId !== null ? (editingBotId === -1 ? 'Создание бота' : 'Редактирование') : selectedBotId ? 'Просмотр' : 'Телеграм боты'}</div>
             </div>

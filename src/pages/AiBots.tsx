@@ -77,8 +77,15 @@ export function AiBots() {
       setLoading(true);
       const data = await api.getAiBots();
       setBots(data);
-      if (data.length && (selectedId == null || !data.some((i) => i.id === selectedId))) setSelectedId(data[0].id);
-      if (!data.length) { setSelectedId(null); setEditingId(null); }
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 860;
+      if (data.length) {
+        if (!isMobile && (selectedId == null || !data.some((i) => i.id === selectedId))) {
+          setSelectedId(data[0].id);
+        }
+      } else {
+        setSelectedId(null);
+        setEditingId(null);
+      }
     } catch (e: any) { addToast(e.message || 'Ошибка загрузки', 'error'); }
     finally { setLoading(false); }
   };
@@ -187,8 +194,9 @@ export function AiBots() {
     ? (typeof window !== 'undefined' ? `${window.location.origin}/api/telegram/ai/${selectedBot.id}/webhook` : '')
     : '';
 
+  const hasSelection = selectedId !== null || editingId !== null;
   return (
-    <div className="fp">
+    <div className={`fp ${hasSelection ? 'fp-has-selection' : ''}`}>
       {/* ── Sidebar ── */}
       <aside className="fp-sidebar">
         <div className="fp-sidebar-head">
@@ -223,7 +231,20 @@ export function AiBots() {
           /* ═══ EDIT MODE ═══ */
           <>
             <div className="fp-panel-head">
-              <button className="fp-back" onClick={() => setEditingId(null)}><ChevronLeft size={14} /></button>
+              <button 
+                type="button" 
+                className="fp-back" 
+                onClick={() => {
+                  if (editingId === -1) {
+                    setSelectedId(null);
+                    setEditingId(null);
+                  } else {
+                    setEditingId(null);
+                  }
+                }}
+              >
+                <ChevronLeft size={14} />
+              </button>
               <div className="fp-panel-meta">
                 <div className="fp-panel-name">{editingId === -1 ? 'Создание AI бота' : 'Редактирование'}</div>
                 {editingId !== -1 && selectedBot && <div className="fp-panel-sub">{selectedBot.name} · {selectedBot.provider}/{selectedBot.model}</div>}
@@ -334,6 +355,7 @@ export function AiBots() {
           /* ═══ VIEW MODE ═══ */
           <>
             <div className="fp-panel-head">
+              <button className="fp-back fp-back-mobile" style={{ marginRight: '8px' }} onClick={() => setSelectedId(null)}><ChevronLeft size={14} /></button>
               <div className="fp-panel-avatar">{getInitial(selectedBot.name)}</div>
               <div className="fp-panel-meta">
                 <div className="fp-panel-name">{selectedBot.name}</div>

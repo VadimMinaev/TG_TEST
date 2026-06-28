@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Rule } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Plus, Search, Download, Upload, Info, Copy, CheckCheck, Pencil, Trash2, RefreshCw } from 'lucide-react';
+import { Plus, Search, Download, Upload, Info, Copy, CheckCheck, Pencil, Trash2, RefreshCw, ChevronLeft } from 'lucide-react';
 import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
@@ -389,7 +389,7 @@ export function Rules() {
       </div>
 
 
-      <div className="fp">
+      <div className={`fp ${selectedRuleId !== null || editingRuleId !== null ? 'fp-has-selection' : ''}`}>
         <div className="fp-sidebar">
           <div className="fp-sidebar-head">
             <span className="fp-sidebar-title">Webhook</span>
@@ -410,6 +410,23 @@ export function Rules() {
 
         <div className="fp-panel">
           <div className="fp-panel-head">
+            {(selectedRuleId !== null || editingRuleId !== null) && (
+              <button 
+                type="button"
+                className="fp-back fp-back-mobile" 
+                onClick={() => {
+                  if (editingRuleId !== null && editingRuleId !== -1 && selectedRuleId !== null) {
+                    setEditingRuleId(null);
+                  } else {
+                    setSelectedRuleId(null);
+                    setEditingRuleId(null);
+                  }
+                }}
+                style={{ marginRight: '8px' }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+            )}
             <div className="fp-panel-meta">
               <div className="fp-panel-name">{editingRuleId !== null ? (editingRuleId === -1 ? 'Создание Webhook' : 'Редактирование') : selectedRuleId ? 'Просмотр Webhook' : 'Webhook'}</div>
             </div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { api, Integration, Rule, Poll } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
-import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload } from 'lucide-react';
+import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, ChevronLeft } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
 import { StatusRadio } from '../components/StatusRadio';
@@ -466,7 +466,7 @@ export function Integrations() {
       </div>
 
 
-      <div className="fp">
+      <div className={`fp ${selectedId !== null || editingId !== null ? 'fp-has-selection' : ''}`}>
         <div className="fp-sidebar">
           <div className="fp-sidebar-head">
             <span className="fp-sidebar-title">Интеграции</span>
@@ -495,8 +495,25 @@ export function Integrations() {
 
         <div className="fp-panel">
           <div className="fp-panel-head">
+            {(selectedId !== null || editingId !== null) && (
+              <button 
+                type="button"
+                className="fp-back fp-back-mobile" 
+                onClick={() => {
+                  if (editingId !== null && editingId !== -1 && selectedId !== null) {
+                    setEditingId(null);
+                  } else {
+                    setSelectedId(null);
+                    setEditingId(null);
+                  }
+                }}
+                style={{ marginRight: '8px' }}
+              >
+                <ChevronLeft size={14} />
+              </button>
+            )}
             <div className="fp-panel-meta">
-              <div className="fp-panel-name">{editingId !== null ? (editingId === -1 ? 'Создание интеграции' : 'Редактирование') : 'Интеграции'}</div>
+              <div className="fp-panel-name">{editingId !== null ? (editingId === -1 ? 'Создание интеграции' : 'Редактирование') : selectedId ? 'Просмотр интеграции' : 'Интеграции'}</div>
             </div>
           </div>
 

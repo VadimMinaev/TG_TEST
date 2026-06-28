@@ -65,7 +65,15 @@ export function Users() {
   }, [searchParams, setSearchParams, canManageUsers, isVadmin]);
 
   const loadUsers = async () => {
-    try { setLoading(true); const d = await api.getUsers(); setUsers(d); if (d.length && selectedUserId == null) setSelectedUserId(d[0].id); }
+    try {
+      setLoading(true);
+      const d = await api.getUsers();
+      setUsers(d);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 860;
+      if (!isMobile && d.length && selectedUserId == null) {
+        setSelectedUserId(d[0].id);
+      }
+    }
     catch (e: any) { addToast(e?.message || 'Ошибка загрузки', 'error'); }
     finally { setLoading(false); }
   };

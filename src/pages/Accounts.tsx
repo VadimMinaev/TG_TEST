@@ -43,7 +43,15 @@ export function Accounts() {
   }, [searchParams, setSearchParams]);
 
   const loadAccounts = async () => {
-    try { setLoading(true); const d = await api.getAccounts(); setAccounts(d); if (d.length && selectedAccountId == null) setSelectedAccountId(d[0].id); }
+    try {
+      setLoading(true);
+      const d = await api.getAccounts();
+      setAccounts(d);
+      const isMobile = typeof window !== 'undefined' && window.innerWidth < 860;
+      if (!isMobile && d.length && selectedAccountId == null) {
+        setSelectedAccountId(d[0].id);
+      }
+    }
     catch (e: any) { addToast(e?.message || 'Ошибка', 'error'); }
     finally { setLoading(false); }
   };
