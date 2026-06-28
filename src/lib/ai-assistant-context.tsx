@@ -1,9 +1,19 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { api, AiBot } from './api';
 
+export interface AgentAction {
+  tool: string;
+  args: any;
+  result?: any;
+  error?: string;
+}
+
 export interface AssistantMessage {
   role: 'user' | 'assistant';
   text: string;
+  isAgent?: boolean;
+  actions?: AgentAction[];
+  summary?: string;
 }
 
 interface AiAssistantContextType {
@@ -13,13 +23,16 @@ interface AiAssistantContextType {
   availableBots: AiBot[];
   loading: boolean;
   botLoading: boolean;
+  agentMode: boolean;
   togglePanel: () => void;
   closePanel: () => void;
   openPanel: () => void;
   sendMessage: (text: string) => Promise<void>;
+  executeAgentGoal: (goal: string) => Promise<void>;
   getFieldSuggestion: (fieldName: string, description: string, currentValue?: string) => Promise<string>;
   selectBot: (id: number) => void;
   loadBots: () => Promise<void>;
+  setAgentMode: (v: boolean) => void;
 }
 
 const AiAssistantContext = createContext<AiAssistantContextType | undefined>(undefined);
@@ -31,6 +44,7 @@ export function AiAssistantProvider({ children }: { children: ReactNode }) {
   const [availableBots, setAvailableBots] = useState<AiBot[]>([]);
   const [loading, setLoading] = useState(false);
   const [botLoading, setBotLoading] = useState(false);
+  const [agentMode, setAgentMode] = useState(false);
 
   const togglePanel = useCallback(() => setIsOpen((v) => !v), []);
   const closePanel = useCallback(() => setIsOpen(false), []);
@@ -73,6 +87,31 @@ export function AiAssistantProvider({ children }: { children: ReactNode }) {
     }
   }, [selectedBotId]);
 
+  const executeAgentGoal = useCallback(async (goal: string) => {
+    if (!goal.trim() || !selectedBotId) return;
+
+    const userMsg: AssistantMessage = { role: 'user', text: goal.trim() };
+    setMessages((prev) => [...prev, userMsg]);
+    setLoading(true);
+
+    try {
+      const result = await api.aiAgentExecute(selectedBotId, goal.trim());
+      const aiMsg: AssistantMessage = {
+        role: 'assistant',
+        text: result.summary || 'Выполнено',
+        isAgent: true,
+        actions: result.actions || [],
+        summary: result.summary,
+      };
+      setMessages((prev) => [...prev, aiMsg]);
+    } catch (err: any) {
+      const errMsg: AssistantMessage = { role: 'assistant', text: `❌ Ошибка: ${err.message || 'Неизвестная ошибка'}` };
+      setMessages((prev) => [...prev, errMsg]);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedBotId]);
+
   const getFieldSuggestion = useCallback(async (fieldName: string, description: string, currentValue?: string): Promise<string> => {
     if (!selectedBotId) throw new Error('AI bot not selected');
 
@@ -87,9 +126,9 @@ export function AiAssistantProvider({ children }: { children: ReactNode }) {
   return (
     <AiAssistantContext.Provider value={{
       isOpen, messages, selectedBotId, availableBots,
-      loading, botLoading,
+      loading, botLoading, agentMode,
       togglePanel, closePanel, openPanel,
-      sendMessage, getFieldSuggestion, selectBot, loadBots,
+      sendMessage, executeAgentGoal, getFieldSuggestion, selectBot, loadBots, setAgentMode,
     }}>
       {children}
     </AiAssistantContext.Provider>

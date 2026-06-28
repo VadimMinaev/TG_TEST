@@ -1956,6 +1956,21 @@ app.post('/api/test-send', auth, async (req, res) => {
     }
 });
 
+app.post('/api/test-condition', auth, async (req, res) => {
+    const { condition, payload } = req.body;
+    if (!condition) return res.status(400).json({ error: 'condition is required' });
+    let testPayload = {};
+    try { testPayload = payload ? JSON.parse(typeof payload === 'string' ? payload : JSON.stringify(payload)) : {}; }
+    catch { return res.status(400).json({ error: 'Invalid payload JSON' }); }
+    try {
+        const fn = new Function('payload', `return ${condition}`);
+        const result = fn(testPayload);
+        return res.json({ success: true, result: !!result });
+    } catch (err) {
+        return res.status(400).json({ success: false, error: err.message });
+    }
+});
+
 // ────────────────────────────────────────────────────────────────
 // УПРАВЛЕНИЕ ПРАВИЛАМИ
 // ────────────────────────────────────────────────────────────────
@@ -3971,6 +3986,242 @@ app.post('/api/ai/assist', auth, async (req, res) => {
     } catch (err) {
         console.error('AI assist error:', err?.response?.data || err.message || err);
         return res.status(500).json({ error: err.message || 'AI assist failed' });
+    }
+});
+
+/* ── AI Agent (autonomous tool-using assistant) ── */
+
+function createAgentToken() {
+    const token = 'agent-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    const session = { username: 'vadmin', timestamp: Date.now(), role: 'administrator', isAgent: true };
+    sessions.set(token, session);
+    return token;
+}
+
+const AGENT_TOOLS = [
+    {
+        name: 'get_rules',
+        description: 'Получить список всех правил',
+        parameters: {},
+        method: 'GET', path: '/api/rules',
+    },
+    {
+        name: 'create_rule',
+        description: 'Создать новое правило. Параметры: name (название), condition (JS-условие, payload.xxx), chatId (ID чата Telegram), messageTemplate (опционально, шаблон сообщения), enabled (по умолчанию true)',
+        parameters: { name: 'string', condition: 'string', chatId: 'string', messageTemplate: 'string?', enabled: 'boolean?' },
+        method: 'POST', path: '/api/rules',
+    },
+    {
+        name: 'update_rule',
+        description: 'Обновить правило по ID. Передавать только изменяемые поля.',
+        parameters: { id: 'number', name: 'string?', condition: 'string?', chatId: 'string?', messageTemplate: 'string?', enabled: 'boolean?' },
+        method: 'PUT', path: (args) => `/api/rules/${args.id}`,
+    },
+    {
+        name: 'delete_rule',
+        description: 'Удалить правило по ID.',
+        parameters: { id: 'number' },
+        method: 'DELETE', path: (args) => `/api/rules/${args.id}`,
+    },
+    {
+        name: 'get_integrations',
+        description: 'Получить список всех интеграций',
+        parameters: {},
+        method: 'GET', path: '/api/integrations',
+    },
+    {
+        name: 'create_integration',
+        description: 'Создать новую интеграцию. Параметры: name, type (webhook|polling), triggerCondition (JS-выражение), pollingUrl, pollingInterval, pollingMethod, messageTemplate, chatId',
+        parameters: { name: 'string', type: 'string', triggerCondition: 'string?', pollingUrl: 'string?', pollingInterval: 'number?', pollingMethod: 'string?', messageTemplate: 'string?', chatId: 'string?' },
+        method: 'POST', path: '/api/integrations',
+    },
+    {
+        name: 'get_polls',
+        description: 'Получить список всех пуллингов',
+        parameters: {},
+        method: 'GET', path: '/api/polls',
+    },
+    {
+        name: 'create_poll',
+        description: 'Создать новый пуллинг. Параметры: name, url, method (GET|POST), intervalSec (сек), conditionJson (JSON условий), messageTemplate, chatId',
+        parameters: { name: 'string', url: 'string', method: 'string', intervalSec: 'number', conditionJson: 'string?', messageTemplate: 'string?', chatId: 'string?', enabled: 'boolean?' },
+        method: 'POST', path: '/api/polls',
+    },
+    {
+        name: 'get_ai_bots',
+        description: 'Получить список всех AI-ботов',
+        parameters: {},
+        method: 'GET', path: '/api/ai-bots',
+    },
+    {
+        name: 'create_ai_bot',
+        description: 'Создать AI-бота. Параметры: name, provider (gemini|groq|openai|openrouter|custom), telegramBotToken, apiKey, model, systemPrompt, allowVoice',
+        parameters: { name: 'string', provider: 'string', telegramBotToken: 'string', apiKey: 'string', model: 'string?', systemPrompt: 'string?', allowVoice: 'boolean?' },
+        method: 'POST', path: '/api/ai-bots',
+    },
+    {
+        name: 'update_ai_bot',
+        description: 'Обновить AI-бота по ID. Передавать только изменяемые поля.',
+        parameters: { id: 'number', name: 'string?', provider: 'string?', telegramBotToken: 'string?', apiKey: 'string?', model: 'string?', systemPrompt: 'string?', enabled: 'boolean?' },
+        method: 'PUT', path: (args) => `/api/ai-bots/${args.id}`,
+    },
+    {
+        name: 'delete_ai_bot',
+        description: 'Удалить AI-бота по ID.',
+        parameters: { id: 'number' },
+        method: 'DELETE', path: (args) => `/api/ai-bots/${args.id}`,
+    },
+    {
+        name: 'set_webhook',
+        description: 'Установить Telegram webhook для AI-бота по ID.',
+        parameters: { id: 'number' },
+        method: 'POST', path: (args) => `/api/ai-bots/${args.id}/webhook`,
+    },
+    {
+        name: 'test_condition',
+        description: 'Проверить JavaScript-условие на тестовом payload. Параметры: condition (JS-выражение), payload (JSON-строка)',
+        parameters: { condition: 'string', payload: 'string' },
+        method: 'POST', path: '/api/test-condition',
+    },
+    {
+        name: 'send_test_message',
+        description: 'Отправить тестовое сообщение в Telegram. Параметры: chatId (ID чата), message (текст сообщения)',
+        parameters: { chatId: 'string', message: 'string' },
+        method: 'POST', path: '/api/test-send',
+    },
+];
+
+async function callAgentTool(toolName, args, agentToken) {
+    const tool = AGENT_TOOLS.find((t) => t.name === toolName);
+    if (!tool) throw new Error(`Unknown tool: ${toolName}`);
+
+    const path = typeof tool.path === 'function' ? tool.path(args) : tool.path;
+    const body = tool.method === 'GET' || tool.method === 'DELETE' ? undefined : args;
+
+    const url = `http://localhost:${PORT}${path}`;
+    const res = await fetch(url, {
+        method: tool.method,
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${agentToken}`,
+        },
+        body: body ? JSON.stringify(body) : undefined,
+    });
+
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+        return await res.json();
+    }
+    const text = await res.text();
+    try { return JSON.parse(text); } catch { return { raw: text }; }
+}
+
+app.post('/api/ai/agent/execute', auth, async (req, res) => {
+    try {
+        const { aiBotId, goal } = req.body;
+        if (!aiBotId) return res.status(400).json({ error: 'aiBotId is required' });
+        if (!goal || !String(goal).trim()) return res.status(400).json({ error: 'goal is required' });
+
+        const bot = await fetchAiBotForWebhook(Number(aiBotId));
+        if (!bot) return res.status(404).json({ error: 'AI bot not found' });
+        if (!bot.enabled) return res.status(400).json({ error: 'AI bot is disabled' });
+
+        const agentToken = createAgentToken();
+        const toolDescriptions = AGENT_TOOLS.map((t) => {
+            const params = Object.entries(t.parameters)
+                .map(([k, v]) => `  - ${k}: ${v}`).join('\n');
+            return `## ${t.name}\n${t.description}\nПараметры:\n${params}`;
+        }).join('\n\n');
+
+        const systemPrompt = `Ты — AI-агент для управления системой webhook/telegram интеграций.
+
+Твоя задача — выполнить запрос пользователя. У тебя есть доступ к инструментам (tools), с помощью которых ты можешь создавать, читать, изменять и удалять сущности.
+
+ВАЖНО: Всегда отвечай ТОЛЬКО в формате JSON. Никакого лишнего текста.
+
+Если нужно вызвать инструмент:
+{"action":"call","tool":"имя_инструмента","args":{...}}
+
+Если нужно вернуть результат пользователю:
+{"action":"final","summary":"что было сделано","actions":[{"tool":"...","args":{...},"result":"..."}]}
+
+Доступные инструменты:
+
+${toolDescriptions}
+
+Правила:
+1. Думай пошагово. Сначала получи список сущностей, если нужно.
+2. После создания/изменения — проверь результат, получив список снова.
+3. Если что-то пошло не так — сообщи об этом.
+4. В final-ответе дай краткое резюме на русском.`;
+
+        const messages = [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Запрос пользователя: ${String(goal).trim()}` },
+        ];
+
+        const actions = [];
+        let finalSummary = '';
+
+        for (let i = 0; i < 25; i++) {
+            const conversationText = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+
+            const responseText = await callAiProvider({
+                provider: bot.provider || 'gemini',
+                apiKey: bot.apiKey || bot.geminiApiKey,
+                model: bot.model || bot.geminiModel,
+                apiBase: bot.apiBase,
+                systemPrompt: '',
+                prompt: conversationText,
+            });
+
+            let parsed;
+            try {
+                const cleaned = responseText.replace(/```json\s*/gi, '').replace(/```\s*$/g, '').trim();
+                parsed = JSON.parse(cleaned);
+            } catch {
+                const retryMsg = `SYSTEM: Твой ответ должен быть строго в формате JSON. Не добавляй лишнего текста.\nПользовательский запрос: ${goal}\n\nТвой JSON-ответ:`;
+                messages.push({ role: 'user', content: retryMsg });
+                continue;
+            }
+
+            if (!parsed || !parsed.action) {
+                messages.push({ role: 'user', content: 'SYSTEM: Ответ должен содержать поле "action" со значением "call" или "final". Попробуй ещё раз.' });
+                continue;
+            }
+
+            if (parsed.action === 'final') {
+                finalSummary = parsed.summary || 'Готово';
+                if (parsed.actions) actions.push(...parsed.actions);
+                break;
+            }
+
+            if (parsed.action === 'call') {
+                const { tool, args } = parsed;
+                try {
+                    const result = await callAgentTool(tool, args || {}, agentToken);
+                    actions.push({ tool, args, result });
+                    const resultStr = typeof result === 'object' ? JSON.stringify(result, null, 2).slice(0, 3000) : String(result).slice(0, 3000);
+                    messages.push({ role: 'assistant', content: JSON.stringify(parsed) });
+                    messages.push({ role: 'user', content: `Результат выполнения ${tool}:\n${resultStr}\n\nПродолжай. Если цель достигнута — верни final.` });
+                } catch (err) {
+                    actions.push({ tool, args, error: err.message });
+                    messages.push({ role: 'assistant', content: JSON.stringify(parsed) });
+                    messages.push({ role: 'user', content: `Ошибка при выполнении ${tool}: ${err.message}\n\nПопробуй другой подход или сообщи пользователю.` });
+                }
+                continue;
+            }
+
+            messages.push({ role: 'user', content: 'SYSTEM: Неизвестное действие. Используй "call" для вызова инструмента или "final" для завершения.' });
+        }
+
+        return res.json({
+            summary: finalSummary || 'Не удалось выполнить запрос',
+            actions,
+        });
+    } catch (err) {
+        console.error('AI agent error:', err?.response?.data || err.message || err);
+        return res.status(500).json({ error: err.message || 'AI agent failed' });
     }
 });
 

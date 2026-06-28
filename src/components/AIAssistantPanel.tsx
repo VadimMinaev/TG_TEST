@@ -1,9 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Sparkles, Send, X, MessageSquare, Loader2 } from 'lucide-react';
+import { Bot, Sparkles, Send, X, MessageSquare, Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight, Cpu } from 'lucide-react';
 import { useAiAssistant } from '../lib/ai-assistant-context';
 
 export function AiAssistantToggle() {
-  const { isOpen, togglePanel, botLoading, loadBots } = useAiAssistant();
+  const { isOpen, togglePanel, botLoading, loadBots, agentMode } = useAiAssistant();
 
   useEffect(() => { loadBots(); }, [loadBots]);
 
@@ -14,17 +14,21 @@ export function AiAssistantToggle() {
         style={{
           position: 'fixed', bottom: '96px', right: '20px', zIndex: 1000,
           width: '52px', height: '52px', borderRadius: '50%',
-          background: 'linear-gradient(135deg, hsl(var(--primary)), #7c3aed)',
+          background: agentMode
+            ? 'linear-gradient(135deg, #7c3aed, #ec4899)'
+            : 'linear-gradient(135deg, hsl(var(--primary)), #7c3aed)',
           color: '#fff', border: 'none', cursor: 'pointer',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 8px 24px -6px hsl(var(--primary) / 0.5)',
+          boxShadow: agentMode
+            ? '0 8px 24px -6px #ec4899 / 0.5'
+            : '0 8px 24px -6px hsl(var(--primary) / 0.5)',
           transition: 'transform 0.2s ease',
         }}
-        title="AI Ассистент"
+        title={agentMode ? 'AI Агент' : 'AI Ассистент'}
         onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.08)'}
         onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
       >
-        {botLoading ? <Loader2 size={22} className="animate-spin" /> : <Sparkles size={22} />}
+        {botLoading ? <Loader2 size={22} className="animate-spin" /> : agentMode ? <Cpu size={22} /> : <Sparkles size={22} />}
       </button>
 
       {isOpen && <AiAssistantPanel />}
@@ -35,10 +39,12 @@ export function AiAssistantToggle() {
 function AiAssistantPanel() {
   const {
     messages, loading, selectedBotId, availableBots,
-    sendMessage, closePanel, selectBot,
+    sendMessage, executeAgentGoal, closePanel, selectBot,
+    agentMode, setAgentMode,
   } = useAiAssistant();
 
   const [input, setInput] = useState('');
+  const [expandedActions, setExpandedActions] = useState<Set<number>>(new Set());
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -54,7 +60,11 @@ function AiAssistantPanel() {
 
   const handleSend = () => {
     if (!input.trim() || loading) return;
-    sendMessage(input.trim());
+    if (agentMode) {
+      executeAgentGoal(input.trim());
+    } else {
+      sendMessage(input.trim());
+    }
     setInput('');
   };
 
@@ -63,6 +73,15 @@ function AiAssistantPanel() {
       e.preventDefault();
       handleSend();
     }
+  };
+
+  const toggleExpand = (idx: number) => {
+    setExpandedActions((prev) => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx);
+      else next.add(idx);
+      return next;
+    });
   };
 
   return (
@@ -80,37 +99,69 @@ function AiAssistantPanel() {
     >
       {/* Header */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: '10px',
-        padding: '14px 16px', borderBottom: '1px solid hsl(var(--border))',
+        display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '12px 16px', borderBottom: '1px solid hsl(var(--border))',
       }}>
-        <Bot size={18} style={{ color: 'hsl(var(--primary))' }} />
-        <span style={{ fontWeight: 600, fontSize: '14px', flex: 1 }}>AI Ассистент</span>
-        {!selectedBotId && availableBots.length > 0 && (
-          <select
-            value={selectedBotId || ''}
-            onChange={(e) => selectBot(Number(e.target.value))}
+        {agentMode ? <Cpu size={16} style={{ color: '#ec4899' }} /> : <Bot size={16} style={{ color: 'hsl(var(--primary))' }} />}
+        <span style={{ fontWeight: 600, fontSize: '14px', flex: 1 }}>{agentMode ? 'AI Агент' : 'AI Ассистент'}</span>
+        <div style={{
+          display: 'flex', background: 'hsl(var(--secondary))', borderRadius: '8px', padding: '2px', gap: '2px',
+        }}>
+          <button
+            onClick={() => setAgentMode(false)}
             style={{
-              fontSize: '12px', padding: '4px 8px', borderRadius: '6px',
-              border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))',
-              maxWidth: '140px',
+              padding: '4px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px',
+              fontWeight: 600, transition: 'all 0.15s',
+              background: !agentMode ? 'hsl(var(--background))' : 'transparent',
+              color: !agentMode ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+              boxShadow: !agentMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
             }}
           >
-            {availableBots.map((bot) => (
-              <option key={bot.id} value={bot.id}>{bot.name}</option>
-            ))}
-          </select>
-        )}
-        {!selectedBotId && availableBots.length === 0 && (
-          <span style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))' }}>
-            Нет AI ботов
-          </span>
-        )}
+            Чат
+          </button>
+          <button
+            onClick={() => setAgentMode(true)}
+            style={{
+              padding: '4px 10px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px',
+              fontWeight: 600, transition: 'all 0.15s',
+              background: agentMode ? 'hsl(var(--background))' : 'transparent',
+              color: agentMode ? 'hsl(var(--foreground))' : 'hsl(var(--muted-foreground))',
+              boxShadow: agentMode ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+            }}
+          >
+            Агент
+          </button>
+        </div>
         <button
           onClick={closePanel}
           style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'hsl(var(--muted-foreground))' }}
         >
           <X size={16} />
         </button>
+      </div>
+      {/* Bot selector */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: '8px',
+        padding: '6px 16px', borderBottom: '1px solid hsl(var(--border))',
+        fontSize: '12px',
+      }}>
+        <span style={{ color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap' }}>Бот:</span>
+        {availableBots.length > 0 ? (
+          <select
+            value={selectedBotId || ''}
+            onChange={(e) => selectBot(Number(e.target.value))}
+            style={{
+              fontSize: '12px', padding: '3px 6px', borderRadius: '6px', flex: 1,
+              border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))',
+            }}
+          >
+            {availableBots.map((bot) => (
+              <option key={bot.id} value={bot.id}>{bot.name} ({bot.provider})</option>
+            ))}
+          </select>
+        ) : (
+          <span style={{ color: 'hsl(var(--muted-foreground))' }}>Нет AI ботов. Создайте в AiBots</span>
+        )}
       </div>
 
       {/* Messages */}
@@ -138,26 +189,89 @@ function AiAssistantPanel() {
 
         {messages.map((msg, i) => (
           <div key={i} style={{
-            display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
-            gap: '8px', alignItems: 'flex-start',
+            display: 'flex', flexDirection: 'column', gap: '6px',
           }}>
             <div style={{
-              width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '12px', fontWeight: 700,
-              background: msg.role === 'user' ? 'hsl(var(--primary))' : 'hsl(var(--secondary))',
-              color: msg.role === 'user' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--foreground))',
+              display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+              gap: '8px', alignItems: 'flex-start',
             }}>
-              {msg.role === 'user' ? 'U' : 'AI'}
+              <div style={{
+                width: '28px', height: '28px', borderRadius: '50%', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '12px', fontWeight: 700,
+                background: msg.role === 'user' ? 'hsl(var(--primary))' : 'hsl(var(--secondary))',
+                color: msg.role === 'user' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--foreground))',
+              }}>
+                {msg.role === 'user' ? 'U' : msg.isAgent ? <Cpu size={14} /> : 'AI'}
+              </div>
+              <div style={{
+                padding: '10px 14px', borderRadius: '12px', fontSize: '13px', lineHeight: '1.5',
+                maxWidth: '85%', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                background: msg.role === 'user' ? 'hsl(var(--primary))' : 'hsl(var(--secondary))',
+                color: msg.role === 'user' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--foreground))',
+              }}>
+                {msg.text}
+              </div>
             </div>
-            <div style={{
-              padding: '10px 14px', borderRadius: '12px', fontSize: '13px', lineHeight: '1.5',
-              maxWidth: '85%', whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-              background: msg.role === 'user' ? 'hsl(var(--primary))' : 'hsl(var(--secondary))',
-              color: msg.role === 'user' ? 'hsl(var(--primary-foreground))' : 'hsl(var(--foreground))',
-            }}>
-              {msg.text}
-            </div>
+
+            {/* Agent actions */}
+            {msg.isAgent && msg.actions && msg.actions.length > 0 && (
+              <div style={{ paddingLeft: '36px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <button
+                  onClick={() => toggleExpand(i)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px',
+                    color: 'hsl(var(--muted-foreground))', background: 'none', border: 'none',
+                    cursor: 'pointer', padding: '4px 0',
+                  }}
+                >
+                  {expandedActions.has(i) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                  <span>{msg.actions.length} {msg.actions.length === 1 ? 'действие' : 'действий'}</span>
+                </button>
+                {expandedActions.has(i) && msg.actions.map((act, ai) => (
+                  <div key={ai} style={{
+                    padding: '8px 10px', borderRadius: '8px', fontSize: '12px',
+                    background: 'hsl(var(--accent))',
+                    border: '1px solid hsl(var(--border))',
+                    lineHeight: '1.5',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: act.error || act.result ? '4px' : '0' }}>
+                      {act.error ? (
+                        <XCircle size={14} style={{ color: 'hsl(var(--destructive))', flexShrink: 0 }} />
+                      ) : (
+                        <CheckCircle2 size={14} style={{ color: 'hsl(142 76% 36%)', flexShrink: 0 }} />
+                      )}
+                      <strong>{act.tool}</strong>
+                    </div>
+                    {act.args && Object.keys(act.args).length > 0 && (
+                      <details style={{ marginTop: '4px' }}>
+                        <summary style={{ cursor: 'pointer', fontSize: '11px', color: 'hsl(var(--muted-foreground))', userSelect: 'none' }}>
+                          Аргументы
+                        </summary>
+                        <pre style={{ fontSize: '11px', marginTop: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                          {JSON.stringify(act.args, null, 2)}
+                        </pre>
+                      </details>
+                    )}
+                    {act.error && (
+                      <div style={{ color: 'hsl(var(--destructive))', fontSize: '11px', marginTop: '2px' }}>
+                        {act.error}
+                      </div>
+                    )}
+                    {act.result && (
+                      <details style={{ marginTop: '4px' }}>
+                        <summary style={{ cursor: 'pointer', fontSize: '11px', color: 'hsl(var(--muted-foreground))', userSelect: 'none' }}>
+                          Результат
+                        </summary>
+                        <pre style={{ fontSize: '11px', marginTop: '4px', whiteSpace: 'pre-wrap', wordBreak: 'break-word', maxHeight: '200px', overflowY: 'auto' }}>
+                          {typeof act.result === 'object' ? JSON.stringify(act.result, null, 2).slice(0, 2000) : String(act.result).slice(0, 2000)}
+                        </pre>
+                      </details>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         ))}
 
@@ -180,7 +294,13 @@ function AiAssistantPanel() {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={selectedBotId ? 'Спросите что-нибудь...' : 'Сначала создайте AI бота'}
+          placeholder={
+            !selectedBotId
+              ? 'Сначала создайте AI бота'
+              : agentMode
+                ? 'Опишите задачу для агента...'
+                : 'Спросите что-нибудь...'
+          }
           disabled={!selectedBotId}
           style={{
             flex: 1, padding: '10px 14px', borderRadius: '10px',
@@ -194,13 +314,14 @@ function AiAssistantPanel() {
           disabled={!input.trim() || loading || !selectedBotId}
           style={{
             padding: '10px 14px', borderRadius: '10px', border: 'none',
-            background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))',
+            background: agentMode ? '#7c3aed' : 'hsl(var(--primary))',
+            color: 'hsl(var(--primary-foreground))',
             cursor: input.trim() && !loading && selectedBotId ? 'pointer' : 'default',
             opacity: input.trim() && !loading && selectedBotId ? 1 : 0.5,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
           }}
         >
-          <Send size={16} />
+          {agentMode ? <Cpu size={16} /> : <Send size={16} />}
         </button>
       </div>
     </div>

@@ -810,4 +810,17 @@ export const api = {
     }
     return res.json();
   },
+
+  aiAgentExecute: async (aiBotId: number, goal: string): Promise<{ summary: string; actions: Array<{ tool: string; args: any; result?: any; error?: string }> }> => {
+    const res = await fetch(`${API_BASE}/ai/agent/execute`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ aiBotId, goal }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'AI agent execution failed');
+    }
+    return res.json();
+  },
 };
