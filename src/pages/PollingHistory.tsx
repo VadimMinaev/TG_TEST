@@ -39,7 +39,6 @@ export function PollingHistory() {
     }
   };
 
-  // Маппинг ID пуллинга -> название
   const pollNames = useMemo(() => {
     const map: Record<number, string> = {};
     polls.forEach((p) => {
@@ -66,7 +65,6 @@ export function PollingHistory() {
 
   const handleClearHistory = async () => {
     if (!confirm('Вы уверены, что хотите очистить всю историю пуллинга?')) return;
-    
     try {
       await api.clearPollHistory();
       setRuns([]);
@@ -80,25 +78,23 @@ export function PollingHistory() {
     loadHistory();
   }, []);
 
+  const isError = selectedRun?.status !== 'success';
+  const responseIsError =
+    selectedRun?.response_status != null &&
+    selectedRun.response_status >= 400;
+
   return (
-    <div className="card">
+    <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Header */}
       <div className="card-header">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h2 className="text-xl font-semibold">🧾 История пуллинга</h2>
-          </div>
-        </div>
+        <h2 className="text-xl font-semibold">История пуллинга</h2>
         <div className="flex items-center gap-2">
-          <button
-            onClick={loadHistory}
-            className="icon-button"
-            title="Обновить"
-          >
+          <button onClick={loadHistory} className="icon-button" title="Обновить">
             <RefreshCw className="h-4 w-4" />
           </button>
           <button
             onClick={handleClearHistory}
-            className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)_/_0.1)]"
+            className="icon-button text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/_0.1)]"
             title="Очистить"
           >
             <Trash2 className="h-4 w-4" />
@@ -106,173 +102,412 @@ export function PollingHistory() {
         </div>
       </div>
 
-      <div className="split-layout p-6">
-        <div className="split-left">
-          <div className="panel">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold">📋 Список запусков</h3>
-              <span className="text-xs text-[hsl(var(--muted-foreground))]">{runs.length} записей</span>
+      {/* Split layout */}
+      <div className="split-layout p-6" style={{ flex: 1, minHeight: 0 }}>
+        {/* ── LEFT: список запусков ── */}
+        <div className="split-left" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div
+            className="panel"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              flex: 1,
+              minHeight: 0,
+              padding: 0,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Заголовок списка */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                borderBottom: '1px solid hsl(var(--border))',
+                flexShrink: 0,
+              }}
+            >
+              <span style={{ fontSize: '12px', fontWeight: 600, color: 'hsl(var(--muted-foreground))' }}>
+                Список запусков
+              </span>
+              <span
+                style={{
+                  fontSize: '11px',
+                  color: 'hsl(var(--muted-foreground))',
+                  background: 'hsl(var(--muted) / 0.5)',
+                  borderRadius: '20px',
+                  padding: '2px 8px',
+                  border: '1px solid hsl(var(--border))',
+                }}
+              >
+                {runs.length}
+              </span>
             </div>
+
+            {/* Список */}
             {loading ? (
               <div className="flex items-center justify-center py-10">
                 <div className="h-6 w-6 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
               </div>
             ) : runs.length === 0 ? (
-              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">История пуста</p>
+              <p className="py-10 text-center text-sm text-[hsl(var(--muted-foreground))]">
+                История пуста
+              </p>
             ) : (
-              <div className="entity-list-scroll scrollbar-thin">
-                <table className="table-basic w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b border-[hsl(var(--border))] text-left text-xs">
-                      <th className="px-2 py-2">Пуллинг</th>
-                      <th className="px-2 py-2">Дата/Время</th>
-                      <th className="px-2 py-2">Статус</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {runs.map((run) => (
-                      <tr
-                        key={run.id}
-                        onClick={() => setSelectedRunId(run.id)}
-                        className={`cursor-pointer border-b border-[hsl(var(--border))] transition-colors hover:bg-[hsl(var(--accent))] ${
-                          selectedRunId === run.id ? 'bg-[hsl(var(--accent))]' : ''
-                        }`}
+              <div className="entity-list-scroll scrollbar-thin" style={{ flex: 1, overflowY: 'auto' }}>
+                {runs.map((run) => {
+                  const isSuccess = run.status === 'success';
+                  const isActive = selectedRunId === run.id;
+                  return (
+                    <div
+                      key={run.id}
+                      onClick={() => setSelectedRunId(run.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '9px 14px',
+                        cursor: 'pointer',
+                        borderBottom: '1px solid hsl(var(--border))',
+                        background: isActive ? 'hsl(var(--accent))' : 'transparent',
+                        transition: 'background 0.1s',
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'hsl(var(--accent) / 0.5)';
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isActive) (e.currentTarget as HTMLDivElement).style.background = 'transparent';
+                      }}
+                    >
+                      {/* Точка статуса */}
+                      <div
+                        style={{
+                          width: '8px',
+                          height: '8px',
+                          borderRadius: '50%',
+                          flexShrink: 0,
+                          background: isSuccess
+                            ? 'hsl(var(--success))'
+                            : 'hsl(var(--destructive))',
+                        }}
+                      />
+                      {/* Мета */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            fontSize: '13px',
+                            fontWeight: 500,
+                            color: 'hsl(var(--foreground))',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                          title={pollNames[run.poll_id] || `#${run.poll_id}`}
+                        >
+                          {pollNames[run.poll_id] || `#${run.poll_id}`}
+                        </div>
+                        <div style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))', marginTop: '1px' }}>
+                          {new Date(run.created_at).toLocaleString('ru-RU')}
+                        </div>
+                      </div>
+                      {/* Статус */}
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 500,
+                          flexShrink: 0,
+                          color: isSuccess ? 'hsl(var(--success))' : 'hsl(var(--destructive))',
+                        }}
                       >
-                        <td className="px-2 py-2">
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs">{run.matched ? '📨' : '🔄'}</span>
-                            <span className="font-medium text-xs truncate max-w-[150px]" title={pollNames[run.poll_id] || `#${run.poll_id}`}>
-                              {pollNames[run.poll_id] || `#${run.poll_id}`}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-2 py-2 text-xs">{new Date(run.created_at).toLocaleString('ru-RU')}</td>
-                        <td className="px-2 py-2">
-                          <span
-                            className={`rounded px-1.5 py-0.5 text-[10px] ${
-                              run.status === 'success'
-                                ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                                : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                            }`}
-                          >
-                            {run.status === 'success' ? 'Успех' : 'Ошибка'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                        {isSuccess ? 'Успех' : 'Ошибка'}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
         </div>
 
-        <div className="split-right">
+        {/* ── RIGHT: детали ── */}
+        <div className="split-right" style={{ display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           {selectedRun ? (
-            <div className="space-y-4">
-              <div>
-                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Информация о запуске</h4>
-                <div className="panel">
-                  <div className="mb-2">
-                    <strong>Пуллинг:</strong>{' '}
-                    <span className="font-medium">{pollNames[selectedRun.poll_id] || '—'}</span>
-                    <code className="ml-2 text-xs text-[hsl(var(--muted-foreground))]">#{selectedRun.poll_id}</code>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto' }}>
+
+              {/* Мета-карточка */}
+              <div
+                className="panel"
+                style={{ padding: '14px 16px' }}
+              >
+                <div style={{ marginBottom: '10px' }}>
+                  <div style={{ fontSize: '14px', fontWeight: 600, color: 'hsl(var(--foreground))' }}>
+                    {pollNames[selectedRun.poll_id] || '—'}
                   </div>
-                  <div className="mb-2">
-                    <strong>Дата/Время:</strong> {new Date(selectedRun.created_at).toLocaleString('ru-RU')}
+                  <div style={{ fontSize: '11px', color: 'hsl(var(--muted-foreground))', fontFamily: 'monospace', marginTop: '2px' }}>
+                    #{selectedRun.poll_id}
                   </div>
-                  <div className="mb-2">
-                    <strong>Статус:</strong>{' '}
-                    <span
-                      className={`rounded px-2 py-1 text-xs ${
-                        selectedRun.status === 'success'
-                          ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                          : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                      }`}
-                    >
-                      {selectedRun.status === 'success' ? 'Успех' : 'Ошибка'}
-                    </span>
-                  </div>
-                  <div className="mb-2">
-                    <strong>Совпадение:</strong> {selectedRun.matched ? '✅ Да' : '❌ Нет'}
-                  </div>
-                  <div>
-                    <strong>Отправлено в Telegram:</strong> {selectedRun.sent ? '✅ Да' : '❌ Нет'}
-                  </div>
+                </div>
+                {/* Чипы */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                  {/* Статус */}
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '12px',
+                      fontWeight: 500,
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      background: selectedRun.status === 'success'
+                        ? 'hsl(var(--success) / 0.12)'
+                        : 'hsl(var(--destructive) / 0.1)',
+                      color: selectedRun.status === 'success'
+                        ? 'hsl(var(--success))'
+                        : 'hsl(var(--destructive))',
+                      border: `1px solid ${selectedRun.status === 'success'
+                        ? 'hsl(var(--success) / 0.3)'
+                        : 'hsl(var(--destructive) / 0.3)'}`,
+                    }}
+                  >
+                    {selectedRun.status === 'success' ? '✓' : '✕'}&nbsp;
+                    {selectedRun.status === 'success' ? 'Успех' : 'Ошибка'}
+                  </span>
+                  {/* Дата */}
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      background: 'hsl(var(--muted) / 0.4)',
+                      color: 'hsl(var(--muted-foreground))',
+                      border: '1px solid hsl(var(--border))',
+                    }}
+                  >
+                    {new Date(selectedRun.created_at).toLocaleString('ru-RU')}
+                  </span>
+                  {/* Совпадение */}
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      background: 'hsl(var(--muted) / 0.4)',
+                      color: selectedRun.matched ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))',
+                      border: '1px solid hsl(var(--border))',
+                    }}
+                  >
+                    {selectedRun.matched ? '✓ Совпадение' : '✕ Нет совпадения'}
+                  </span>
+                  {/* Telegram */}
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      padding: '3px 10px',
+                      borderRadius: '20px',
+                      background: 'hsl(var(--muted) / 0.4)',
+                      color: selectedRun.sent ? 'hsl(var(--success))' : 'hsl(var(--muted-foreground))',
+                      border: '1px solid hsl(var(--border))',
+                    }}
+                  >
+                    {selectedRun.sent ? '✓ Telegram' : '✕ Telegram'}
+                  </span>
                 </div>
               </div>
 
-              <div>
-                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Запрос</h4>
-                <div className="panel">
-                  <div className="mb-2">
-                    <strong>Метод:</strong> {selectedRun.request_method || '—'}
-                  </div>
-                  <div className="mb-2">
-                    <strong>URL:</strong> <code className="break-all">{selectedRun.request_url || '—'}</code>
-                  </div>
-                  {selectedRun.request_headers && (
-                    <div className="mt-3">
-                      <strong>Headers:</strong>
-                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
-                        {formatJsonBlock(selectedRun.request_headers)}
-                      </pre>
+              {/* Данные триггера */}
+              {selectedRun.request_method || selectedRun.request_url || selectedRun.request_headers || selectedRun.request_body ? (
+                <SectionCard title="Запрос" isAlert={false}>
+                  {(selectedRun.request_method || selectedRun.request_url) && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                      {selectedRun.request_method && (
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '4px',
+                            background: 'hsl(var(--info) / 0.12)',
+                            color: 'hsl(var(--info))',
+                            border: '1px solid hsl(var(--info) / 0.3)',
+                            fontFamily: 'monospace',
+                          }}
+                        >
+                          {selectedRun.request_method}
+                        </span>
+                      )}
+                      {selectedRun.request_url && (
+                        <code
+                          style={{
+                            fontSize: '12px',
+                            color: 'hsl(var(--muted-foreground))',
+                            wordBreak: 'break-all',
+                          }}
+                        >
+                          {selectedRun.request_url}
+                        </code>
+                      )}
                     </div>
+                  )}
+                  {selectedRun.request_headers && (
+                    <CodeSection label="Headers" value={formatJsonBlock(selectedRun.request_headers)} />
                   )}
                   {selectedRun.request_body && (
-                    <div className="mt-3">
-                      <strong>Body:</strong>
-                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
-                        {formatJsonBlock(selectedRun.request_body)}
-                      </pre>
+                    <CodeSection label="Body" value={formatJsonBlock(selectedRun.request_body)} />
+                  )}
+                </SectionCard>
+              ) : null}
+
+              {/* Ответ */}
+              {(selectedRun.response_status != null || selectedRun.response_headers || selectedRun.response_snippet) && (
+                <SectionCard
+                  title={
+                    selectedRun.response_status != null
+                      ? `Ответ — HTTP ${selectedRun.response_status}${responseIsError ? ' (ошибка)' : ''}`
+                      : 'Ответ'
+                  }
+                  isAlert={responseIsError}
+                >
+                  {selectedRun.response_status != null && (
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', marginBottom: '12px' }}>
+                      <span
+                        style={{
+                          fontSize: '22px',
+                          fontWeight: 500,
+                          fontFamily: 'monospace',
+                          color: responseIsError ? 'hsl(var(--destructive))' : 'hsl(var(--success))',
+                        }}
+                      >
+                        {selectedRun.response_status}
+                      </span>
+                      <span style={{ fontSize: '12px', color: 'hsl(var(--muted-foreground))' }}>
+                        {responseIsError ? 'Запрос не прошёл' : 'OK'}
+                      </span>
                     </div>
                   )}
-                </div>
-              </div>
-
-              <div>
-                <h4 className="mb-2 text-sm font-medium text-[hsl(var(--muted-foreground))]">Ответ</h4>
-                <div className="panel">
-                  <div className="mb-2">
-                    <strong>HTTP статус:</strong> {selectedRun.response_status ?? '—'}
-                  </div>
                   {selectedRun.response_headers && (
-                    <div className="mt-3">
-                      <strong>Headers:</strong>
-                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
-                        {formatJsonBlock(selectedRun.response_headers)}
-                      </pre>
-                    </div>
+                    <CodeSection label="Headers" value={formatJsonBlock(selectedRun.response_headers)} />
                   )}
                   {selectedRun.response_snippet && (
-                    <div className="mt-3">
-                      <strong>Body (фрагмент):</strong>
-                      <pre className="mt-1 max-h-96 overflow-auto whitespace-pre-wrap break-words text-xs">
-                        {formatJsonBlock(selectedRun.response_snippet)}
-                      </pre>
-                    </div>
+                    <CodeSection label="Body (фрагмент)" value={formatJsonBlock(selectedRun.response_snippet)} />
                   )}
-                </div>
-              </div>
+                </SectionCard>
+              )}
 
+              {/* Сообщение об ошибке */}
               {selectedRun.error_message && (
-                <div>
-                  <h4 className="mb-2 text-sm font-medium text-[hsl(var(--destructive))]">Ошибка</h4>
-                  <div className="panel border-[hsl(var(--destructive)_/_0.3)] bg-[hsl(var(--destructive)_/_0.05)]">
-                    <pre className="whitespace-pre-wrap break-words text-xs text-[hsl(var(--destructive))]">
-                      {selectedRun.error_message}
-                    </pre>
-                  </div>
-                </div>
+                <SectionCard title="Сообщение об ошибке" isAlert>
+                  <pre
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      fontSize: '12px',
+                      color: 'hsl(var(--destructive))',
+                      margin: 0,
+                    }}
+                  >
+                    {selectedRun.error_message}
+                  </pre>
+                </SectionCard>
               )}
             </div>
           ) : (
-            <p className="py-20 text-center text-[hsl(var(--muted-foreground))]">
-              Выберите запуск из списка слева для просмотра деталей
-            </p>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                color: 'hsl(var(--muted-foreground))',
+                fontSize: '14px',
+              }}
+            >
+              Выберите запуск из списка слева
+            </div>
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ── Вспомогательные компоненты ── */
+
+function SectionCard({
+  title,
+  isAlert,
+  children,
+}: {
+  title: string;
+  isAlert: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className="panel"
+      style={{
+        padding: 0,
+        overflow: 'hidden',
+        border: isAlert
+          ? '1px solid hsl(var(--destructive) / 0.35)'
+          : '1px solid hsl(var(--border))',
+      }}
+    >
+      <div
+        style={{
+          fontSize: '11px',
+          fontWeight: 600,
+          textTransform: 'uppercase' as const,
+          letterSpacing: '0.05em',
+          padding: '7px 14px',
+          borderBottom: isAlert
+            ? '1px solid hsl(var(--destructive) / 0.25)'
+            : '1px solid hsl(var(--border))',
+          background: isAlert
+            ? 'hsl(var(--destructive) / 0.07)'
+            : 'hsl(var(--muted) / 0.3)',
+          color: isAlert ? 'hsl(var(--destructive))' : 'hsl(var(--muted-foreground))',
+        }}
+      >
+        {title}
+      </div>
+      <div style={{ padding: '12px 14px' }}>{children}</div>
+    </div>
+  );
+}
+
+function CodeSection({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ marginBottom: '10px' }}>
+      <div
+        style={{
+          fontSize: '11px',
+          color: 'hsl(var(--muted-foreground))',
+          marginBottom: '4px',
+          fontWeight: 500,
+        }}
+      >
+        {label}
+      </div>
+      <pre
+        style={{
+          background: 'hsl(var(--muted) / 0.4)',
+          border: '1px solid hsl(var(--border))',
+          borderRadius: '6px',
+          padding: '8px 10px',
+          fontSize: '12px',
+          fontFamily: 'monospace',
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word',
+          maxHeight: '240px',
+          overflowY: 'auto',
+          color: 'hsl(var(--foreground))',
+          margin: 0,
+        }}
+      >
+        {value}
+      </pre>
     </div>
   );
 }
