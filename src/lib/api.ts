@@ -811,7 +811,60 @@ export const api = {
     return res.json();
   },
 
-  aiAgentExecute: async (aiBotId: number, goal: string): Promise<{ summary: string; actions: Array<{ tool: string; args: any; result?: any; error?: string }> }> => {
+  aiAgentConfirm: async (aiBotId: number, goal: string, sessionId: string, confirmedAction: { tool: string; args: any }): Promise<{ summary: string; actions: Array<{ tool: string; args: any; result?: any; error?: string }>; navigateTo?: string; refreshEntity?: string }> => {
+    const res = await fetch(`${API_BASE}/ai/agent/execute`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ aiBotId, goal, sessionId, confirmedAction }),
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'AI agent confirmation failed');
+    }
+    return res.json();
+  },
+
+  aiAgentExecuteStream: async (
+    aiBotId: number,
+    goal: string,
+    onEvent: (event: string, data: any) => void,
+    signal?: AbortSignal,
+  ): Promise<void> => {
+    const res = await fetch(`${API_BASE}/ai/agent/execute?stream=1`, {
+      method: 'POST',
+      headers: { ...getHeaders(), Accept: 'text/event-stream' },
+      body: JSON.stringify({ aiBotId, goal }),
+      signal,
+    });
+    if (!res.ok) {
+      const error = await res.json().catch(() => ({}));
+      throw new Error(error.error || 'AI agent stream failed');
+    }
+    const reader = res.body?.getReader();
+    if (!reader) throw new Error('No response body');
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+      let currentEvent = '';
+      for (const line of lines) {
+        if (line.startsWith('event: ')) {
+          currentEvent = line.slice(7).trim();
+        } else if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6));
+            onEvent(currentEvent, data);
+          } catch {}
+        }
+      }
+    }
+  },
+
+  aiAgentExecute: async (aiBotId: number, goal: string): Promise<{ summary: string; actions: Array<{ tool: string; args: any; result?: any; error?: string }>; navigateTo?: string; refreshEntity?: string }> => {
     const res = await fetch(`${API_BASE}/ai/agent/execute`, {
       method: 'POST',
       headers: getHeaders(),

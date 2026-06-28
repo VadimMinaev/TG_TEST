@@ -4022,6 +4022,7 @@ const AGENT_TOOLS = [
         description: 'Удалить правило по ID.',
         parameters: { id: 'number' },
         method: 'DELETE', path: (args) => `/api/rules/${args.id}`,
+        dangerous: true,
     },
     {
         name: 'get_integrations',
@@ -4070,6 +4071,7 @@ const AGENT_TOOLS = [
         description: 'Удалить AI-бота по ID.',
         parameters: { id: 'number' },
         method: 'DELETE', path: (args) => `/api/ai-bots/${args.id}`,
+        dangerous: true,
     },
     {
         name: 'set_webhook',
@@ -4088,6 +4090,37 @@ const AGENT_TOOLS = [
         description: 'Отправить тестовое сообщение в Telegram. Параметры: chatId (ID чата), message (текст сообщения)',
         parameters: { chatId: 'string', message: 'string' },
         method: 'POST', path: '/api/test-send',
+    },
+    {
+        name: 'get_bots',
+        description: 'Получить список всех Telegram-ботов (автоматизация, scheduled bots)',
+        parameters: {},
+        method: 'GET', path: '/api/bots',
+    },
+    {
+        name: 'create_bot',
+        description: 'Создать нового Telegram-бота для автоматизации. Параметры: name (название), chatId (ID чата), messageType (text|poll), messageText (текст сообщения), scheduleType (recurring|once), scheduleDays (массив дней 0-6, где 0=Вс), scheduleTime (HH:MM), scheduleTimezone (Europe/Moscow)',
+        parameters: { name: 'string', chatId: 'string', messageType: 'string', messageText: 'string', scheduleType: 'string?', scheduleDays: 'array?', scheduleTime: 'string?', scheduleTimezone: 'string?', enabled: 'boolean?', botToken: 'string?', pollQuestion: 'string?', pollOptions: 'string?', scheduleDate: 'string?' },
+        method: 'POST', path: '/api/bots',
+    },
+    {
+        name: 'update_bot',
+        description: 'Обновить Telegram-бота по ID.',
+        parameters: { id: 'number', name: 'string?', chatId: 'string?', messageType: 'string?', messageText: 'string?', scheduleType: 'string?', scheduleDays: 'array?', scheduleTime: 'string?', scheduleTimezone: 'string?', enabled: 'boolean?' },
+        method: 'PUT', path: (args) => `/api/bots/${args.id}`,
+    },
+    {
+        name: 'delete_bot',
+        description: 'Удалить Telegram-бота по ID.',
+        parameters: { id: 'number' },
+        method: 'DELETE', path: (args) => `/api/bots/${args.id}`,
+        dangerous: true,
+    },
+    {
+        name: 'run_bot',
+        description: 'Запустить Telegram-бота по ID немедленно (для теста).',
+        parameters: { id: 'number' },
+        method: 'POST', path: (args) => `/api/bots/${args.id}/run`,
     },
 ];
 
@@ -4116,9 +4149,84 @@ async function callAgentTool(toolName, args, agentToken) {
     try { return JSON.parse(text); } catch { return { raw: text }; }
 }
 
-app.post('/api/ai/agent/execute', auth, async (req, res) => {
+/* ── Pending agent confirmations (dangerous tools) ── */
+const pendingConfirmations = new Map(); // sessionId -> { tool, args, agentToken, aiBotId, goal, messages, actions }
+
+/* ── Create system prompt with snapshot ── */
+async function buildAgentSystemPrompt(goal) {
+    let snapshot = {};
+
     try {
-        const { aiBotId, goal } = req.body;
+        const [rules, polls, integrations, bots] = await Promise.all([
+            (async () => { try { const r = await internalFetch('/api/rules'); return Array.isArray(r) ? r : []; } catch { return []; } })(),
+            (async () => { try { const r = await internalFetch('/api/polls'); return Array.isArray(r) ? r : []; } catch { return []; } })(),
+            (async () => { try { const r = await internalFetch('/api/integrations'); return Array.isArray(r) ? r : []; } catch { return []; } })(),
+            (async () => { try { const r = await internalFetch('/api/ai-bots'); return Array.isArray(r) ? r : []; } catch { return []; } })(),
+        ]);
+        snapshot = { rules, polls, integrations, bots };
+    } catch { /* snapshot best-effort */ }
+
+    const toolDescriptions = AGENT_TOOLS.map((t) => {
+        const params = Object.entries(t.parameters)
+            .map(([k, v]) => `  - ${k}: ${v}`).join('\n');
+        const dangerous = t.dangerous ? '  ⚠️ ОПАСНО: требует подтверждения пользователя' : '';
+        return `## ${t.name}\n${t.description}\nПараметры:\n${params}${dangerous ? '\n' + dangerous : ''}`;
+    }).join('\n\n');
+
+    const snapshotText = snapshot.rules?.length
+        ? `\n\nТекущее состояние системы:\n- Правил: ${snapshot.rules.length}${snapshot.rules.length > 0 ? ' (' + snapshot.rules.map(r => '"' + r.name + '"').join(', ') + ')' : ''}\n- Пуллингов: ${snapshot.polls?.length || 0}${snapshot.polls?.length ? ' (' + snapshot.polls.map(p => '"' + p.name + '"').join(', ') + ')' : ''}\n- Интеграций: ${snapshot.integrations?.length || 0}${snapshot.integrations?.length ? ' (' + snapshot.integrations.map(i => '"' + i.name + '"').join(', ') + ')' : ''}\n- AI-ботов: ${snapshot.bots?.length || 0}${snapshot.bots?.length ? ' (' + snapshot.bots.map(b => '"' + b.name + '"').join(', ') + ')' : ''}`
+        : '';
+
+    const systemPrompt = `Ты — AI-агент для управления системой webhook/telegram интеграций.
+
+Твоя задача — выполнить запрос пользователя. У тебя есть доступ к инструментам (tools), с помощью которых ты можешь создавать, читать, изменять и удалять сущности.
+
+ВАЖНО: Всегда отвечай ТОЛЬКО в формате JSON. Никакого лишнего текста.
+
+Если нужно вызвать ОДИН инструмент:
+{"action":"call","tool":"имя_инструмента","args":{...}}
+
+Если нужно вызвать НЕСКОЛЬКО независимых инструментов ПАРАЛЛЕЛЬНО:
+{"action":"call","tools":[{"tool":"...","args":{...}},{"tool":"...","args":{...}}]}
+
+Если нужно вернуть результат пользователю:
+{"action":"final","summary":"что было сделано","actions":[{"tool":"...","args":{...},"result":"..."}],"navigateTo":"/rules","refreshEntity":"rules"}
+
+Для опасных инструментов (помечены ⚠️) — не вызывай их напрямую, сначала спроси пользователя:
+{"action":"confirm_needed","tool":"delete_rule","args":{"id":5},"question":"Удалить правило 'Название'?"}
+
+Доступные инструменты:
+
+${toolDescriptions}${snapshotText}
+
+Правила:
+1. Если тебе не хватает данных — используй get_* инструменты.
+2. После создания/изменения — получи список снова для подтверждения.
+3. Если что-то пошло не так — сообщи об этом.
+4. В final-ответе дай краткое резюме на русском.
+5. Можешь вызывать несколько инструментов в одном ответе, если они независимы (например, get_rules + get_polls).
+6. В поле navigateTo (опционально) укажи страницу, куда перейти после выполнения. В поле refreshEntity укажи, какие данные обновить на текущей странице ("rules","polls","integrations","bots").`;
+
+    return { systemPrompt, snapshot };
+}
+
+/* Helper: internal fetch without auth token (uses createAgentToken) */
+async function internalFetch(path) {
+    const token = createAgentToken();
+    const url = `http://localhost:${PORT}${path}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    return res.json();
+}
+
+/* ── AI Agent Execute ── */
+app.post('/api/ai/agent/execute', auth, async (req, res) => {
+    const wantsSSE = req.headers.accept === 'text/event-stream' || req.query.stream === '1';
+    const sendEvent = wantsSSE
+        ? (event, data) => { try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} }
+        : () => {};
+
+    try {
+        const { aiBotId, goal, sessionId: existingSessionId, confirmedAction } = req.body;
         if (!aiBotId) return res.status(400).json({ error: 'aiBotId is required' });
         if (!goal || !String(goal).trim()) return res.status(400).json({ error: 'goal is required' });
 
@@ -4127,44 +4235,56 @@ app.post('/api/ai/agent/execute', auth, async (req, res) => {
         if (!bot.enabled) return res.status(400).json({ error: 'AI bot is disabled' });
 
         const agentToken = createAgentToken();
-        const toolDescriptions = AGENT_TOOLS.map((t) => {
-            const params = Object.entries(t.parameters)
-                .map(([k, v]) => `  - ${k}: ${v}`).join('\n');
-            return `## ${t.name}\n${t.description}\nПараметры:\n${params}`;
-        }).join('\n\n');
+        const { systemPrompt } = await buildAgentSystemPrompt(goal);
 
-        const systemPrompt = `Ты — AI-агент для управления системой webhook/telegram интеграций.
+        // Restore session if confirm_needed was returned
+        let messages, actions, sessionId;
+        if (existingSessionId && pendingConfirmations.has(existingSessionId) && confirmedAction) {
+            const session = pendingConfirmations.get(existingSessionId);
+            messages = session.messages;
+            actions = session.actions;
+            sessionId = session.sessionId;
+            // Execute the confirmed dangerous tool
+            const { tool, args } = confirmedAction;
+            sendEvent('step', { tool, status: 'executing', args, note: '⚠️ Подтверждено пользователем' });
+            try {
+                const result = await callAgentTool(tool, args, agentToken);
+                actions.push({ tool, args, result });
+                const resultStr = typeof result === 'object' ? JSON.stringify(result, null, 2).slice(0, 3000) : String(result).slice(0, 3000);
+                messages.push({ role: 'assistant', content: JSON.stringify({ action: 'call', tool, args }) });
+                messages.push({ role: 'user', content: `Результат выполнения ${tool}:\n${resultStr}\n\nПродолжай. Если цель достигнута — верни final.` });
+                sendEvent('step_result', { tool, args, result });
+            } catch (err) {
+                actions.push({ tool, args, error: err.message });
+                messages.push({ role: 'assistant', content: JSON.stringify({ action: 'call', tool, args }) });
+                messages.push({ role: 'user', content: `Ошибка при выполнении ${tool}: ${err.message}\n\nПопробуй другой подход или сообщи пользователю.` });
+                sendEvent('step_result', { tool, args, error: err.message });
+            }
+            pendingConfirmations.delete(existingSessionId);
+        } else {
+            messages = [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: `Запрос пользователя: ${String(goal).trim()}` },
+            ];
+            actions = [];
+            sessionId = 'agent-' + Date.now();
+        }
 
-Твоя задача — выполнить запрос пользователя. У тебя есть доступ к инструментам (tools), с помощью которых ты можешь создавать, читать, изменять и удалять сущности.
+        if (wantsSSE) {
+            res.setHeader('Content-Type', 'text/event-stream');
+            res.setHeader('Cache-Control', 'no-cache');
+            res.setHeader('Connection', 'keep-alive');
+            res.flushHeaders();
+        }
 
-ВАЖНО: Всегда отвечай ТОЛЬКО в формате JSON. Никакого лишнего текста.
-
-Если нужно вызвать инструмент:
-{"action":"call","tool":"имя_инструмента","args":{...}}
-
-Если нужно вернуть результат пользователю:
-{"action":"final","summary":"что было сделано","actions":[{"tool":"...","args":{...},"result":"..."}]}
-
-Доступные инструменты:
-
-${toolDescriptions}
-
-Правила:
-1. Думай пошагово. Сначала получи список сущностей, если нужно.
-2. После создания/изменения — проверь результат, получив список снова.
-3. Если что-то пошло не так — сообщи об этом.
-4. В final-ответе дай краткое резюме на русском.`;
-
-        const messages = [
-            { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Запрос пользователя: ${String(goal).trim()}` },
-        ];
-
-        const actions = [];
+        const maxIterations = 25;
         let finalSummary = '';
+        let finalNavigateTo, finalRefreshEntity;
 
-        for (let i = 0; i < 25; i++) {
+        for (let i = 0; i < maxIterations; i++) {
             const conversationText = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+
+            sendEvent('thinking', { step: i + 1, maxSteps: maxIterations });
 
             const responseText = await callAiProvider({
                 provider: bot.provider || 'gemini',
@@ -4186,42 +4306,122 @@ ${toolDescriptions}
             }
 
             if (!parsed || !parsed.action) {
-                messages.push({ role: 'user', content: 'SYSTEM: Ответ должен содержать поле "action" со значением "call" или "final". Попробуй ещё раз.' });
+                messages.push({ role: 'user', content: 'SYSTEM: Ответ должен содержать поле "action". Попробуй ещё раз.' });
                 continue;
             }
 
+            // ── Final ──
             if (parsed.action === 'final') {
                 finalSummary = parsed.summary || 'Готово';
+                finalNavigateTo = parsed.navigateTo;
+                finalRefreshEntity = parsed.refreshEntity;
                 if (parsed.actions) actions.push(...parsed.actions);
+                sendEvent('final', { summary: finalSummary, actions, navigateTo: finalNavigateTo, refreshEntity: finalRefreshEntity });
                 break;
             }
 
-            if (parsed.action === 'call') {
-                const { tool, args } = parsed;
-                try {
-                    const result = await callAgentTool(tool, args || {}, agentToken);
-                    actions.push({ tool, args, result });
-                    const resultStr = typeof result === 'object' ? JSON.stringify(result, null, 2).slice(0, 3000) : String(result).slice(0, 3000);
-                    messages.push({ role: 'assistant', content: JSON.stringify(parsed) });
-                    messages.push({ role: 'user', content: `Результат выполнения ${tool}:\n${resultStr}\n\nПродолжай. Если цель достигнута — верни final.` });
-                } catch (err) {
-                    actions.push({ tool, args, error: err.message });
-                    messages.push({ role: 'assistant', content: JSON.stringify(parsed) });
-                    messages.push({ role: 'user', content: `Ошибка при выполнении ${tool}: ${err.message}\n\nПопробуй другой подход или сообщи пользователю.` });
+            // ── Confirm needed ──
+            if (parsed.action === 'confirm_needed') {
+                const { tool, args, question } = parsed;
+                pendingConfirmations.set(sessionId, { messages, actions, sessionId, aiBotId, goal, agentToken });
+                if (wantsSSE) {
+                    sendEvent('confirm_needed', { sessionId, tool, args, question });
+                } else {
+                    return res.json({ action: 'confirm_needed', sessionId, tool, args, question });
                 }
+                // Keep connection open for SSE — frontend will send confirm via another request
+                if (wantsSSE) {
+                    // Don't close — wait for confirm or timeout
+                    await new Promise((resolve) => setTimeout(resolve, 120000));
+                }
+                break;
+            }
+
+            // ── Call (single or parallel) ──
+            if (parsed.action === 'call') {
+                const calls = parsed.tools || [{ tool: parsed.tool, args: parsed.args || {} }];
+
+                // Check for dangerous tools in parallel calls
+                const dangerousCall = calls.find((c) => {
+                    const t = AGENT_TOOLS.find((ct) => ct.name === c.tool);
+                    return t && t.dangerous;
+                });
+                if (dangerousCall) {
+                    const dangerousTool = AGENT_TOOLS.find((ct) => ct.name === dangerousCall.tool);
+                    const question = `Подтвердите ${dangerousCall.tool} (id: ${dangerousCall.args?.id || '?'})?`;
+                    pendingConfirmations.set(sessionId, { messages, actions, sessionId, aiBotId, goal, agentToken });
+                    if (wantsSSE) {
+                        sendEvent('confirm_needed', { sessionId, tool: dangerousCall.tool, args: dangerousCall.args, question });
+                        await new Promise((resolve) => setTimeout(resolve, 120000));
+                    } else {
+                        return res.json({ action: 'confirm_needed', sessionId, tool: dangerousCall.tool, args: dangerousCall.args, question });
+                    }
+                    break;
+                }
+
+                // Execute calls (parallel for independent)
+                const results = await Promise.all(calls.map(async (call) => {
+                    const { tool, args } = call;
+                    sendEvent('step', { tool, status: 'executing', args });
+                    try {
+                        const result = await callAgentTool(tool, args || {}, agentToken);
+                        actions.push({ tool, args, result });
+                        sendEvent('step_result', { tool, args, result });
+                        const resultStr = typeof result === 'object' ? JSON.stringify(result, null, 2).slice(0, 3000) : String(result).slice(0, 3000);
+                        return { tool, result, resultStr };
+                    } catch (err) {
+                        actions.push({ tool, args, error: err.message });
+                        sendEvent('step_result', { tool, args, error: err.message });
+                        return { tool, error: err.message, resultStr: `Ошибка: ${err.message}` };
+                    }
+                }));
+
+                const toolCallsStr = results.map((r) => {
+                    const header = `Инструмент: ${r.tool}`;
+                    return r.error
+                        ? `${header}\nОшибка: ${r.error}`
+                        : `${header}\nРезультат:\n${r.resultStr}`;
+                }).join('\n\n---\n\n');
+
+                messages.push({
+                    role: 'assistant',
+                    content: JSON.stringify(parsed),
+                });
+                messages.push({
+                    role: 'user',
+                    content: `Результаты выполнения:\n${toolCallsStr}\n\nПродолжай. Если цель достигнута — верни final.`,
+                });
                 continue;
             }
 
-            messages.push({ role: 'user', content: 'SYSTEM: Неизвестное действие. Используй "call" для вызова инструмента или "final" для завершения.' });
+            messages.push({ role: 'user', content: 'SYSTEM: Неизвестное действие. Используй "call", "final" или "confirm_needed".' });
         }
 
-        return res.json({
-            summary: finalSummary || 'Не удалось выполнить запрос',
-            actions,
-        });
+        if (wantsSSE) {
+            if (finalSummary) {
+                sendEvent('done', { summary: finalSummary, actions, navigateTo: finalNavigateTo, refreshEntity: finalRefreshEntity });
+            } else {
+                sendEvent('error', { message: 'Не удалось выполнить запрос' });
+            }
+            res.end();
+        } else {
+            return res.json({
+                summary: finalSummary || 'Не удалось выполнить запрос',
+                actions,
+                navigateTo: finalNavigateTo,
+                refreshEntity: finalRefreshEntity,
+            });
+        }
     } catch (err) {
         console.error('AI agent error:', err?.response?.data || err.message || err);
-        return res.status(500).json({ error: err.message || 'AI agent failed' });
+        if (wantsSSE) {
+            try {
+                sendEvent('error', { message: err.message || 'AI agent failed' });
+                res.end();
+            } catch {}
+        } else {
+            return res.status(500).json({ error: err.message || 'AI agent failed' });
+        }
     }
 });
 
