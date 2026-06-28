@@ -1576,7 +1576,7 @@ input, textarea, select { font-size: 16px; }
 .fp-toggle input:focus-visible ~ .fp-toggle-track { box-shadow: var(--form-shadow-focus); }
 
 .fp-status-row { display: flex; flex-wrap: wrap; gap: 12px; }
-.fp-status-item { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 120px; }
+.fp-status-item { display: flex; flex-direction: column; gap: 6px; }
 .fp-status-item.span2 { flex-basis: 100%; }
 
 .fp-badge {
