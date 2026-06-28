@@ -44,6 +44,9 @@ export function Dashboard() {
   const [accountTokenIsSet, setAccountTokenIsSet] = useState(false);
   const [accountTokenLoading, setAccountTokenLoading] = useState(false);
   const [accountTokenSaving, setAccountTokenSaving] = useState(false);
+  const [isDark, setIsDark] = useState(() =>
+    document.documentElement.classList.contains('dark-theme')
+  );
   const versionRef = useRef<HTMLDivElement>(null);
   const appVersion = __APP_VERSION__;
 
@@ -74,22 +77,22 @@ export function Dashboard() {
 
   const navItems = useMemo(() => {
     const baseItems = [
-      { path: '/', label: 'Главная', icon: <Activity className="h-4 w-4" /> },
-      { path: '/rules', label: 'Webhook', icon: <MessageSquare className="h-4 w-4" /> },
-      { path: '/polling', label: 'Пуллинг', icon: <Repeat2 className="h-4 w-4" /> },
-      { path: '/integrations', label: 'Интеграции', icon: <LinkIcon className="h-4 w-4" /> },
-      { path: '/telegram', label: 'Telegram', icon: <Send className="h-4 w-4" /> },
+      { path: '/', label: 'Главная', icon: <Activity size={18} /> },
+      { path: '/rules', label: 'Webhook', icon: <MessageSquare size={18} /> },
+      { path: '/polling', label: 'Пуллинг', icon: <Repeat2 size={18} /> },
+      { path: '/integrations', label: 'Интеграции', icon: <LinkIcon size={18} /> },
+      { path: '/telegram', label: 'Telegram', icon: <Send size={18} /> },
     ];
 
     if (user?.isVadmin) {
       return [
         ...baseItems,
-        { path: '/accounts', label: 'Аккаунты', icon: <Building className="h-4 w-4" /> },
-        { path: '/users', label: 'Пользователи', icon: <Users className="h-4 w-4" /> },
+        { path: '/accounts', label: 'Аккаунты', icon: <Building size={18} /> },
+        { path: '/users', label: 'Пользователи', icon: <Users size={18} /> },
       ];
     }
 
-    return [...baseItems, { path: '/users', label: 'Пользователи', icon: <Users className="h-4 w-4" /> }];
+    return [...baseItems, { path: '/users', label: 'Пользователи', icon: <Users size={18} /> }];
   }, [user?.isVadmin]);
 
   useEffect(() => {
@@ -105,8 +108,9 @@ export function Dashboard() {
 
   const toggleTheme = () => {
     document.documentElement.classList.toggle('dark-theme');
-    const isDark = document.documentElement.classList.contains('dark-theme');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    const dark = document.documentElement.classList.contains('dark-theme');
+    setIsDark(dark);
+    localStorage.setItem('theme', dark ? 'dark' : 'light');
   };
 
   const handleCreate = () => {
@@ -167,191 +171,178 @@ export function Dashboard() {
 
   return (
     <AiAssistantProvider>
-    <div className="app-shell">
-      <aside className="sidebar" aria-label="Основная навигация">
-        <div className="sidebar-brand">
-          <img src="/vadminlink-logo.png.jpg" alt="VadminLink" />
-        </div>
+      <div className="app-shell">
+        <aside className="sidebar" aria-label="Основная навигация">
+          <div className="sidebar-brand">
+            <img src="/vadminlink-logo.png.jpg" alt="VadminLink" />
+          </div>
 
-        <nav className="sidebar-nav" aria-label="Разделы панели">
-          {navItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              className={({ isActive }) => `sidebar-item ${isActive ? 'sidebar-item-active' : ''}`}
-            >
-              {item.icon}
-              <span>{item.label}</span>
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="sidebar-footer">
-          <button onClick={() => setShowPasswordModal(true)} className="sidebar-item">
-            <Lock className="h-4 w-4" />
-            <span>Пароль</span>
-          </button>
-          <button onClick={handleLogout} className="sidebar-item">
-            <LogOut className="h-4 w-4" />
-            <span>Выход</span>
-          </button>
-        </div>
-      </aside>
-
-      <div className="app-page">
-        <header className="topbar">
-          <div className="topbar-title">Интеграция VadminLink</div>
-          <GlobalSearch />
-
-          <div className="topbar-actions">
-            <button
-              className={`icon-button ${canCreate ? '' : 'opacity-50 cursor-not-allowed'}`}
-              title={canCreate ? 'Создать сущность' : 'На этой странице создание недоступно'}
-              onClick={handleCreate}
-              disabled={!canCreate}
-              aria-label={canCreate ? 'Создать сущность' : 'Создание недоступно'}
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-
-            <button className="icon-button desktop-only-btn" title="Уведомления" aria-label="Уведомления">
-              <Bell className="h-4 w-4" />
-            </button>
-
-            <NavLink
-              to="/testing"
-              className={({ isActive }) => `icon-button ${isActive ? 'bg-[hsl(var(--accent))]' : ''}`}
-              title="Тестирование"
-            >
-              <FlaskConical className="h-4 w-4" />
-            </NavLink>
-
-            <div ref={versionRef} style={{ position: 'relative' }}>
-              <button
-                className="icon-button desktop-only-btn"
-                title="О приложении"
-                onClick={() => setShowVersionPanel((prev) => !prev)}
-                aria-label="О приложении"
-                aria-expanded={showVersionPanel}
-                aria-controls="version-panel"
+          <nav className="sidebar-nav" aria-label="Разделы панели">
+            {navItems.map((item) => (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                className={({ isActive }) => `sidebar-item ${isActive ? 'sidebar-item-active' : ''}`}
               >
-                <Info className="h-4 w-4" />
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
+            ))}
+          </nav>
+
+          <div className="sidebar-footer">
+            <button onClick={() => setShowPasswordModal(true)} className="sidebar-item">
+              <Lock size={18} />
+              <span>Пароль</span>
+            </button>
+            <button onClick={handleLogout} className="sidebar-item">
+              <LogOut size={18} />
+              <span>Выход</span>
+            </button>
+          </div>
+        </aside>
+
+        <div className="app-page">
+          <header className="topbar">
+            <div className="topbar-title">Интеграция VadminLink</div>
+            <GlobalSearch />
+
+            <div className="topbar-actions">
+              <button
+                className={`icon-button ${canCreate ? '' : 'opacity-50 cursor-not-allowed'}`}
+                title={canCreate ? 'Создать сущность' : 'На этой странице создание недоступно'}
+                onClick={handleCreate}
+                disabled={!canCreate}
+                aria-label={canCreate ? 'Создать сущность' : 'Создание недоступно'}
+              >
+                <Plus size={16} />
               </button>
 
-              {showVersionPanel && (
-                <div className="version-panel" id="version-panel" role="dialog" aria-label="Информация о приложении">
-                  <div className="version-panel-title">VadminLink</div>
-                  <div className="version-panel-row">
-                    <span className="version-panel-label">Версия</span>
-                    <span className="version-panel-value">{appVersion}</span>
+              <button className="icon-button desktop-only-btn" title="Уведомления" aria-label="Уведомления">
+                <Bell size={16} />
+              </button>
+
+              <NavLink
+                to="/testing"
+                className={({ isActive }) => `icon-button ${isActive ? 'bg-[hsl(var(--accent))]' : ''}`}
+                title="Тестирование"
+              >
+                <FlaskConical size={16} />
+              </NavLink>
+
+              <div ref={versionRef} className="relative">
+                <button
+                  className="icon-button desktop-only-btn"
+                  title="О приложении"
+                  onClick={() => setShowVersionPanel((prev) => !prev)}
+                  aria-label="О приложении"
+                  aria-expanded={showVersionPanel}
+                  aria-controls="version-panel"
+                >
+                  <Info size={16} />
+                </button>
+
+                {showVersionPanel && (
+                  <div className="version-panel" id="version-panel" role="dialog" aria-label="Информация о приложении">
+                    <div className="version-panel-title">VadminLink</div>
+                    <div className="version-panel-row">
+                      <span className="version-panel-label">Версия</span>
+                      <span className="version-panel-value">{appVersion}</span>
+                    </div>
+                    <div className="version-panel-row">
+                      <span className="version-panel-label">Сборка</span>
+                      <span className="version-panel-value">{buildDateText}</span>
+                    </div>
                   </div>
-                  <div className="version-panel-row">
-                    <span className="version-panel-label">Сборка</span>
-                    <span className="version-panel-value">{buildDateText}</span>
-                  </div>
-                </div>
+                )}
+              </div>
+
+              <button onClick={toggleTheme} className="icon-button" aria-label="Переключить тему">
+                {isDark ? <Moon size={16} /> : <Sun size={16} />}
+              </button>
+
+              {canEdit && (
+                <button
+                  onClick={() => setAccountTokenModalOpen(true)}
+                  className="icon-button"
+                  title="Account Telegram token"
+                  aria-label="Account Telegram token"
+                >
+                  <Settings size={16} />
+                </button>
               )}
-            </div>
 
-            <button onClick={toggleTheme} className="icon-button" aria-label="Переключить тему">
-              <Sun className="h-4 w-4 dark-theme:hidden" />
-              <Moon className="hidden h-4 w-4 dark-theme:block" />
-            </button>
-
-            {canEdit && (
-              <button
-                onClick={() => setAccountTokenModalOpen(true)}
-                className="icon-button"
-                title="Account Telegram token"
-                aria-label="Account Telegram token"
-              >
-                <Settings className="h-4 w-4" />
+              <button onClick={() => setShowPasswordModal(true)} className="icon-button mobile-only-btn" title="Пароль">
+                <Lock size={16} />
               </button>
-            )}
-
-            <button onClick={() => setShowPasswordModal(true)} className="icon-button mobile-only-btn" title="Пароль">
-              <Lock className="h-4 w-4" />
-            </button>
-            <button onClick={handleLogout} className="icon-button mobile-only-btn" title="Выход">
-              <LogOut className="h-4 w-4" />
-            </button>
-
-            <div className="ml-2 text-sm text-[hsl(var(--muted-foreground))] user-info-desktop">{user.username}</div>
-          </div>
-        </header>
-
-        <main className="content-area" id="main-content">
-          <div className="content-inner">
-            {location.pathname === '/' ? <Operations /> : <Outlet />}
-          </div>
-        </main>
-      </div>
-
-      {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
-
-      {accountTokenModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.6)',
-            display: 'flex',
-            alignItems: 'flex-start',
-            justifyContent: 'center',
-            paddingTop: '100px',
-            zIndex: 9999,
-          }}
-          onClick={() => setAccountTokenModalOpen(false)}
-        >
-          <div
-            style={{
-              backgroundColor: 'hsl(var(--card))',
-              borderRadius: '12px',
-              padding: '24px',
-              width: '100%',
-              maxWidth: '520px',
-              border: '1px solid hsl(var(--border))',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-2 text-lg font-semibold">Telegram token for account</h3>
-            <p className="mb-4 text-sm text-[hsl(var(--muted-foreground))]">
-              Used by default for rules, polling, integrations and bots if local token is empty.
-            </p>
-            <div className="mb-4 rounded border border-[hsl(var(--border))] bg-[hsl(var(--muted)_/_0.2)] p-3 text-sm">
-              {accountTokenLoading ? 'Loading...' : (accountTokenIsSet ? `Current: ${accountTokenMasked}` : 'Not set')}
-            </div>
-            <label className="mb-2 block text-sm font-medium">New token (empty = clear)</label>
-            <input
-              style={{ padding: '12px 16px', width: '100%', borderRadius: '8px', border: '1px solid hsl(var(--input))', background: 'hsl(var(--background))' }}
-              value={accountTokenValue}
-              onChange={(e) => setAccountTokenValue(e.target.value)}
-              placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
-            />
-            <div className="mt-5 flex gap-2">
-              <button
-                type="button"
-                onClick={handleSaveAccountBotToken}
-                disabled={accountTokenSaving}
-                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: 'none', background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', fontWeight: 600, opacity: accountTokenSaving ? 0.7 : 1 }}
-              >
-                {accountTokenSaving ? 'Saving...' : 'Save'}
+              <button onClick={handleLogout} className="icon-button mobile-only-btn" title="Выход">
+                <LogOut size={16} />
               </button>
-              <button
-                type="button"
-                onClick={() => setAccountTokenModalOpen(false)}
-                style={{ flex: 1, padding: '12px 16px', borderRadius: '8px', border: '1px solid hsl(var(--border))', background: 'hsl(var(--secondary))' }}
-              >
-                Cancel
-              </button>
+
+              <div className="ml-2 text-sm text-muted-foreground user-info-desktop">{user.username}</div>
             </div>
-          </div>
+          </header>
+
+          <main className="content-area" id="main-content">
+            <div className="content-inner">
+              {location.pathname === '/' ? <Operations /> : <Outlet />}
+            </div>
+          </main>
         </div>
-      )}
-    </div>
+
+        {showPasswordModal && <ChangePasswordModal onClose={() => setShowPasswordModal(false)} />}
+
+        {accountTokenModalOpen && (
+          <div
+            className="fixed inset-0 z-[9999] flex items-start justify-center bg-black/60 pt-[100px] animate-fade-in"
+            onClick={() => setAccountTokenModalOpen(false)}
+          >
+            <div
+              className="w-full max-w-lg rounded-xl border bg-card p-6 shadow-2xl animate-fade-in-scale"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="mb-2 text-lg font-semibold tracking-tight">Telegram token for account</h3>
+              <p className="mb-4 text-sm text-muted-foreground">
+                Used by default for rules, polling, integrations and bots if local token is empty.
+              </p>
+              <div className="mb-4 rounded-lg border bg-muted/20 p-3 text-sm">
+                {accountTokenLoading ? (
+                  <span className="text-muted-foreground">Loading...</span>
+                ) : accountTokenIsSet ? (
+                  <span>Current: {accountTokenMasked}</span>
+                ) : (
+                  <span className="text-muted-foreground">Not set</span>
+                )}
+              </div>
+              <label className="mb-2 block text-sm font-medium">New token (empty = clear)</label>
+              <input
+                className="flex h-9 w-full rounded-lg border border-input bg-background px-3 py-1 text-sm transition-all file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                value={accountTokenValue}
+                onChange={(e) => setAccountTokenValue(e.target.value)}
+                placeholder="123456789:ABCdefGHIjklMNOpqrSTUvwxYZ"
+              />
+              <div className="mt-5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleSaveAccountBotToken}
+                  disabled={accountTokenSaving}
+                  className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm transition-all hover:bg-primary/90 disabled:opacity-50 active:scale-[0.97]"
+                >
+                  {accountTokenSaving ? 'Saving...' : 'Save'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccountTokenModalOpen(false)}
+                  className="inline-flex h-9 flex-1 items-center justify-center gap-2 rounded-lg border bg-secondary px-4 py-2 text-sm font-medium shadow-sm transition-all hover:bg-secondary/80 active:scale-[0.97]"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
       <AiAssistantToggle />
     </AiAssistantProvider>
   );
 }
-

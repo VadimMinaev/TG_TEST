@@ -46,10 +46,10 @@ function TooltipContent({
         sideOffset={sideOffset}
         collisionPadding={12}
         className={cn(
-          "z-50 max-w-[min(320px,calc(100vw-24px))] border border-[hsl(var(--border))] bg-[hsl(var(--card))] text-xs shadow-md",
+          "z-50 max-w-[min(320px,calc(100vw-24px))] border bg-card text-xs shadow-xl rounded-xl p-4 animate-fade-in-scale data-[state=delayed-open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95",
           className,
         )}
-        style={{ padding: '16px', borderRadius: '12px', ...style }}
+        style={style}
         {...props}
       >
         {children}

@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../lib/auth-context';
 import { useNavigate } from 'react-router';
-import { Eye, EyeOff, Zap, Shield, Send } from 'lucide-react';
+import { Eye, EyeOff, Shield, Send, Zap } from 'lucide-react';
 import { StarWarsCrawl } from '../components/StarWarsCrawl';
 
 export function Login() {
@@ -21,7 +21,7 @@ export function Login() {
     try {
       await login(username, password);
       navigate('/');
-    } catch (err) {
+    } catch {
       setError('Неверный логин или пароль');
       setPassword('');
     } finally {
@@ -31,17 +31,14 @@ export function Login() {
 
   return (
     <div className="login-page">
-      {/* Animated background elements */}
       <div className="login-bg-orb login-bg-orb-1" />
       <div className="login-bg-orb login-bg-orb-2" />
       <div className="login-bg-orb login-bg-orb-3" />
       <div className="login-grid-overlay" />
 
-      {/* Star Wars crawl — decorative layer behind the form */}
       <StarWarsCrawl />
 
-      <div className="login-container">
-        {/* Logo and Title */}
+      <div className="login-container animate-fade-in-up">
         <div className="login-header">
           <div className="login-logo">
             <Send className="login-logo-icon" />
@@ -50,12 +47,9 @@ export function Login() {
             <span className="login-title-text">Vadmin</span>
             <span className="login-title-highlight">Link</span>
           </h1>
-          <p className="login-subtitle">
-            Integration Platform
-          </p>
+          <p className="login-subtitle">Integration Platform</p>
         </div>
 
-        {/* Login Card */}
         <div className="login-card">
           <div className="login-card-header">
             <Shield className="login-card-icon" />
@@ -63,8 +57,8 @@ export function Login() {
           </div>
 
           {error && (
-            <div className="login-error">
-              <span className="login-error-icon">⚠️</span>
+            <div className="login-error" role="alert">
+              <span aria-hidden="true">⚠️</span>
               {error}
             </div>
           )}
@@ -107,6 +101,7 @@ export function Login() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="login-password-toggle"
+                  aria-label={showPassword ? 'Скрыть пароль' : 'Показать пароль'}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -130,10 +125,9 @@ export function Login() {
           </form>
         </div>
 
-        {/* Footer */}
         <div className="login-footer">
           <span>© 2026 VadminLink</span>
-          <span className="login-footer-dot">•</span>
+          <span className="login-footer-dot" aria-hidden="true">•</span>
           <span>Secure Access</span>
         </div>
       </div>
