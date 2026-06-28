@@ -197,6 +197,51 @@ code {
 }
 
 /* ═══════════════════════════════════════════════
+   TABLES — UNIFIED
+   ═══════════════════════════════════════════════ */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th {
+  padding: 10px 16px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: hsl(var(--muted-foreground));
+  text-align: left;
+  border-bottom: 1px solid hsl(var(--border));
+  white-space: nowrap;
+}
+
+table td {
+  padding: 10px 16px;
+  font-size: 0.8125rem;
+  color: hsl(var(--foreground));
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  vertical-align: middle;
+}
+
+table tbody tr {
+  transition: background 0.1s ease;
+}
+
+table tbody tr:hover {
+  background: hsl(var(--accent) / 0.5);
+}
+
+table tbody tr.selected {
+  background: hsl(var(--accent));
+}
+
+.table-basic th, .table-basic td {
+  padding: 10px 16px;
+}
+
+/* ═══════════════════════════════════════════════
    SCROLLBAR
    ═══════════════════════════════════════════════ */
 
@@ -1215,16 +1260,9 @@ code {
   .desktop-only-btn { display: none; }
   .user-info-desktop { display: none; }
 
-  table { font-size: 0.85rem; }
-  table th, table td { padding: 8px 10px !important; }
-  .table-basic th, .table-basic td { padding: 8px 10px; }
-
-  .rule-row {
-    display: flex;
-    flex-direction: column;
-    padding: 12px;
-    border-bottom: 1px solid hsl(var(--border) / 0.5);
-  }
+  table { font-size: 0.8125rem; }
+  table th { padding: 8px 12px; }
+  table td { padding: 8px 12px; }
 }
 
 /* ═══════════════════════════════════════════════

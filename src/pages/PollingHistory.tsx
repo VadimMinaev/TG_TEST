@@ -85,7 +85,7 @@ export function PollingHistory() {
   return (
       <div className="card" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'clip' }}>
         {/* Header */}
-        <div className="card-header" style={{ padding: '12px 20px' }}>
+        <div className="card-header">
           <h2 className="text-xl font-semibold">История пуллинга</h2>
           <div className="flex items-center gap-2">
             <button onClick={loadHistory} className="icon-button" title="Обновить">

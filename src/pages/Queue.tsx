@@ -53,11 +53,7 @@ export function Queue() {
   return (
     <div className="card" style={{ overflow: 'clip' }}>
       <div className="card-header">
-        <div className="flex flex-col gap-2">
-          <div>
-            <h2 className="text-xl font-semibold">📬 Очередь сообщений в Telegram</h2>
-          </div>
-        </div>
+        <h2 className="text-xl font-semibold">📬 Очередь сообщений в Telegram</h2>
         <div className="flex items-center gap-2">
           <select
             value={filter}
@@ -65,7 +61,8 @@ export function Queue() {
               setFilter(e.target.value);
               setPage(1);
             }}
-            className="rounded border border-[hsl(var(--input))] bg-[hsl(var(--background))] px-3 py-2 text-sm"
+            className="input-field"
+            style={{ width: 'auto', minWidth: '140px' }}
           >
             <option value="">Все статусы</option>
             <option value="pending">Ожидает</option>
@@ -84,7 +81,7 @@ export function Queue() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-4 gap-4 p-6 queue-stats-sticky">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 queue-stats-sticky">
           <div className="panel">
             <div className="text-xs text-[hsl(var(--muted-foreground))]">Всего</div>
             <div className="text-2xl font-semibold">{stats.total || 0}</div>
