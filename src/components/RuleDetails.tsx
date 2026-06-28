@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { api, Rule } from '../lib/api';
-import { StatusRadio } from './StatusRadio';
-import { EntityStateSwitch } from './StateToggle';
 
 interface RuleDetailsProps {
   ruleId: number;
@@ -10,7 +8,7 @@ interface RuleDetailsProps {
   toggling?: boolean;
 }
 
-export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling = false }: RuleDetailsProps) {
+export function RuleDetails({ ruleId }: RuleDetailsProps) {
   const [rule, setRule] = useState<Rule | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -43,70 +41,62 @@ export function RuleDetails({ ruleId, canEdit = false, onToggleEnabled, toggling
   }
 
   return (
-    <div>
-      <div className="entity-view">
-        <div>
-          <h4 className="entity-view-title">Информация о Webhook</h4>
-          <div className="entity-view-card">
-            <div style={{ marginBottom: '12px' }}>
-              <strong>ID:</strong> <code>{rule.id}</code>
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Название:</strong> {rule.name}
-            </div>
-            <div style={{ marginBottom: '12px' }}>
-              <strong>Статус:</strong>{' '}
-              <span
-                style={{ padding: '4px 8px' }}
-                className={`rounded text-xs ${
-                  rule.enabled
-                    ? 'bg-[hsl(var(--success)_/_0.15)] text-[hsl(var(--success))]'
-                    : 'bg-[hsl(var(--destructive)_/_0.1)] text-[hsl(var(--destructive))]'
-                }`}
-              >
-                {rule.enabled ? '✅ Включено' : '⏸️ Отключено'}
+    <div className="entity-view">
+      <div>
+        <h4 className="entity-view-title">Информация о Webhook</h4>
+        <div className="entity-view-card">
+          <div className="view-field">
+            <strong>ID:</strong>{' '}
+            <code className="view-code">{rule.id}</code>
+          </div>
+          <div className="view-field">
+            <strong>Название:</strong> {rule.name}
+          </div>
+          <div className="view-field">
+            <strong>Статус:</strong>{' '}
+            <span className={`view-badge ${rule.enabled ? 'view-badge-success' : 'view-badge-error'}`}>
+              {rule.enabled ? '✅ Включено' : '⏸️ Отключено'}
+            </span>
+          </div>
+          {rule.updated_at && (
+            <div className="view-field" style={{ marginBottom: 0 }}>
+              <strong>Последнее обновление:</strong>{' '}
+              <span className="form-hint" style={{ margin: 0, display: 'inline' }}>
+                {new Date(rule.updated_at).toLocaleString('ru-RU')}
               </span>
             </div>
-            {rule.updated_at && (
-              <div className="text-xs text-[hsl(var(--muted-foreground))]">
-                <strong>Последнее обновление:</strong> {new Date(rule.updated_at).toLocaleString('ru-RU')}
-              </div>
-            )}
-          </div>
+          )}
         </div>
+      </div>
 
-
-        <div>
-          <h4 className="entity-view-title">Условие</h4>
-          <div className="entity-view-card-muted overflow-x-auto">
-            <code className="block whitespace-pre-wrap break-words text-sm">{rule.condition}</code>
-          </div>
+      <div>
+        <h4 className="entity-view-title">Условие</h4>
+        <div className="entity-view-card-muted overflow-x-auto">
+          <code className="block whitespace-pre-wrap break-words text-sm">{rule.condition}</code>
         </div>
+      </div>
 
-        <div>
-          <h4 className="entity-view-title">Настройки отправки</h4>
-          <div className="entity-view-card space-y-3">
-            <div>
-              <strong>ID канала/чата:</strong>{' '}
-              <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{rule.chatId}</code>
+      <div>
+        <h4 className="entity-view-title">Настройки отправки</h4>
+        <div className="entity-view-card">
+          <div className="view-field">
+            <strong>ID канала/чата:</strong>{' '}
+            <code className="view-code">{rule.chatId}</code>
+          </div>
+          {rule.botToken && (
+            <div className="view-field">
+              <strong>Токен бота:</strong>{' '}
+              <code className="view-code">{rule.botToken.substring(0, 10)}...</code>
             </div>
-            {rule.botToken && (
-              <div>
-                <strong>Токен бота:</strong>{' '}
-                <code style={{ padding: '4px 8px', marginLeft: '8px' }} className="rounded bg-[hsl(var(--muted)_/_0.5)]">{rule.botToken.substring(0, 10)}...</code>
-              </div>
-            )}
-            {rule.messageTemplate ? (
-              <div>
-                <strong>Шаблон сообщения:</strong>
-                <div style={{ padding: '16px', marginTop: '8px' }} className="whitespace-pre-wrap rounded-lg bg-[hsl(var(--muted)_/_0.3)] text-sm">
-                  {rule.messageTemplate}
-                </div>
-              </div>
-            ) : (
-              <div className="text-[hsl(var(--muted-foreground))]">Используется шаблон по умолчанию</div>
-            )}
-          </div>
+          )}
+          {rule.messageTemplate ? (
+            <div className="view-field" style={{ marginBottom: 0 }}>
+              <strong>Шаблон сообщения:</strong>
+              <div className="view-code-block">{rule.messageTemplate}</div>
+            </div>
+          ) : (
+            <div className="form-hint" style={{ margin: 0 }}>Используется шаблон по умолчанию</div>
+          )}
         </div>
       </div>
     </div>
