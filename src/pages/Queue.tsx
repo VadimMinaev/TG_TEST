@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { RefreshCw } from 'lucide-react';
+import { CheckCircle2, CircleAlert, Clock3, Inbox, RefreshCw } from 'lucide-react';
 
 export function Queue() {
   const [messages, setMessages] = useState<any[]>([]);
@@ -45,24 +45,30 @@ export function Queue() {
       failed: { bg: 'bg-red-500', text: 'text-white', label: '❌ Ошибка' },
     };
     const badge = badges[status] || { bg: 'bg-gray-500', text: 'text-white', label: status };
-    return (
-      <span className={`rounded px-2 py-1 text-xs ${badge.bg} ${badge.text}`}>{badge.label}</span>
-    );
+    return <span className={`queue-status-badge ${badge.bg} ${badge.text}`}>{badge.label}</span>;
   };
 
   return (
-    <div className="card" style={{ overflow: 'clip' }}>
-      <div className="card-header">
-        <h2 className="text-xl font-semibold">📬 Очередь сообщений в Telegram</h2>
-        <div className="flex items-center gap-2">
+    <div className="card queue-card">
+      <div className="card-header queue-header">
+        <div className="queue-title">
+          <span className="queue-title-icon" aria-hidden="true">
+            <Inbox size={18} />
+          </span>
+          <div>
+            <h2>Очередь Telegram</h2>
+            <p>Исходящие сообщения и состояние доставки</p>
+          </div>
+        </div>
+        <div className="queue-toolbar">
           <select
             value={filter}
             onChange={(e) => {
               setFilter(e.target.value);
               setPage(1);
             }}
-            className="input-field"
-            style={{ width: 'auto', minWidth: '140px' }}
+            className="input-field queue-filter"
+            aria-label="Фильтр по статусу"
           >
             <option value="">Все статусы</option>
             <option value="pending">Ожидает</option>
@@ -74,6 +80,7 @@ export function Queue() {
             onClick={loadQueue}
             className="icon-button"
             title="Обновить"
+            aria-label="Обновить очередь"
           >
             <RefreshCw className="h-4 w-4" />
           </button>
@@ -81,35 +88,50 @@ export function Queue() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-4 gap-4 p-6 queue-stats-sticky">
-          <div className="panel">
-            <div className="text-xs text-[hsl(var(--muted-foreground))]">Всего</div>
-            <div className="text-2xl font-semibold">{stats.total || 0}</div>
+        <div className="queue-kpi-grid" aria-label="Статистика очереди">
+          <div className="queue-kpi queue-kpi-total">
+            <span className="queue-kpi-icon" aria-hidden="true"><Inbox size={17} /></span>
+            <div className="queue-kpi-copy">
+              <span>Всего</span>
+              <strong>{stats.total || 0}</strong>
+            </div>
           </div>
-          <div className="panel">
-            <div className="text-xs text-[hsl(var(--muted-foreground))]">Ожидает</div>
-            <div className="text-2xl font-semibold text-orange-500">{stats.stats?.pending || 0}</div>
+          <div className="queue-kpi queue-kpi-pending">
+            <span className="queue-kpi-icon" aria-hidden="true"><Clock3 size={17} /></span>
+            <div className="queue-kpi-copy">
+              <span>Ожидает</span>
+              <strong>{stats.stats?.pending || 0}</strong>
+            </div>
           </div>
-          <div className="panel">
-            <div className="text-xs text-[hsl(var(--muted-foreground))]">Отправлено</div>
-            <div className="text-2xl font-semibold text-green-500">{stats.stats?.sent || 0}</div>
+          <div className="queue-kpi queue-kpi-sent">
+            <span className="queue-kpi-icon" aria-hidden="true"><CheckCircle2 size={17} /></span>
+            <div className="queue-kpi-copy">
+              <span>Отправлено</span>
+              <strong>{stats.stats?.sent || 0}</strong>
+            </div>
           </div>
-          <div className="panel">
-            <div className="text-xs text-[hsl(var(--muted-foreground))]">Ошибка</div>
-            <div className="text-2xl font-semibold text-red-500">{stats.stats?.failed || 0}</div>
+          <div className="queue-kpi queue-kpi-failed">
+            <span className="queue-kpi-icon" aria-hidden="true"><CircleAlert size={17} /></span>
+            <div className="queue-kpi-copy">
+              <span>Ошибка</span>
+              <strong>{stats.stats?.failed || 0}</strong>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="p-6">
+      <div className="queue-content">
         {loading ? (
-          <div className="flex items-center justify-center py-20">
+          <div className="queue-state">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-[hsl(var(--primary))] border-t-transparent" />
           </div>
         ) : messages.length === 0 ? (
-          <p className="py-20 text-center text-[hsl(var(--muted-foreground))]">История очереди пуста</p>
+          <div className="queue-state queue-empty-state">
+            <Inbox size={24} />
+            <p>История очереди пуста</p>
+          </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="queue-table-wrap">
             <table className="table-basic w-full border-collapse">
               <thead>
                 <tr className="border-b-2 border-[hsl(var(--border))] text-left">
@@ -147,14 +169,14 @@ export function Queue() {
               </tbody>
             </table>
             {pagination && pagination.totalPages > 1 && (
-              <div className="mt-4 flex items-center justify-between">
-                <div className="text-xs text-[hsl(var(--muted-foreground))]">
+              <div className="queue-pagination">
+                <div className="queue-pagination-meta">
                   Страница {pagination.page} из {pagination.totalPages} · всего {pagination.total}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="queue-pagination-actions">
                   <button
                     type="button"
-                    className="rounded border border-[hsl(var(--border))] px-3 py-1.5 text-xs disabled:opacity-50"
+                    className="queue-page-button"
                     onClick={() => setPage((prev) => Math.max(1, prev - 1))}
                     disabled={pagination.page <= 1}
                   >
@@ -162,7 +184,7 @@ export function Queue() {
                   </button>
                   <button
                     type="button"
-                    className="rounded border border-[hsl(var(--border))] px-3 py-1.5 text-xs disabled:opacity-50"
+                    className="queue-page-button"
                     onClick={() => setPage((prev) => Math.min(pagination.totalPages, prev + 1))}
                     disabled={pagination.page >= pagination.totalPages}
                   >
