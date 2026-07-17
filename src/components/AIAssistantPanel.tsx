@@ -11,8 +11,10 @@ export function AiAssistantToggle() {
     <>
       <button
         onClick={togglePanel}
-        className={`ai-fab ${agentMode ? 'agent-mode' : ''}`}
+        className={`ai-fab ${agentMode ? 'agent-mode' : ''} ${isOpen ? 'is-panel-open' : ''}`}
         title={agentMode ? 'AI Агент' : 'AI Ассистент'}
+        aria-label={isOpen ? 'Закрыть AI-ассистента' : 'Открыть AI-ассистента'}
+        aria-expanded={isOpen}
       >
         {botLoading ? <Loader2 size={22} className="animate-spin" /> : agentMode ? <Cpu size={22} /> : <Sparkles size={22} />}
       </button>
@@ -124,7 +126,7 @@ function AiAssistantPanel() {
         </div>
       )}
 
-      <div className="ai-panel">
+      <div className="ai-panel" role="dialog" aria-label="AI-ассистент">
         <div className="ai-panel-header">
           {agentMode ? <Cpu size={16} style={{ color: '#ec4899' }} /> : <Bot size={16} style={{ color: 'hsl(var(--primary))' }} />}
           <span className="ai-panel-title">{agentMode ? 'AI Агент' : 'AI Ассистент'}</span>

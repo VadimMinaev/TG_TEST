@@ -538,7 +538,26 @@ table tbody tr:hover { background: hsl(var(--accent) / .45); }
   table th, table td { padding-inline: 10px; }
   .modal-overlay { align-items: flex-end; padding: 0; }.modal-content { width: 100%; max-height: 92dvh; border-right: 0; border-bottom: 0; border-left: 0; border-radius: 20px 20px 0 0; }.modal-body { padding: 18px 16px; }.modal-header, .modal-footer { padding-inline: 16px; }
   .token-current { grid-template-columns: 1fr; }.token-current code { max-width: 100%; }
-  .ai-fab { right: 16px; bottom: 16px; }.ai-panel { right: 8px; bottom: 76px; width: calc(100vw - 16px); max-height: calc(100dvh - 92px); }
+  .ai-fab { right: 16px; bottom: 16px; }
+  .ai-fab.is-panel-open { visibility: hidden; pointer-events: none; opacity: 0; }
+  .ai-panel {
+    inset: 64px 0 0;
+    width: 100%;
+    max-width: none;
+    height: auto;
+    max-height: none;
+    border-right: 0;
+    border-bottom: 0;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+    box-shadow: 0 -12px 36px hsl(var(--foreground) / .14);
+  }
+  .ai-panel-header { flex: 0 0 auto; padding: 11px 12px; }
+  .ai-panel-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ai-bot-selector { flex: 0 0 auto; padding: 8px 12px; }
+  .ai-messages { min-height: 0; max-height: none; padding: 12px; }
+  .ai-input-row { flex: 0 0 auto; padding: 10px 12px max(10px, env(safe-area-inset-bottom)); background: hsl(var(--card)); }
+  .ai-input { min-width: 0; }
   .toast-container { right: 10px; bottom: 10px; left: 10px; }.toast-item { width: 100%; }
   .login-access { padding: 28px 20px; }.login-card-header-v2 h2 { font-size: 23px; }
   .queue-header { align-items: stretch; padding: 12px; }
