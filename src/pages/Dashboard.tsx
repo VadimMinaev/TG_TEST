@@ -17,7 +17,6 @@ import {
   Plus,
   Repeat2,
   Send,
-  Settings,
   Sun,
   Users,
   X,
@@ -269,10 +268,6 @@ export function Dashboard() {
           </header>
 
           <main className="content-area content-area-v2" id="main-content">
-            <div className="page-intro">
-              <div><span className="page-intro-kicker">{currentPage.eyebrow}</span><h1>{currentPage.title}</h1><p>{currentPage.description}</p></div>
-              {canEdit && location.pathname === '/telegram' && <button type="button" className="btn-secondary page-token-button" onClick={() => setAccountTokenModalOpen(true)}><Settings size={16} /> Токен аккаунта</button>}
-            </div>
             <div className="content-inner">{location.pathname === '/' ? <Operations /> : <Outlet />}</div>
           </main>
         </div>

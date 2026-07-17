@@ -751,33 +751,6 @@ table tbody tr.selected {
   background: hsl(var(--card));
 }
 
-.entity-edit-form input:not([type='checkbox']):not([type='radio']),
-.entity-edit-form select,
-.entity-edit-form textarea {
-  border-radius: var(--radius-lg) !important;
-  border: 1px solid hsl(var(--input)) !important;
-  background: hsl(var(--background)) !important;
-  padding: 12px 16px !important;
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast) !important;
-  min-height: 44px !important;
-}
-
-.entity-edit-form input:not([type='checkbox']):not([type='radio']):focus,
-.entity-edit-form select:focus,
-.entity-edit-form textarea:focus {
-  outline: none !important;
-  border-color: hsl(var(--ring)) !important;
-  box-shadow: 0 0 0 3px hsl(var(--ring) / 0.15) !important;
-}
-
-.entity-edit-form button[type='submit'],
-.entity-edit-form button[type='button'] {
-  border-radius: var(--radius-lg) !important;
-  padding: 12px 24px !important;
-  font-weight: 600 !important;
-  min-height: 44px !important;
-}
-
 /* ═══════════════════════════════════════════════
    OPERATIONS PAGE
    ═══════════════════════════════════════════════ */

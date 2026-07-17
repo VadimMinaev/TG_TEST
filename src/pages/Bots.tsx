@@ -530,7 +530,7 @@ export function Bots() {
               <h3 className="mb-4 text-lg font-semibold">
                 {editingBotId === -1 ? 'Создание бота' : 'Редактирование бота'}
               </h3>
-              <form onSubmit={handleSaveBot} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <form className="entity-edit-form" onSubmit={handleSaveBot}>
                 {/* Название и Chat ID */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -818,7 +818,7 @@ export function Bots() {
                 </div>
 
                 {/* Submit buttons */}
-                <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+                <div className="form-actions">
                   <button
                     type="submit"
                     className="btn-primary"

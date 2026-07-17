@@ -909,7 +909,7 @@ export function Polling() {
                   )}
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="form-actions">
                   <button type="submit" className="btn-primary flex-1">
                     Сохранить
                   </button>
