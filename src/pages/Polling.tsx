@@ -5,7 +5,6 @@ import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, Info, ChevronLeft } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
-import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import {
@@ -53,13 +52,6 @@ const normalizeForm = (poll?: Poll) => ({
   continueAfterMatch: poll?.continueAfterMatch ?? false,
 });
 
-const isDraftPoll = (poll: Partial<Poll>) =>
-  !poll.enabled && (
-    String(poll.name || '').toLowerCase().startsWith('черновик') ||
-    String(poll.chatId || '').trim() === '0' ||
-    String(poll.url || '').trim() === 'https://example.com/health'
-  );
-
 export function Polling() {
   const { user } = useAuth();
   const canEdit = user?.role !== 'auditor';
@@ -74,7 +66,7 @@ export function Polling() {
   const { addToast } = useToast();
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [togglingPollId, setTogglingPollId] = useState<number | null>(null);
+  const [, setTogglingPollId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды

@@ -17,14 +17,13 @@ export function Testing() {
   const [testMessage, setTestMessage] = useState('Тестовое сообщение из webhook интеграции');
   const [telegramResult, setTelegramResult] = useState<{ success: boolean; message: string } | null>(null);
 
-  const handleTestCondition = () => {
+  const handleTestCondition = async () => {
     try {
       const payload = JSON.parse(testPayload);
-      const fn = new Function('payload', `return ${testCondition}`);
-      const result = fn(payload);
+      const response = await api.testCondition(testCondition, payload);
       setTestResult({
         success: true,
-        message: `Результат: ${result ? 'TRUE ✅' : 'FALSE ❌'}`,
+        message: `Результат: ${response.result ? 'TRUE ✅' : 'FALSE ❌'}`,
       });
     } catch (error: any) {
       setTestResult({

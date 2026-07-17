@@ -328,8 +328,19 @@ export const api = {
     return res.json();
   },
 
+  testCondition: async (condition: string, payload: unknown): Promise<{ success: boolean; result?: boolean; error?: string }> => {
+    const res = await fetch(`${API_BASE}/test-condition`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify({ condition, payload }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || 'Failed to test condition');
+    return data;
+  },
+
   saveBotToken: async (botToken: string) => {
-    const res = await fetch(`${API_BASE}/bot-token`, {
+    const res = await fetch(`${API_BASE}/account-bot-token`, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ botToken }),

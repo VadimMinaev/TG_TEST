@@ -127,7 +127,7 @@ export function Operations() {
           title: entry.status === 'ok' ? 'Webhook обработан' : 'Webhook с ошибкой',
           details: `Совпадений: ${entry.matched ?? 0}/${entry.total_rules ?? 0}`,
           timestamp: entry.timestamp,
-          status: entry.status === 'ok' ? 'ok' : 'error',
+          status: (entry.status === 'ok' ? 'ok' : 'error') as OperationsEvent['status'],
         })),
         ...pollRuns.slice(0, 5).map((entry: any) => ({
           id: `poll-${entry.id}`,
@@ -135,7 +135,7 @@ export function Operations() {
           title: `Статус: ${entry.status ?? 'unknown'}`,
           details: entry.request_url || entry.response_snippet || 'Запуск задачи',
           timestamp: entry.created_at,
-          status: entry.status === 'success' ? 'ok' : entry.status === 'error' ? 'error' : 'info',
+          status: (entry.status === 'success' ? 'ok' : entry.status === 'error' ? 'error' : 'info') as OperationsEvent['status'],
         })),
         ...integrationRuns.slice(0, 5).map((entry: any) => ({
           id: `integration-${entry.id}`,
@@ -143,7 +143,7 @@ export function Operations() {
           title: `Статус: ${entry.status ?? 'unknown'}`,
           details: entry.error_message || `Триггер: ${entry.trigger_type ?? 'n/a'}`,
           timestamp: entry.created_at,
-          status: entry.status === 'success' ? 'ok' : entry.status === 'error' ? 'error' : 'info',
+          status: (entry.status === 'success' ? 'ok' : entry.status === 'error' ? 'error' : 'info') as OperationsEvent['status'],
         })),
         ...botRuns.slice(0, 5).map((entry: any) => ({
           id: `bot-${entry.id}`,
@@ -151,7 +151,7 @@ export function Operations() {
           title: `Статус: ${entry.status ?? 'unknown'}`,
           details: entry.error_message || `Тип: ${entry.message_type ?? 'n/a'}`,
           timestamp: entry.created_at,
-          status: entry.status === 'success' ? 'ok' : entry.status === 'error' ? 'error' : 'info',
+          status: (entry.status === 'success' ? 'ok' : entry.status === 'error' ? 'error' : 'info') as OperationsEvent['status'],
         })),
       ]
         .filter((event) => event.timestamp)

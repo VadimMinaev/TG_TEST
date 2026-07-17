@@ -1,4 +1,3 @@
-import React from 'react';
 import { Bar, BarChart, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, Line, LineChart } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 

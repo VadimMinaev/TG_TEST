@@ -15,7 +15,7 @@ interface FieldValidatorProps {
   children: React.ReactNode;
 }
 
-export function FieldValidator({ value, rules, fieldName, children }: FieldValidatorProps) {
+export function FieldValidator({ value, rules, fieldName: _fieldName, children }: FieldValidatorProps) {
   const [validationResults, setValidationResults] = useState<{ isValid: boolean; messages: { message: string; level: 'error' | 'warning' | 'success' }[] }>({ 
     isValid: true, 
     messages: [] 

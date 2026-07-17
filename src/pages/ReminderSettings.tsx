@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '../components/ToastNotification';
-import { Save, Bot, Key, Link as LinkIcon, RefreshCw, Check, Copy, Trash2 } from 'lucide-react';
-import { useSearchParams } from 'react-router';
+import { Save, Bot, RefreshCw, Check, Copy, Trash2 } from 'lucide-react';
 
 interface ReminderSettings {
   botToken: string;
@@ -12,10 +11,8 @@ interface ReminderSettings {
 
 export function ReminderSettingsPage() {
   const { addToast } = useToast();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [tokenCopied, setTokenCopied] = useState(false);
   const [webhookCopied, setWebhookCopied] = useState(false);
   const [settings, setSettings] = useState<ReminderSettings>({
     botToken: '',
@@ -138,28 +135,6 @@ export function ReminderSettingsPage() {
       setWebhookCopied(true);
       setTimeout(() => setWebhookCopied(false), 2000);
     });
-  };
-
-  const tabs = [
-    { id: 'automation', label: 'Автоматизация', icon: 'bolt' },
-    { id: 'ai-bots', label: 'AI-боты', icon: 'robot' },
-    { id: 'reminders', label: 'Напоминания', icon: 'clock', active: true },
-    { id: 'reminders-settings', label: 'К напоминаниям', icon: 'settings' },
-  ];
-
-  const switchTab = (id: string) => {
-    const next = new URLSearchParams(searchParams);
-    if (id === 'reminders-settings') {
-      next.set('tab', 'reminders');
-      next.set('settings', 'true');
-    } else if (id === 'reminders') {
-      next.set('tab', 'reminders');
-      next.delete('settings');
-    } else {
-      next.set('tab', id);
-      next.delete('settings');
-    }
-    setSearchParams(next);
   };
 
   if (loading) {

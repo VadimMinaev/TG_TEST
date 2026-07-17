@@ -9,7 +9,7 @@ interface TelegramPreviewWithToggleProps {
   context?: 'rule' | 'poll' | 'integration' | 'bot';
 }
 
-export function TelegramPreviewWithToggle({ message, payload, context = 'rule' }: TelegramPreviewWithToggleProps) {
+export function TelegramPreviewWithToggle({ message, payload, context: _context = 'rule' }: TelegramPreviewWithToggleProps) {
   const [isVisible, setIsVisible] = useState(true);
   
   // Формируем сообщение на основе шаблона и payload

@@ -20,55 +20,32 @@ export function Telegram() {
   const showReminderSettings = tab === 'reminders' && searchParams.get('settings') === 'true';
 
   const tabs: Array<{ id: TelegramTab; label: string; icon: ReactNode }> = [
-    { id: 'automation', label: 'Автоматизация / Уведомления', icon: <Bot className="h-4 w-4" /> },
+    { id: 'automation', label: 'Автоматизация', icon: <Bot className="h-4 w-4" /> },
     { id: 'ai-bots', label: 'AI-боты', icon: <Sparkles className="h-4 w-4" /> },
     { id: 'reminders', label: 'Напоминания', icon: <Clock className="h-4 w-4" /> },
   ];
 
-  const switchTab = (nextTab: TelegramTab) => {
+  const updateTab = (nextTab: TelegramTab, settings = false) => {
     const next = new URLSearchParams(searchParams);
     next.set('tab', nextTab);
-    if (nextTab !== 'reminders') {
-      next.delete('settings');
-    }
+    if (nextTab === 'reminders' && settings) next.set('settings', 'true');
+    else next.delete('settings');
     setSearchParams(next);
   };
 
   return (
-    <div className="operations-page">
-      <div className="card operations-tabs-card">
+    <div className="operations-page telegram-page">
+      <div className="card operations-tabs-card telegram-tabs-card">
         <div className="card-body">
-          <div className="operations-tabbar">
+          <div className="operations-tabbar" role="tablist" aria-label="Разделы Telegram">
             {tabs.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => switchTab(item.id)}
-                className={`operations-tab-btn ${tab === item.id ? 'operations-tab-btn-active' : ''}`}
-              >
-                <span className="inline-flex items-center gap-2">
-                  {item.icon}
-                  {item.label}
-                </span>
+              <button key={item.id} type="button" role="tab" aria-selected={tab === item.id && !showReminderSettings} onClick={() => updateTab(item.id)} className={`operations-tab-btn ${tab === item.id && !showReminderSettings ? 'operations-tab-btn-active' : ''}`}>
+                <span className="inline-flex items-center gap-2">{item.icon}{item.label}</span>
               </button>
             ))}
-
             {tab === 'reminders' && (
-              <button
-                type="button"
-                onClick={() => {
-                  const next = new URLSearchParams(searchParams);
-                  next.set('tab', 'reminders');
-                  next.set('settings', showReminderSettings ? 'false' : 'true');
-                  setSearchParams(next);
-                }}
-                className={`operations-tab-btn ml-auto ${showReminderSettings ? 'operations-tab-btn-active' : ''}`}
-                title={showReminderSettings ? 'К списку напоминаний' : 'Настройки бота напоминаний'}
-              >
-                <span className="inline-flex items-center gap-2">
-                  <Settings className="h-4 w-4" />
-                  {showReminderSettings ? 'К напоминаниям' : 'Настройки напоминаний'}
-                </span>
+              <button type="button" role="tab" aria-selected={showReminderSettings} onClick={() => updateTab('reminders', !showReminderSettings)} className={`operations-tab-btn telegram-settings-tab ${showReminderSettings ? 'operations-tab-btn-active' : ''}`} title={showReminderSettings ? 'К списку напоминаний' : 'Настройки бота напоминаний'}>
+                <span className="inline-flex items-center gap-2"><Settings className="h-4 w-4" />{showReminderSettings ? 'К напоминаниям' : 'Настройки'}</span>
               </button>
             )}
           </div>

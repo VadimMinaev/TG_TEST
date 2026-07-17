@@ -8,6 +8,7 @@ export function Root() {
     if (savedTheme === 'dark' || (!savedTheme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       document.documentElement.classList.add('dark-theme');
     }
+    document.documentElement.style.colorScheme = document.documentElement.classList.contains('dark-theme') ? 'dark' : 'light';
   }, []);
 
   return <Outlet />;

@@ -4,7 +4,6 @@ import { api, Bot } from '../lib/api';
 import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, ChevronLeft } from 'lucide-react';
 import { ExportModal } from '../components/ExportModal';
-import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { useToast } from '../components/ToastNotification';
@@ -62,12 +61,6 @@ const TIMEZONES = [
   'UTC',
 ];
 
-const isDraftBot = (bot: Partial<Bot>) =>
-  !bot.enabled && (
-    String(bot.name || '').toLowerCase().startsWith('черновик') ||
-    String(bot.chatId || '').trim() === '0'
-  );
-
 export function Bots() {
   const { user } = useAuth();
   const canEdit = user?.role !== 'auditor';
@@ -82,7 +75,7 @@ export function Bots() {
   const { addToast } = useToast();
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [togglingBotId, setTogglingBotId] = useState<number | null>(null);
+  const [, setTogglingBotId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
 

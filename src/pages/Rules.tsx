@@ -7,7 +7,6 @@ import { RulesList } from '../components/RulesList';
 import { RuleDetails } from '../components/RuleDetails';
 import { RuleForm } from '../components/RuleForm';
 import { ExportModal } from '../components/ExportModal';
-import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { useToast } from '../components/ToastNotification';
 import {

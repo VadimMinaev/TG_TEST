@@ -5,7 +5,6 @@ import { useAuth } from '../lib/auth-context';
 import { Copy, Download, Pencil, Play, Plus, RefreshCw, Trash2, Upload, ChevronLeft } from 'lucide-react';
 import { TemplateHelp } from '../components/TemplateHelp';
 import { ExportModal } from '../components/ExportModal';
-import { StatusRadio } from '../components/StatusRadio';
 import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { AiFieldAssist } from '../components/AIFieldAssist';
@@ -34,9 +33,6 @@ const DEFAULT_FORM: Omit<Integration, 'id'> = {
   messageTemplate: '',
 };
 
-const isDraftIntegration = (integration: Partial<Integration>) =>
-  !integration.enabled && String(integration.name || '').toLowerCase().startsWith('черновик');
-
 export function Integrations() {
   const { user } = useAuth();
   const canEdit = user?.role !== 'auditor';
@@ -55,7 +51,7 @@ export function Integrations() {
   const [running, setRunning] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [togglingIntegrationId, setTogglingIntegrationId] = useState<number | null>(null);
+  const [, setTogglingIntegrationId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   // Автоматически скрывать уведомление через 4 секунды
