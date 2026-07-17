@@ -602,13 +602,12 @@ export function Bots() {
                     </div>
 
                     <div className="fp-section">
-                      <div className="fp-fields-grid">
+                      <div className="fp-fields-grid poll-options-grid">
                         {getPollOptionsArray().map((opt, idx) => (
-                          <div key={idx} className="fp-field" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                            <span className="form-hint" style={{ minWidth: '24px', marginTop: 0 }}>{idx + 1}.</span>
+                          <div key={idx} className="poll-option-row">
+                            <span className="poll-option-number" aria-hidden="true">{idx + 1}</span>
                             <input
                               className="input-field"
-                              style={{ flex: 1 }}
                               value={opt}
                               onChange={(e) => {
                                 const opts = getPollOptionsArray();
@@ -626,8 +625,10 @@ export function Bots() {
                                   setPollOptionsArray(opts);
                                 }}
                                 className="remove-option-btn"
+                                title={`Удалить вариант ${idx + 1}`}
+                                aria-label={`Удалить вариант ${idx + 1}`}
                               >
-                                ✕
+                                <Trash2 size={15} />
                               </button>
                             )}
                           </div>
@@ -643,7 +644,8 @@ export function Bots() {
                           }}
                           className="add-option-btn"
                         >
-                          + Добавить вариант
+                          <Plus size={15} />
+                          Добавить вариант
                         </button>
                       )}
                     </div>

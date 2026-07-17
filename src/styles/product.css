@@ -323,6 +323,37 @@ button, a { touch-action: manipulation; }
 .day-btn { min-width: 42px; min-height: 38px; border-radius: 9px; }
 .radio-card { border-color: hsl(var(--border)); border-radius: 12px; background: hsl(var(--background)); }
 .radio-card:hover { border-color: hsl(var(--primary) / .45); background: hsl(var(--accent) / .45); }
+.poll-options-grid { gap: 10px; }
+.poll-option-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 38px;
+  align-items: center;
+  gap: 8px;
+}
+.poll-option-number {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: hsl(var(--secondary));
+  color: hsl(var(--muted-foreground));
+  font-size: 11px;
+  font-weight: 700;
+}
+.poll-option-row .input-field { width: 100%; min-width: 0; }
+.poll-option-row .remove-option-btn {
+  width: 38px;
+  min-width: 38px;
+  height: 38px;
+  min-height: 38px;
+  padding: 0;
+  border-radius: 9px;
+  color: hsl(var(--muted-foreground));
+}
+.poll-option-row .remove-option-btn:hover { border-color: hsl(var(--destructive) / .35); background: hsl(var(--destructive) / .08); color: hsl(var(--destructive)); }
+.add-option-btn { display: flex; align-items: center; justify-content: center; gap: 7px; }
 
 table th { height: 42px; padding: 10px 14px; background: hsl(var(--secondary) / .6); color: hsl(var(--muted-foreground)); font-size: 10px; letter-spacing: .08em; }
 table td { padding: 12px 14px; border-bottom-color: hsl(var(--border) / .7); font-size: 12.5px; }
@@ -511,6 +542,10 @@ table tbody tr:hover { background: hsl(var(--accent) / .45); }
   .queue-kpi { min-height: 58px; padding: 9px 10px; }
   .queue-kpi-icon { width: 30px; height: 30px; }
   .queue-kpi-copy strong { font-size: 18px; }
+  .poll-options-grid { grid-template-columns: 1fr; }
+  .poll-option-row { grid-template-columns: 26px minmax(0, 1fr) 36px; gap: 7px; }
+  .poll-option-number { width: 26px; height: 26px; }
+  .poll-option-row .remove-option-btn { width: 36px; min-width: 36px; height: 36px; min-height: 36px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
