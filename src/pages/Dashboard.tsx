@@ -215,6 +215,7 @@ export function Dashboard() {
                 key={item.path}
                 to={item.path}
                 end={item.end}
+                onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) => `sidebar-item sidebar-item-v2 ${isActive ? 'sidebar-item-active' : ''}`}
               >
                 <span className="sidebar-item-icon">{item.icon}</span>

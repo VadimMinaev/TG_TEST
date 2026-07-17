@@ -483,10 +483,18 @@ table tbody tr:hover { background: hsl(var(--accent) / .45); }
 
 @media (max-width: 900px) {
   body.nav-open { overflow: hidden; }
+  body.nav-open .ai-fab,
+  body.nav-open .ai-panel { visibility: hidden; pointer-events: none; opacity: 0; }
   .app-shell-v2 { display: block; }
-  .sidebar-v2 { position: fixed; inset: 0 auto 0 0; width: min(86vw, 304px); padding: 18px 14px; transform: translateX(-102%); transition: transform .22s ease; box-shadow: var(--shadow-xl); }
+  .sidebar-v2 { position: fixed; inset: 0 auto 0 0; width: min(92vw, 348px); padding: 16px 12px max(14px, env(safe-area-inset-bottom)); transform: translateX(-102%); transition: transform .22s ease; box-shadow: var(--shadow-xl); }
   .sidebar-v2.is-open { transform: translateX(0); }
   .sidebar-close { display: grid; margin-left: auto; }
+  .sidebar-brand-v2 { padding-inline: 6px; }
+  .sidebar-nav-v2 { width: 100%; align-items: stretch; }
+  .sidebar-item-v2 { width: 100%; grid-template-columns: 36px minmax(0, 1fr); justify-items: stretch; gap: 10px; padding-inline: 9px; text-align: left; }
+  .sidebar-item-copy { width: 100%; max-width: none; align-items: stretch; text-align: left; }
+  .sidebar-item-copy strong { width: 100%; display: block; overflow: visible; text-overflow: clip; }
+  .sidebar-item-chevron { display: none; }
   .mobile-nav-backdrop { position: fixed; inset: 0; z-index: 35; display: block; visibility: hidden; border: 0; background: hsl(224 45% 4% / .55); opacity: 0; transition: opacity .2s ease, visibility .2s ease; }
   .mobile-nav-backdrop.is-visible { visibility: visible; opacity: 1; }
   .topbar-v2 { min-height: 64px; grid-template-columns: 40px minmax(80px, 1fr) 40px 40px; gap: 8px; padding: 10px 16px; }
@@ -546,6 +554,8 @@ table tbody tr:hover { background: hsl(var(--accent) / .45); }
   .poll-option-row { grid-template-columns: 26px minmax(0, 1fr) 36px; gap: 7px; }
   .poll-option-number { width: 26px; height: 26px; }
   .poll-option-row .remove-option-btn { width: 36px; min-width: 36px; height: 36px; min-height: 36px; }
+  .sidebar-section-label { margin-top: 19px; }
+  .sidebar-item-v2 { min-height: 54px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
