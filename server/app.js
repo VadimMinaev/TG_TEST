@@ -121,6 +121,7 @@ const pendingLanguageInput = new Map();
 const pendingReminderConfirmation = new Map();
 const aiBotSessions = new Map();
 const aiProviderModelsCache = new Map();
+const R_SERVICE_DEFAULT_PAGE_SIZE = 10;
 
 async function ensureUniqueAccountNames(client) {
     const result = await client.query('SELECT id, name FROM accounts ORDER BY id');
@@ -3520,7 +3521,18 @@ function pushAiBotSessionMessage(aiBotId, chatId, role, text) {
     const key = getAiBotSessionKey(aiBotId, chatId);
     const previous = aiBotSessions.get(key) || { messages: [], updatedAt: Date.now() };
     const nextMessages = [...previous.messages, { role, text: normalizedText }].slice(-30);
-    aiBotSessions.set(key, { messages: nextMessages, updatedAt: Date.now() });
+    aiBotSessions.set(key, { ...previous, messages: nextMessages, updatedAt: Date.now() });
+}
+
+function getAiBotRServiceState(aiBotId, chatId) {
+    cleanupAiBotSessions();
+    return aiBotSessions.get(getAiBotSessionKey(aiBotId, chatId))?.rService || null;
+}
+
+function setAiBotRServiceState(aiBotId, chatId, state) {
+    const key = getAiBotSessionKey(aiBotId, chatId);
+    const previous = aiBotSessions.get(key) || { messages: [], updatedAt: Date.now() };
+    aiBotSessions.set(key, { ...previous, rService: state, updatedAt: Date.now() });
 }
 
 function clearAiBotSession(aiBotId, chatId) {
@@ -4126,6 +4138,13 @@ function buildRServiceSystemInstruction(context = {}) {
 Для списка запросов формируй ТОЛЬКО один JSON-маркер:
 [[RSERVICE_QUERY:{"scope":"open","filters":[],"sort":"id","direction":"desc","limit":10}]]
 
+Для продолжения последнего списка используй:
+[[RSERVICE_PAGE:{"mode":"next"}]]
+Для показа всех результатов последнего списка используй:
+[[RSERVICE_PAGE:{"mode":"all"}]]
+PAGE используй только для продолжения уже выполненного запроса. Не восстанавливай его фильтры по тексту ответа — сервер хранит исходный запрос сам.
+Сейчас сохранённый предыдущий список: ${context.hasPreviousQuery ? 'есть' : 'нет'}.
+
 scope: all, open, completed, assigned_to_me, assigned_to_my_team, requested_by_or_for_me, waiting_for_me, sla_accountability.
 filters — массив объектов {"field":"...","operator":"...","value":...}.
 Допустимые field: id, source, sourceID, subject, category, impact, status, workflow, next_target_at, completed_at, created_by, grouping, grouped_into, knowledge_article, requested_by, requested_for, service_instance, supplier_requestID, created_at, updated_at, team, member, template, major_incident_status, organization, response_target_at, resolution_target_at, desired_completion_at, urgent, assignment_count.
@@ -4204,11 +4223,12 @@ function rServiceOperatorValue(operator, value) {
 
 async function executeRServiceQuery(config, rawQuery = {}) {
     const scope = R_SERVICE_SCOPES.has(rawQuery.scope) ? rawQuery.scope : 'open';
-    const limit = Math.min(20, Math.max(1, Number(rawQuery.limit) || 10));
+    const limit = Math.min(100, Math.max(1, Number(rawQuery.limit) || R_SERVICE_DEFAULT_PAGE_SIZE));
+    const offset = Math.min(10000, Math.max(0, Number(rawQuery.offset) || 0));
     const filters = Array.isArray(rawQuery.filters) ? rawQuery.filters.slice(0, 12) : [];
     const params = {
         fields: 'id,sourceID,subject,category,impact,status,next_target_at,response_target_at,resolution_target_at,desired_completion_at,completed_at,created_by,requested_by,requested_for,workflow,grouped_into,knowledge_article,team,member,service_instance,template,organization,urgent,assignment_count,reopen_count,created_at,updated_at',
-        per_page: limit
+        per_page: 100
     };
     if (R_SERVICE_SORT_FIELDS.has(rawQuery.sort)) {
         params.sort = `${rawQuery.direction === 'asc' ? '' : '-'}${rawQuery.sort}`;
@@ -4266,32 +4286,28 @@ async function executeRServiceQuery(config, rawQuery = {}) {
     else if (scope !== 'all') endpoint = `/requests/${scope}`;
     let requests = [];
     let total = 0;
-    if (postFilters.length === 0) {
-        const response = await callRService(config, endpoint, params, true);
-        requests = Array.isArray(response.data) ? response.data : [];
-        total = Number(response.headers?.['x-pagination-total-entries']) || requests.length;
-    } else {
-        let searchAfter = '';
-        const seenCursors = new Set();
-        const seenRequestIds = new Set();
-        for (let page = 0; page < 100; page += 1) {
-            const pageParams = { ...params, ...(searchAfter ? { search_after: searchAfter } : {}) };
-            const response = await callRService(config, endpoint, pageParams, true);
-            const pageItems = Array.isArray(response.data) ? response.data : [];
-            for (const item of pageItems) {
-                if (seenRequestIds.has(item.id)) continue;
-                seenRequestIds.add(item.id);
-                requests.push(item);
-            }
-            const link = String(response.headers?.link || '');
-            const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
-            if (!nextMatch || pageItems.length === 0) break;
-            const nextUrl = new URL(nextMatch[1]);
-            if (!nextUrl.href.startsWith(`${String(config.api_base_url).replace(/\/+$/, '')}/`)) break;
-            searchAfter = String(nextUrl.searchParams.get('search_after') || '');
-            if (!searchAfter || seenCursors.has(searchAfter)) break;
-            seenCursors.add(searchAfter);
+    let searchAfter = '';
+    const seenCursors = new Set();
+    const seenRequestIds = new Set();
+    for (let page = 0; page < 100; page += 1) {
+        const pageParams = { ...params, ...(searchAfter ? { search_after: searchAfter } : {}) };
+        const response = await callRService(config, endpoint, pageParams, true);
+        const pageItems = Array.isArray(response.data) ? response.data : [];
+        if (page === 0) total = Number(response.headers?.['x-pagination-total-entries']) || pageItems.length;
+        for (const item of pageItems) {
+            if (seenRequestIds.has(item.id)) continue;
+            seenRequestIds.add(item.id);
+            requests.push(item);
         }
+        if (postFilters.length === 0 && requests.length >= offset + limit) break;
+        const link = String(response.headers?.link || '');
+        const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
+        if (!nextMatch || pageItems.length === 0) break;
+        const nextUrl = new URL(nextMatch[1]);
+        if (!nextUrl.href.startsWith(`${String(config.api_base_url).replace(/\/+$/, '')}/`)) break;
+        searchAfter = String(nextUrl.searchParams.get('search_after') || '');
+        if (!searchAfter || seenCursors.has(searchAfter)) break;
+        seenCursors.add(searchAfter);
     }
     requests = applyLocalFilters(requests, postFilters);
     if (postFilters.length > 0) total = requests.length;
@@ -4301,7 +4317,7 @@ async function executeRServiceQuery(config, rawQuery = {}) {
             requests.sort((a, b) => new Date(a?.[deadlineFilter.field]).getTime() - new Date(b?.[deadlineFilter.field]).getTime());
         }
     }
-    return { items: requests.slice(0, limit), total };
+    return { items: requests.slice(offset, offset + limit), total, offset, limit };
 }
 
 const R_SERVICE_STATUS_LABELS = {
@@ -4318,19 +4334,47 @@ function formatRServiceDate(value) {
     return date.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function formatRServiceRequests(requests, config, total = requests.length) {
-    if (!requests.length) return 'По заданным условиям запросов не найдено.';
-    const countText = total > requests.length ? `показано ${requests.length} из ${total}` : String(total);
-    const lines = [`<b>Запросы R-Service: ${countText}</b>`];
-    for (const item of requests) {
+function formatRServiceRequests(requests, config, total = requests.length, offset = 0) {
+    return formatRServiceRequestChunks(requests, config, total, offset)[0];
+}
+
+function formatRServiceRequestChunks(requests, config, total = requests.length, offset = 0) {
+    if (!requests.length) {
+        return [offset > 0
+            ? `Больше запросов нет. Всего найдено: ${total}.`
+            : 'По заданным условиям запросов не найдено.'];
+    }
+    const blocks = requests.map(item => {
         const link = `${String(config.portal_url).replace(/\/+$/, '')}/requests/${item.id}`;
-        lines.push('', `<b><a href="${escapeTelegramHtml(link)}">#${item.id}</a> ${escapeTelegramHtml(item.subject || 'Без темы')}</b>`);
+        const lines = [`<b><a href="${escapeTelegramHtml(link)}">#${item.id}</a> ${escapeTelegramHtml(item.subject || 'Без темы')}</b>`];
         lines.push(`Статус: ${escapeTelegramHtml(R_SERVICE_STATUS_LABELS[item.status] || item.status || '—')}`);
+        lines.push(`Создано: ${escapeTelegramHtml(formatRServiceDate(item.created_at))}`);
+        lines.push(`Инициатор: ${escapeTelegramHtml(item.requested_by?.name || '—')}`);
+        lines.push(`Запрошено для: ${escapeTelegramHtml(item.requested_for?.name || '—')}`);
         if (item.member?.name || item.team?.name) lines.push(`Исполнитель: ${escapeTelegramHtml(item.member?.name || '—')} · ${escapeTelegramHtml(item.team?.name || '—')}`);
         const target = item.next_target_at || item.resolution_target_at || item.response_target_at;
         if (target) lines.push(`Ближайшая цель: ${escapeTelegramHtml(formatRServiceDate(target))}`);
+        return lines.join('\n');
+    });
+    const chunks = [];
+    let currentBlocks = [];
+    let currentStart = offset;
+    const flush = () => {
+        if (!currentBlocks.length) return;
+        const end = currentStart + currentBlocks.length;
+        const range = total > 1 ? `${currentStart + 1}–${end} из ${total}` : '1';
+        chunks.push(`<b>Запросы R-Service: ${range}</b>\n\n${currentBlocks.join('\n\n')}`);
+        currentStart = end;
+        currentBlocks = [];
+    };
+    for (const block of blocks) {
+        const headerReserve = 100;
+        const currentLength = currentBlocks.join('\n\n').length;
+        if (currentBlocks.length && currentLength + block.length + headerReserve > 3700) flush();
+        currentBlocks.push(block.slice(0, 3500));
     }
-    return lines.join('\n').slice(0, 3900);
+    flush();
+    return chunks;
 }
 
 function formatRServiceRequest(item, config) {
@@ -4341,6 +4385,8 @@ function formatRServiceRequest(item, config) {
         '',
         `Статус: ${escapeTelegramHtml(R_SERVICE_STATUS_LABELS[item.status] || item.status || '—')}`,
         `Категория: ${escapeTelegramHtml(item.category || '—')}`,
+        `Инициатор: ${escapeTelegramHtml(item.requested_by?.name || '—')}`,
+        `Запрошено для: ${escapeTelegramHtml(item.requested_for?.name || '—')}`,
         `Исполнитель: ${escapeTelegramHtml(item.member?.name || '—')}`,
         `Команда: ${escapeTelegramHtml(item.team?.name || '—')}`,
         `Срок ответа: ${escapeTelegramHtml(formatRServiceDate(item.response_target_at))}`,
@@ -5393,9 +5439,11 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             activeReminders
         };
         const rServiceConfig = await getRServiceConfig(aiBot.account_id);
+        const previousRServiceState = getAiBotRServiceState(aiBot.id, chatId);
         const rServiceContext = {
             configured: Boolean(rServiceConfig?.access_token),
-            userName: rServiceConfig?.remote_user_name || ''
+            userName: rServiceConfig?.remote_user_name || '',
+            hasPreviousQuery: Boolean(previousRServiceState)
         };
 
         if (!hasVoice && !hasPhoto && telegramUser && isAiReminderListIntent(text)) {
@@ -5481,13 +5529,40 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
                         const request = await callRService(rServiceConfig, `/requests/${rServiceAction.id}`);
                         responseText = formatRServiceRequest(request, rServiceConfig);
                     } else {
-                        const query = rServiceAction.type === 'assigned'
-                            ? { scope: 'assigned_to_me', limit: rServiceAction.limit }
-                            : rServiceAction.query;
+                        let query;
+                        let baseQuery;
+                        if (rServiceAction.type === 'page') {
+                            const state = getAiBotRServiceState(aiBot.id, chatId);
+                            if (!state?.query) throw new Error('Сначала запросите список R-Service, который нужно продолжить');
+                            baseQuery = state.query;
+                            query = {
+                                ...baseQuery,
+                                offset: rServiceAction.mode === 'all' ? 0 : state.nextOffset,
+                                limit: rServiceAction.mode === 'all'
+                                    ? Math.min(100, Math.max(1, state.total || 100))
+                                    : state.pageSize
+                            };
+                        } else {
+                            baseQuery = rServiceAction.type === 'assigned'
+                                ? { scope: 'assigned_to_me', limit: rServiceAction.limit }
+                                : rServiceAction.query;
+                            query = baseQuery;
+                        }
                         const result = await executeRServiceQuery(rServiceConfig, query);
-                        responseText = formatRServiceRequests(result.items, rServiceConfig, result.total);
+                        const pageSize = rServiceAction.type === 'page'
+                            ? (previousRServiceState?.pageSize || R_SERVICE_DEFAULT_PAGE_SIZE)
+                            : Math.min(100, Math.max(1, Number(baseQuery.limit) || R_SERVICE_DEFAULT_PAGE_SIZE));
+                        setAiBotRServiceState(aiBot.id, chatId, {
+                            query: { ...baseQuery, offset: undefined },
+                            pageSize,
+                            nextOffset: result.offset + result.items.length,
+                            total: result.total
+                        });
+                        const responseChunks = formatRServiceRequestChunks(result.items, rServiceConfig, result.total, result.offset);
+                        for (const chunk of responseChunks) await sendTelegramMessage(aiBot.telegramBotToken, chatId, chunk);
+                        responseText = responseChunks.join('\n\n');
                     }
-                    await sendTelegramMessage(aiBot.telegramBotToken, chatId, responseText);
+                    if (rServiceAction.type === 'request') await sendTelegramMessage(aiBot.telegramBotToken, chatId, responseText);
                     directResponseSent = true;
                     assistantSessionText = responseText.replace(/<[^>]+>/g, '');
                 } catch (rServiceError) {

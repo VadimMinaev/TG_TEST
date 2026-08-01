@@ -25,3 +25,12 @@ test('parses a structured free-form query without interpreting its values', () =
     const query = { scope: 'open', filters: [{ field: 'team', operator: 'eq', value: 'Service Desk' }], limit: 5 };
     assert.deepEqual(parseRServiceActions(`[[RSERVICE_QUERY:${JSON.stringify(query)}]]`), [{ type: 'query', query }]);
 });
+
+test('parses pagination commands for the previous R-Service query', () => {
+    assert.deepEqual(parseRServiceActions('[[RSERVICE_PAGE:{"mode":"next"}]]'), [
+        { type: 'page', mode: 'next' }
+    ]);
+    assert.deepEqual(parseRServiceActions('[[RSERVICE_PAGE:{"mode":"all"}]]'), [
+        { type: 'page', mode: 'all' }
+    ]);
+});

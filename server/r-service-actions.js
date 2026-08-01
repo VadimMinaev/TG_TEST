@@ -1,6 +1,6 @@
 'use strict';
 
-const MARKER_RE = /\[\[RSERVICE_(ASSIGNED_REQUESTS|REQUEST|QUERY):([\s\S]*?)\]\]/g;
+const MARKER_RE = /\[\[RSERVICE_(ASSIGNED_REQUESTS|REQUEST|QUERY|PAGE):([\s\S]*?)\]\]/g;
 
 function parseRServiceActions(text) {
     const actions = [];
@@ -15,6 +15,9 @@ function parseRServiceActions(text) {
             } else if (match[1] === 'REQUEST') {
                 const id = Number(payload.id);
                 if (Number.isInteger(id) && id > 0) actions.push({ type: 'request', id });
+            } else if (match[1] === 'PAGE') {
+                const mode = payload.mode === 'all' ? 'all' : payload.mode === 'next' ? 'next' : '';
+                if (mode) actions.push({ type: 'page', mode });
             } else if (payload && typeof payload === 'object') {
                 actions.push({ type: 'query', query: payload });
             }
