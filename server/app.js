@@ -7,6 +7,7 @@ const FormData = require('form-data');
 const { parseReminderActions, stripReminderMarkers } = require('./ai-reminder-actions');
 const { parseRServiceActions, stripRServiceMarkers } = require('./r-service-actions');
 const { findBestReferenceMatches } = require('./r-service-reference-match');
+const { canonicalizeRServiceField } = require('./r-service-query-normalization');
 require('dotenv').config();
 
 const app = express();
@@ -4128,7 +4129,7 @@ filters — массив объектов {"field":"...","operator":"...","value
 Допустимые field: id, source, sourceID, subject, category, impact, status, workflow, next_target_at, completed_at, created_by, grouping, grouped_into, knowledge_article, requested_by, requested_for, service_instance, supplier_requestID, created_at, updated_at, team, member, template, major_incident_status, organization, response_target_at, resolution_target_at, desired_completion_at, urgent.
 operator: eq, neq, in, not_in, lt, lte, gt, gte, between, present, empty, within.
 Для member/team и других ссылок передавай в value имя человека/команды в именительном падеже либо числовой ID — сервер сам найдёт ID. «Исполнитель» означает member, «команда» — team, «инициатор/кто подал» — requested_by, «для кого/получатель» — requested_for. «Я», «мне», «мои» и имя «${userName}» означают scope=assigned_to_me без фильтра member.
-Для сроков «осталось меньше N часов/дней» используй operator=within и value в МИНУТАХ. Например срок реакции менее суток: {"field":"response_target_at","operator":"within","value":1440}. Срок решения: resolution_target_at. Общая ближайшая цель: next_target_at.
+Для сроков «осталось меньше N часов/дней» используй operator=within и value в МИНУТАХ. Например срок реакции менее суток: {"field":"response_target_at","operator":"within","value":1440}. Явно сказанный срок решения: resolution_target_at. Общий «ближайший срок», «срок подходит», «горит» без уточнения вида SLA: next_target_at. Названия полей копируй точно, со знаками подчёркивания и суффиксом _at.
 Не привязывайся к конкретным фразам пользователя: извлекай смысл, свойства, операторы и значения. Если имя или условие неоднозначно — задай уточняющий вопрос без маркера.
 
 Для одного запроса по известному номеру:
@@ -4214,7 +4215,7 @@ async function executeRServiceQuery(config, rawQuery = {}) {
     const now = new Date();
 
     for (const filter of filters) {
-        const field = String(filter?.field || '');
+        const field = canonicalizeRServiceField(filter?.field);
         const operator = String(filter?.operator || 'eq');
         if (!R_SERVICE_FILTER_FIELDS.has(field)) throw new Error(`Фильтр ${field} не разрешён для запросов`);
         if (operator === 'within') {

@@ -1,4 +1,4 @@
-import{r as a,j as e,b as d}from"./index-dUAGJWFA.js";import{A as h}from"./AIFieldAssist-D-44eIs3.js";import"./ai-assistant-context-BkqKgkUJ.js";function C(){const[l,m]=a.useState('payload.category === "incident"'),[r,u]=a.useState(`{
+import{r as a,j as e,b as d}from"./index-lG4P6eBf.js";import{A as h}from"./AIFieldAssist-CRaapF7L.js";import"./ai-assistant-context-CjHFUL_O.js";function C(){const[l,m]=a.useState('payload.category === "incident"'),[r,u]=a.useState(`{
   "team_id": 40,
   "category": "incident",
   "impact": "medium",
