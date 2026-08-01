@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const FormData = require('form-data');
 const { parseReminderActions, stripReminderMarkers } = require('./ai-reminder-actions');
 const { parseRServiceActions, stripRServiceMarkers } = require('./r-service-actions');
+const { parseSimpleRServiceCountIntent } = require('./r-service-count-intent');
 const { findBestReferenceMatches } = require('./r-service-reference-match');
 const { canonicalizeRServiceField, normalizeRServiceFilterValue } = require('./r-service-query-normalization');
 const { applyLocalFilters } = require('./r-service-local-filter');
@@ -5514,7 +5515,7 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         });
         let aiText = String(aiResponse?.text || '');
         const reminderAction = parseReminderActions(aiText)[0] || null;
-        const rServiceAction = parseRServiceActions(aiText)[0] || null;
+        const rServiceAction = parseSimpleRServiceCountIntent(text) || parseRServiceActions(aiText)[0] || null;
         let directResponseSent = false;
         let assistantSessionText = '';
         console.log('[AI Bot] Reminder action:', reminderAction?.type || 'none', 'in text length:', aiText.length);

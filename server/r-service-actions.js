@@ -4,7 +4,7 @@ const MARKER_RE = /\[\[RSERVICE_(ASSIGNED_REQUESTS|REQUEST|QUERY|PAGE|COUNT):([\
 
 function parseRServiceActions(text) {
     const actions = [];
-    const source = String(text || '');
+    const source = String(text || '').replace(/[\u200B-\u200D\u2060\uFEFF]/g, '');
     let match;
     while ((match = MARKER_RE.exec(source)) !== null) {
         try {
@@ -32,7 +32,11 @@ function parseRServiceActions(text) {
 }
 
 function stripRServiceMarkers(text) {
-    return String(text || '').replace(MARKER_RE, '').trim();
+    return String(text || '')
+        .replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+        .replace(MARKER_RE, '')
+        .replace(/\[\[\s*RSERVICE_[A-Z_]+\s*:[\s\S]*?\]\]/gi, '')
+        .trim();
 }
 
 module.exports = { parseRServiceActions, stripRServiceMarkers };

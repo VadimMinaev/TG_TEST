@@ -1,6 +1,6 @@
-import{c as o}from"./index-BqlTogDj.js";/**
+import{c as e}from"./index-DqXL6cjM.js";/**
  * @license lucide-react v0.487.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
- */const c=[["polygon",{points:"6 3 20 12 6 21 6 3",key:"1oa8hb"}]],e=o("play",c);export{e as P};
+ */const o=[["path",{d:"m15 18-6-6 6-6",key:"1wnfg3"}]],t=e("chevron-left",o);export{t as C};

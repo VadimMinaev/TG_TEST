@@ -45,3 +45,11 @@ test('parses one or more exact count queries', () => {
         { type: 'count', queries }
     ]);
 });
+
+test('accepts and strips invisible Unicode inside an R-Service marker', () => {
+    const marker = '[[RSERVICE_\u200bCOUNT:{"queries":[{"scope":"open","filters":[]}]}]]';
+    assert.deepEqual(parseRServiceActions(marker), [
+        { type: 'count', queries: [{ scope: 'open', filters: [] }] }
+    ]);
+    assert.equal(stripRServiceMarkers(`${marker}\nслужебный текст`), 'служебный текст');
+});
