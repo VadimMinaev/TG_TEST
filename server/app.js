@@ -6,7 +6,7 @@ const bcrypt = require('bcrypt');
 const FormData = require('form-data');
 const { parseReminderActions, stripReminderMarkers } = require('./ai-reminder-actions');
 const { parseRServiceActions, stripRServiceMarkers } = require('./r-service-actions');
-const { parseSimpleRServiceCountIntent } = require('./r-service-count-intent');
+const { parseSimpleRServiceCountIntent, parseSimpleRServiceCountFollowUp } = require('./r-service-count-intent');
 const { findBestReferenceMatches } = require('./r-service-reference-match');
 const { canonicalizeRServiceField, normalizeRServiceFilterValue } = require('./r-service-query-normalization');
 const { applyLocalFilters } = require('./r-service-local-filter');
@@ -3536,6 +3536,17 @@ function setAiBotRServiceState(aiBotId, chatId, state) {
     aiBotSessions.set(key, { ...previous, rService: state, updatedAt: Date.now() });
 }
 
+function getAiBotRServiceCountState(aiBotId, chatId) {
+    cleanupAiBotSessions();
+    return aiBotSessions.get(getAiBotSessionKey(aiBotId, chatId))?.rServiceCount || null;
+}
+
+function setAiBotRServiceCountState(aiBotId, chatId, action) {
+    const key = getAiBotSessionKey(aiBotId, chatId);
+    const previous = aiBotSessions.get(key) || { messages: [], updatedAt: Date.now() };
+    aiBotSessions.set(key, { ...previous, rServiceCount: action, updatedAt: Date.now() });
+}
+
 function clearAiBotSession(aiBotId, chatId) {
     aiBotSessions.delete(getAiBotSessionKey(aiBotId, chatId));
 }
@@ -4166,6 +4177,41 @@ operator: eq, neq, in, not_in, lt, lte, gt, gte, between, present, empty, within
 После любого R-Service маркера не пиши предполагаемые результаты.`;
 }
 
+function parseLooseRServiceCountAction(text) {
+    const source = String(text || '').replace(/[\u200B-\u200D\u2060\uFEFF]/g, '');
+    const markerIndex = source.indexOf('RSERVICE_COUNT:');
+    if (markerIndex < 0) return null;
+    const jsonStart = source.indexOf('{', markerIndex);
+    if (jsonStart < 0) return null;
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let index = jsonStart; index < source.length; index += 1) {
+        const char = source[index];
+        if (inString) {
+            if (escaped) escaped = false;
+            else if (char === '\\') escaped = true;
+            else if (char === '"') inString = false;
+            continue;
+        }
+        if (char === '"') inString = true;
+        else if (char === '{') depth += 1;
+        else if (char === '}') {
+            depth -= 1;
+            if (depth === 0) {
+                try {
+                    const payload = JSON.parse(source.slice(jsonStart, index + 1));
+                    const queries = Array.isArray(payload.queries) ? payload.queries.slice(0, 5) : [];
+                    return queries.length ? { type: 'count', queries } : null;
+                } catch (_) {
+                    return null;
+                }
+            }
+        }
+    }
+    return null;
+}
+
 async function resolveRServiceReference(config, field, value) {
     const numericId = Number(value);
     if (Number.isInteger(numericId) && numericId > 0) return numericId;
@@ -4255,7 +4301,7 @@ async function executeRServiceQuery(config, rawQuery = {}) {
             if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 525600) throw new Error('Некорректный период для срока');
             const end = new Date(now.getTime() + minutes * 60000);
             if (field === 'next_target_at') {
-                params[field] = `>=${now.toISOString()}<=${end.toISOString()}`;
+                params[field] = `>=${now.toISOString()}<${end.toISOString()}`;
             } else if (['response_target_at', 'resolution_target_at', 'desired_completion_at'].includes(field)) {
                 postFilters.push({ kind: 'deadline', field, operator, start: now, end });
                 params.per_page = 100;
@@ -4265,6 +4311,13 @@ async function executeRServiceQuery(config, rawQuery = {}) {
             continue;
         }
         let value = normalizeRServiceFilterValue(field, filter.value);
+        if (field === 'next_target_at' && ['eq', 'lt', 'lte'].includes(operator)) {
+            const end = new Date(value);
+            if (Number.isFinite(end.getTime()) && end > now) {
+                params[field] = `>=${now.toISOString()}<${end.toISOString()}`;
+                continue;
+            }
+        }
         let paramName = field;
         if (!R_SERVICE_API_FILTER_FIELDS.has(field)) {
             postFilters.push({ kind: R_SERVICE_REFERENCE_FIELDS.has(field) ? 'reference' : 'scalar', field, operator, value });
@@ -4367,6 +4420,20 @@ function formatRServiceCounts(results) {
         return `${label}: <b>${Number(total) || 0}</b>`;
     });
     return lines.length === 1 ? `${lines[0]}.` : `<b>Количество запросов R-Service</b>\n${lines.join('\n')}`;
+}
+
+async function executeRServiceCountAction(config, action) {
+    return Promise.all(action.queries.map(async rawQuery => {
+        const filters = Array.isArray(rawQuery.filters) ? rawQuery.filters.map(filter => {
+            if (filter?.value !== '__SELF__') return filter;
+            const selfValue = config.remote_user_id || config.remote_user_name;
+            if (!selfValue) throw new Error('R-Service не вернул ID текущего пользователя');
+            return { ...filter, value: selfValue };
+        }) : [];
+        const query = { ...rawQuery, filters, countOnly: true, limit: 1, offset: 0 };
+        const result = await executeRServiceQuery(config, query);
+        return { query, total: result.total };
+    }));
 }
 
 function formatRServiceRequestChunks(requests, config, total = requests.length, offset = 0) {
@@ -5477,6 +5544,26 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             hasPreviousQuery: Boolean(previousRServiceState)
         };
 
+        const directRServiceCountAction = !hasVoice && !hasPhoto
+            ? (parseSimpleRServiceCountIntent(text)
+                || parseSimpleRServiceCountFollowUp(text, getAiBotRServiceCountState(aiBot.id, chatId)))
+            : null;
+        if (directRServiceCountAction) {
+            let responseText;
+            try {
+                if (!rServiceConfig) throw new Error('R-Service ещё не подключён');
+                const countResults = await executeRServiceCountAction(rServiceConfig, directRServiceCountAction);
+                responseText = formatRServiceCounts(countResults);
+                setAiBotRServiceCountState(aiBot.id, chatId, directRServiceCountAction);
+            } catch (error) {
+                responseText = `Не удалось выполнить запрос к R-Service: ${error.message}`;
+            }
+            await sendTelegramMessage(aiBot.telegramBotToken, chatId, responseText);
+            pushAiBotSessionMessage(aiBot.id, chatId, 'user', text);
+            pushAiBotSessionMessage(aiBot.id, chatId, 'assistant', responseText.replace(/<[^>]+>/g, ''));
+            return res.json({ ok: true });
+        }
+
         if (!hasVoice && !hasPhoto && telegramUser && isAiReminderListIntent(text)) {
             const listResult = await sendAiReminderList(aiBot.telegramBotToken, chatId, telegramUser);
             pushAiBotSessionMessage(aiBot.id, chatId, 'user', text);
@@ -5515,7 +5602,9 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         });
         let aiText = String(aiResponse?.text || '');
         const reminderAction = parseReminderActions(aiText)[0] || null;
-        const rServiceAction = parseSimpleRServiceCountIntent(text) || parseRServiceActions(aiText)[0] || null;
+        const rServiceAction = parseRServiceActions(aiText)[0]
+            || parseLooseRServiceCountAction(aiText)
+            || null;
         let directResponseSent = false;
         let assistantSessionText = '';
         console.log('[AI Bot] Reminder action:', reminderAction?.type || 'none', 'in text length:', aiText.length);
@@ -5557,12 +5646,9 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
                 try {
                     let responseText;
                     if (rServiceAction.type === 'count') {
-                        const countResults = await Promise.all(rServiceAction.queries.map(async rawQuery => {
-                            const query = { ...rawQuery, countOnly: true, limit: 1, offset: 0 };
-                            const result = await executeRServiceQuery(rServiceConfig, query);
-                            return { query, total: result.total };
-                        }));
+                        const countResults = await executeRServiceCountAction(rServiceConfig, rServiceAction);
                         responseText = formatRServiceCounts(countResults);
+                        setAiBotRServiceCountState(aiBot.id, chatId, rServiceAction);
                     } else if (rServiceAction.type === 'request') {
                         const request = await callRService(rServiceConfig, `/requests/${rServiceAction.id}`);
                         responseText = formatRServiceRequest(request, rServiceConfig);
