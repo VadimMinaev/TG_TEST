@@ -1,6 +1,6 @@
 'use strict';
 
-const MARKER_RE = /\[\[RSERVICE_(ASSIGNED_REQUESTS|REQUEST|QUERY|PAGE):([\s\S]*?)\]\]/g;
+const MARKER_RE = /\[\[RSERVICE_(ASSIGNED_REQUESTS|REQUEST|QUERY|PAGE|COUNT):([\s\S]*?)\]\]/g;
 
 function parseRServiceActions(text) {
     const actions = [];
@@ -18,6 +18,9 @@ function parseRServiceActions(text) {
             } else if (match[1] === 'PAGE') {
                 const mode = payload.mode === 'all' ? 'all' : payload.mode === 'next' ? 'next' : '';
                 if (mode) actions.push({ type: 'page', mode });
+            } else if (match[1] === 'COUNT') {
+                const queries = Array.isArray(payload.queries) ? payload.queries.slice(0, 5) : [];
+                if (queries.length) actions.push({ type: 'count', queries });
             } else if (payload && typeof payload === 'object') {
                 actions.push({ type: 'query', query: payload });
             }

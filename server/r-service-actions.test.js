@@ -34,3 +34,14 @@ test('parses pagination commands for the previous R-Service query', () => {
         { type: 'page', mode: 'all' }
     ]);
 });
+
+test('parses one or more exact count queries', () => {
+    const queries = [
+        { scope: 'all', filters: [] },
+        { scope: 'open', filters: [] },
+        { scope: 'completed', filters: [] }
+    ];
+    assert.deepEqual(parseRServiceActions(`[[RSERVICE_COUNT:${JSON.stringify({ queries })}]]`), [
+        { type: 'count', queries }
+    ]);
+});

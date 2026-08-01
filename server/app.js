@@ -7,7 +7,7 @@ const FormData = require('form-data');
 const { parseReminderActions, stripReminderMarkers } = require('./ai-reminder-actions');
 const { parseRServiceActions, stripRServiceMarkers } = require('./r-service-actions');
 const { findBestReferenceMatches } = require('./r-service-reference-match');
-const { canonicalizeRServiceField } = require('./r-service-query-normalization');
+const { canonicalizeRServiceField, normalizeRServiceFilterValue } = require('./r-service-query-normalization');
 const { applyLocalFilters } = require('./r-service-local-filter');
 require('dotenv').config();
 
@@ -4138,6 +4138,12 @@ function buildRServiceSystemInstruction(context = {}) {
 Для списка запросов формируй ТОЛЬКО один JSON-маркер:
 [[RSERVICE_QUERY:{"scope":"open","filters":[],"sort":"id","direction":"desc","limit":10}]]
 
+Если пользователь спрашивает СКОЛЬКО запросов, не запрашивай карточки через QUERY. Верни COUNT:
+[[RSERVICE_COUNT:{"queries":[{"scope":"open","filters":[]}]}]]
+Для вопроса «сколько всего, открытых и завершённых» запроси все три точных значения:
+[[RSERVICE_COUNT:{"queries":[{"scope":"all","filters":[]},{"scope":"open","filters":[]},{"scope":"completed","filters":[]}]}]]
+Каждый элемент COUNT поддерживает те же filters, что QUERY. Не вычисляй количество сам и не пиши ответ рядом с маркером — сервер возьмёт totals из R-Service.
+
 Для продолжения последнего списка используй:
 [[RSERVICE_PAGE:{"mode":"next"}]]
 Для показа всех результатов последнего списка используй:
@@ -4149,6 +4155,7 @@ scope: all, open, completed, assigned_to_me, assigned_to_my_team, requested_by_o
 filters — массив объектов {"field":"...","operator":"...","value":...}.
 Допустимые field: id, source, sourceID, subject, category, impact, status, workflow, next_target_at, completed_at, created_by, grouping, grouped_into, knowledge_article, requested_by, requested_for, service_instance, supplier_requestID, created_at, updated_at, team, member, template, major_incident_status, organization, response_target_at, resolution_target_at, desired_completion_at, urgent, assignment_count.
 operator: eq, neq, in, not_in, lt, lte, gt, gte, between, present, empty, within.
+Для status передавай только API-ключи: declined, on_backlog, assigned, accepted, in_progress, waiting_for, waiting_for_customer, reservation_pending, workflow_pending, project_pending, completed. Для завершённых запросов предпочитай scope=completed, а не текстовый фильтр status.
 Для member/team и других ссылок передавай в value имя человека/команды в именительном падеже либо числовой ID — сервер сам найдёт ID. «Исполнитель» означает member, «команда» — team, «инициатор/кто подал» — requested_by, «для кого/получатель» — requested_for. «Я», «мне», «мои» и имя «${userName}» означают scope=assigned_to_me без фильтра member.
 Для сроков «осталось меньше N часов/дней» используй operator=within и value в МИНУТАХ. Например срок реакции менее суток: {"field":"response_target_at","operator":"within","value":1440}. Явно сказанный срок решения: resolution_target_at. Общий «ближайший срок», «срок подходит», «горит» без уточнения вида SLA: next_target_at. Названия полей копируй точно, со знаками подчёркивания и суффиксом _at.
 Не привязывайся к конкретным фразам пользователя: извлекай смысл, свойства, операторы и значения. Если имя или условие неоднозначно — задай уточняющий вопрос без маркера.
@@ -4222,13 +4229,15 @@ function rServiceOperatorValue(operator, value) {
 }
 
 async function executeRServiceQuery(config, rawQuery = {}) {
-    const scope = R_SERVICE_SCOPES.has(rawQuery.scope) ? rawQuery.scope : 'open';
-    const limit = Math.min(100, Math.max(1, Number(rawQuery.limit) || R_SERVICE_DEFAULT_PAGE_SIZE));
+    let scope = R_SERVICE_SCOPES.has(rawQuery.scope) ? rawQuery.scope : 'open';
+    const limit = rawQuery.countOnly
+        ? 1
+        : Math.min(100, Math.max(1, Number(rawQuery.limit) || R_SERVICE_DEFAULT_PAGE_SIZE));
     const offset = Math.min(10000, Math.max(0, Number(rawQuery.offset) || 0));
     const filters = Array.isArray(rawQuery.filters) ? rawQuery.filters.slice(0, 12) : [];
     const params = {
         fields: 'id,sourceID,subject,category,impact,status,next_target_at,response_target_at,resolution_target_at,desired_completion_at,completed_at,created_by,requested_by,requested_for,workflow,grouped_into,knowledge_article,team,member,service_instance,template,organization,urgent,assignment_count,reopen_count,created_at,updated_at',
-        per_page: 100
+        per_page: rawQuery.countOnly ? 1 : 100
     };
     if (R_SERVICE_SORT_FIELDS.has(rawQuery.sort)) {
         params.sort = `${rawQuery.direction === 'asc' ? '' : '-'}${rawQuery.sort}`;
@@ -4254,7 +4263,7 @@ async function executeRServiceQuery(config, rawQuery = {}) {
             }
             continue;
         }
-        let value = filter.value;
+        let value = normalizeRServiceFilterValue(field, filter.value);
         let paramName = field;
         if (!R_SERVICE_API_FILTER_FIELDS.has(field)) {
             postFilters.push({ kind: R_SERVICE_REFERENCE_FIELDS.has(field) ? 'reference' : 'scalar', field, operator, value });
@@ -4280,6 +4289,8 @@ async function executeRServiceQuery(config, rawQuery = {}) {
         }
         params[paramName] = rServiceOperatorValue(operator, value);
     }
+
+    if (scope === 'open' && params.status === 'completed') scope = 'completed';
 
     let endpoint = '/requests';
     if (scope === 'open' || scope === 'completed') params.state = scope;
@@ -4336,6 +4347,25 @@ function formatRServiceDate(value) {
 
 function formatRServiceRequests(requests, config, total = requests.length, offset = 0) {
     return formatRServiceRequestChunks(requests, config, total, offset)[0];
+}
+
+function formatRServiceCounts(results) {
+    const labels = {
+        all: 'Всего запросов',
+        open: 'Открытых запросов',
+        completed: 'Завершённых запросов',
+        assigned_to_me: 'Назначенных на меня запросов',
+        assigned_to_my_team: 'Назначенных на мои команды запросов',
+        requested_by_or_for_me: 'Запрошенных мной или для меня запросов',
+        waiting_for_me: 'Ожидающих меня запросов',
+        sla_accountability: 'Запросов под ответственностью SLA'
+    };
+    const lines = results.map(({ query, total }) => {
+        const hasFilters = Array.isArray(query.filters) && query.filters.length > 0;
+        const label = hasFilters ? `${labels[query.scope] || 'Запросов'} по заданным условиям` : (labels[query.scope] || 'Запросов');
+        return `${label}: <b>${Number(total) || 0}</b>`;
+    });
+    return lines.length === 1 ? `${lines[0]}.` : `<b>Количество запросов R-Service</b>\n${lines.join('\n')}`;
 }
 
 function formatRServiceRequestChunks(requests, config, total = requests.length, offset = 0) {
@@ -5525,7 +5555,14 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             } else {
                 try {
                     let responseText;
-                    if (rServiceAction.type === 'request') {
+                    if (rServiceAction.type === 'count') {
+                        const countResults = await Promise.all(rServiceAction.queries.map(async rawQuery => {
+                            const query = { ...rawQuery, countOnly: true, limit: 1, offset: 0 };
+                            const result = await executeRServiceQuery(rServiceConfig, query);
+                            return { query, total: result.total };
+                        }));
+                        responseText = formatRServiceCounts(countResults);
+                    } else if (rServiceAction.type === 'request') {
                         const request = await callRService(rServiceConfig, `/requests/${rServiceAction.id}`);
                         responseText = formatRServiceRequest(request, rServiceConfig);
                     } else {
@@ -5562,7 +5599,9 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
                         for (const chunk of responseChunks) await sendTelegramMessage(aiBot.telegramBotToken, chatId, chunk);
                         responseText = responseChunks.join('\n\n');
                     }
-                    if (rServiceAction.type === 'request') await sendTelegramMessage(aiBot.telegramBotToken, chatId, responseText);
+                    if (rServiceAction.type === 'request' || rServiceAction.type === 'count') {
+                        await sendTelegramMessage(aiBot.telegramBotToken, chatId, responseText);
+                    }
                     directResponseSent = true;
                     assistantSessionText = responseText.replace(/<[^>]+>/g, '');
                 } catch (rServiceError) {

@@ -33,4 +33,33 @@ function canonicalizeRServiceField(value) {
     return FIELD_BY_COMPACT_NAME.get(compact) || FIELD_ALIASES.get(compact) || String(value || '').trim();
 }
 
-module.exports = { canonicalizeRServiceField };
+function normalizeEnumText(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/ё/g, 'е')
+        .replace(/[_-]+/g, ' ')
+        .replace(/\s+/g, ' ');
+}
+
+const STATUS_ALIASES = new Map([
+    ['declined', 'declined'], ['отклонен', 'declined'], ['отклонено', 'declined'],
+    ['on backlog', 'on_backlog'], ['backlog', 'on_backlog'], ['в бэклоге', 'on_backlog'], ['в беклоге', 'on_backlog'],
+    ['assigned', 'assigned'], ['назначен', 'assigned'], ['назначено', 'assigned'],
+    ['accepted', 'accepted'], ['принят', 'accepted'], ['принято', 'accepted'],
+    ['in progress', 'in_progress'], ['в работе', 'in_progress'], ['в процессе', 'in_progress'],
+    ['waiting for', 'waiting_for'], ['ожидает', 'waiting_for'], ['ожидание', 'waiting_for'],
+    ['waiting for customer', 'waiting_for_customer'], ['ожидает клиента', 'waiting_for_customer'], ['ожидание клиента', 'waiting_for_customer'],
+    ['reservation pending', 'reservation_pending'], ['ожидает резервирования', 'reservation_pending'],
+    ['workflow pending', 'workflow_pending'], ['ожидает workflow', 'workflow_pending'], ['ожидает процесса', 'workflow_pending'],
+    ['project pending', 'project_pending'], ['ожидает проекта', 'project_pending'],
+    ['completed', 'completed'], ['завершен', 'completed'], ['завершено', 'completed'], ['закрыт', 'completed'], ['закрыто', 'completed'], ['выполнен', 'completed'], ['выполнено', 'completed']
+]);
+
+function normalizeRServiceFilterValue(field, value) {
+    if (Array.isArray(value)) return value.map(item => normalizeRServiceFilterValue(field, item));
+    if (field !== 'status' || typeof value !== 'string') return value;
+    return STATUS_ALIASES.get(normalizeEnumText(value)) || value;
+}
+
+module.exports = { canonicalizeRServiceField, normalizeRServiceFilterValue };
