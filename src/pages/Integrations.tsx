@@ -9,6 +9,7 @@ import { EntityStateSwitch } from '../components/StateToggle';
 import { ToolbarToggle } from '../components/ToolbarToggle';
 import { AiFieldAssist } from '../components/AIFieldAssist';
 import { useToast } from '../components/ToastNotification';
+import { RServiceSettings } from '../components/RServiceSettings';
 
 const DEFAULT_FORM: Omit<Integration, 'id'> = {
   name: '',
@@ -53,6 +54,7 @@ export function Integrations() {
   const [importing, setImporting] = useState(false);
   const [, setTogglingIntegrationId] = useState<number | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
+  const integrationMode = searchParams.get('mode') === 'r-service' ? 'r-service' : 'http';
 
   // Автоматически скрывать уведомление через 4 секунды
 
@@ -366,8 +368,16 @@ export function Integrations() {
     }
   };
 
+  if (integrationMode === 'r-service') {
+    return <RServiceSettings canEdit={canEdit} onOpenHttp={() => setSearchParams({})} />;
+  }
+
   return (
     <div className="card" style={{ overflow: 'clip' }}>
+      <div className="integration-mode-tabs" role="tablist" aria-label="Тип интеграции">
+        <button type="button" className="integration-mode-tab active" role="tab" aria-selected="true">HTTP-интеграции</button>
+        <button type="button" className="integration-mode-tab" onClick={() => setSearchParams({ mode: 'r-service' })}>R-Service</button>
+      </div>
       <div className="card-header">
         <h2 className="text-xl font-semibold">🔗 Интегратор</h2>
         <div className="flex items-center gap-2">

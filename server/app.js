@@ -5,6 +5,7 @@ const axios = require('axios');
 const bcrypt = require('bcrypt');
 const FormData = require('form-data');
 const { parseReminderActions, stripReminderMarkers } = require('./ai-reminder-actions');
+const { parseRServiceActions, stripRServiceMarkers } = require('./r-service-actions');
 require('dotenv').config();
 
 const app = express();
@@ -28,6 +29,7 @@ const INTEGRATIONS_FILE = path.join(__dirname, '../data/integrations.json');
 const INTEGRATION_RUNS_FILE = path.join(__dirname, '../data/integration_runs.json');
 const SETTINGS_FILE = path.join(__dirname, '../data/settings.json');
 const SESSIONS_FILE = path.join(__dirname, '../data/sessions.json');
+const R_SERVICE_CONFIG_FILE = path.join(__dirname, '../data/r-service-configs.json');
 
 const CRED_USER = 'vadmin';
 const CRED_PASS = 'vadmin';
@@ -284,6 +286,19 @@ if (process.env.DATABASE_URL) {
                 )
             `);
             await client.query(`ALTER TABLE integrations ADD COLUMN IF NOT EXISTS account_id INTEGER REFERENCES accounts(id)`);
+            await client.query(`
+                CREATE TABLE IF NOT EXISTS r_service_configs (
+                    account_id INTEGER PRIMARY KEY REFERENCES accounts(id) ON DELETE CASCADE,
+                    portal_url TEXT NOT NULL,
+                    api_base_url TEXT NOT NULL,
+                    r_service_account TEXT NOT NULL,
+                    access_token TEXT NOT NULL,
+                    remote_user_id BIGINT,
+                    remote_user_name TEXT,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            `);
             await client.query(`
                 CREATE TABLE IF NOT EXISTS integration_runs (
                     id BIGSERIAL PRIMARY KEY,
@@ -703,6 +718,199 @@ function blockAuditorWrite(req, res, next) {
     }
     next();
 }
+
+function readRServiceFileConfigs() {
+    try {
+        if (!fs.existsSync(R_SERVICE_CONFIG_FILE)) return {};
+        const parsed = JSON.parse(fs.readFileSync(R_SERVICE_CONFIG_FILE, 'utf8'));
+        return parsed && typeof parsed === 'object' ? parsed : {};
+    } catch (error) {
+        console.error('R-Service config file read error:', error.message);
+        return {};
+    }
+}
+
+function writeRServiceFileConfigs(configs) {
+    fs.mkdirSync(path.dirname(R_SERVICE_CONFIG_FILE), { recursive: true });
+    fs.writeFileSync(R_SERVICE_CONFIG_FILE, JSON.stringify(configs, null, 2));
+}
+
+function normalizeRServiceLocation(input) {
+    let parsed;
+    try {
+        parsed = new URL(String(input || '').trim());
+    } catch (_) {
+        throw new Error('Укажите корректный URL портала R-Service');
+    }
+    if (parsed.protocol !== 'https:') throw new Error('R-Service требует HTTPS URL');
+
+    const host = parsed.hostname.toLowerCase();
+    const allowedApiHosts = new Map([
+        ['api.r-service.tech', 'https://api.r-service.tech/v1'],
+        ['api.qa.r-service.tech', 'https://api.qa.r-service.tech/v1'],
+        ['api.demo.r-service.tech', 'https://api.demo.r-service.tech/v1']
+    ]);
+    const explicitAccount = String(parsed.searchParams.get('account') || '').trim();
+    if (allowedApiHosts.has(host)) {
+        if (!explicitAccount) {
+            throw new Error('Для API URL добавьте account в адрес, например ?account=ru-it, либо укажите URL вашего портала');
+        }
+        return { portalUrl: parsed.origin, apiBaseUrl: allowedApiHosts.get(host), account: explicitAccount };
+    }
+    if (!host.endsWith('.r-service.tech')) {
+        throw new Error('Разрешены только HTTPS-адреса домена r-service.tech');
+    }
+
+    const labels = host.split('.');
+    const account = explicitAccount || labels[0];
+    if (!account || ['api', 'www'].includes(account)) throw new Error('Не удалось определить account ID из URL портала');
+    const apiBaseUrl = host.includes('.qa.r-service.tech')
+        ? 'https://api.qa.r-service.tech/v1'
+        : host.includes('.demo.r-service.tech')
+            ? 'https://api.demo.r-service.tech/v1'
+            : 'https://api.r-service.tech/v1';
+    return { portalUrl: parsed.origin, apiBaseUrl, account };
+}
+
+async function getRServiceConfig(accountId) {
+    if (accountId == null) return null;
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        const result = await db.query('SELECT * FROM r_service_configs WHERE account_id = $1', [accountId]);
+        return result.rows[0] || null;
+    }
+    return readRServiceFileConfigs()[String(accountId)] || null;
+}
+
+async function saveRServiceConfig(accountId, config) {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        const result = await db.query(`
+            INSERT INTO r_service_configs
+                (account_id, portal_url, api_base_url, r_service_account, access_token, remote_user_id, remote_user_name)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (account_id) DO UPDATE SET
+                portal_url = EXCLUDED.portal_url,
+                api_base_url = EXCLUDED.api_base_url,
+                r_service_account = EXCLUDED.r_service_account,
+                access_token = EXCLUDED.access_token,
+                remote_user_id = EXCLUDED.remote_user_id,
+                remote_user_name = EXCLUDED.remote_user_name,
+                updated_at = CURRENT_TIMESTAMP
+            RETURNING *
+        `, [accountId, config.portal_url, config.api_base_url, config.r_service_account, config.access_token, config.remote_user_id || null, config.remote_user_name || null]);
+        return result.rows[0];
+    }
+    const configs = readRServiceFileConfigs();
+    configs[String(accountId)] = { ...config, account_id: accountId, updated_at: new Date().toISOString() };
+    writeRServiceFileConfigs(configs);
+    return configs[String(accountId)];
+}
+
+async function deleteRServiceConfig(accountId) {
+    if (process.env.DATABASE_URL && db && typeof db.query === 'function') {
+        await db.query('DELETE FROM r_service_configs WHERE account_id = $1', [accountId]);
+        return;
+    }
+    const configs = readRServiceFileConfigs();
+    delete configs[String(accountId)];
+    writeRServiceFileConfigs(configs);
+}
+
+function publicRServiceConfig(config) {
+    if (!config) return { configured: false };
+    const token = String(config.access_token || '');
+    return {
+        configured: Boolean(token),
+        portalUrl: config.portal_url,
+        apiBaseUrl: config.api_base_url,
+        account: config.r_service_account,
+        user: config.remote_user_name ? { id: config.remote_user_id || null, name: config.remote_user_name } : null,
+        tokenMask: token ? `••••${token.slice(-4)}` : ''
+    };
+}
+
+async function callRService(config, endpoint, params = undefined, includeMeta = false) {
+    try {
+        const response = await axios.get(`${String(config.api_base_url).replace(/\/+$/, '')}${endpoint}`, {
+            params,
+            timeout: 15000,
+            maxRedirects: 0,
+            headers: {
+                Accept: 'application/json',
+                Authorization: `Bearer ${config.access_token}`,
+                account: config.r_service_account,
+                language: 'ru'
+            }
+        });
+        return includeMeta ? { data: response.data, headers: response.headers } : response.data;
+    } catch (error) {
+        const status = Number(error.response?.status || 0);
+        if (status === 401) throw new Error('R-Service отклонил токен (401)');
+        if (status === 403) throw new Error('У токена нет прав на этот запрос (403)');
+        if (status === 429) {
+            const retry = error.response?.headers?.['retry-after'];
+            throw new Error(`Лимит R-Service исчерпан${retry ? `, повторите через ${retry} сек.` : ''}`);
+        }
+        if (status >= 500) throw new Error(`R-Service временно недоступен (${status})`);
+        const remoteMessage = error.response?.data?.message;
+        throw new Error(remoteMessage ? `R-Service: ${remoteMessage}` : `Не удалось подключиться к R-Service${status ? ` (${status})` : ''}`);
+    }
+}
+
+app.get('/api/r-service/settings', auth, async (req, res) => {
+    try {
+        const config = await getRServiceConfig(getAccountIdForCreate(req));
+        res.json(publicRServiceConfig(config));
+    } catch (error) {
+        console.error('R-Service settings read error:', error.message);
+        res.status(500).json({ error: 'Не удалось загрузить настройки R-Service' });
+    }
+});
+
+app.post('/api/r-service/settings', auth, blockAuditorWrite, async (req, res) => {
+    try {
+        const accountId = getAccountIdForCreate(req);
+        const location = normalizeRServiceLocation(req.body?.portalUrl);
+        const existing = await getRServiceConfig(accountId);
+        const accessToken = String(req.body?.accessToken || existing?.access_token || '').trim();
+        if (!accessToken) return res.status(400).json({ error: 'Укажите персональный токен R-Service' });
+
+        const pending = {
+            portal_url: location.portalUrl,
+            api_base_url: location.apiBaseUrl,
+            r_service_account: location.account,
+            access_token: accessToken
+        };
+        const remoteUser = await callRService(pending, '/me');
+        const saved = await saveRServiceConfig(accountId, {
+            ...pending,
+            remote_user_id: remoteUser?.id || null,
+            remote_user_name: remoteUser?.name || null
+        });
+        res.json(publicRServiceConfig(saved));
+    } catch (error) {
+        res.status(400).json({ error: error.message || 'Не удалось сохранить R-Service' });
+    }
+});
+
+app.post('/api/r-service/settings/test', auth, async (req, res) => {
+    try {
+        const config = await getRServiceConfig(getAccountIdForCreate(req));
+        if (!config) return res.status(404).json({ error: 'R-Service ещё не настроен' });
+        const remoteUser = await callRService(config, '/me');
+        res.json({ ok: true, user: { id: remoteUser?.id || null, name: remoteUser?.name || '' } });
+    } catch (error) {
+        res.status(400).json({ error: error.message || 'Проверка R-Service не пройдена' });
+    }
+});
+
+app.delete('/api/r-service/settings', auth, blockAuditorWrite, async (req, res) => {
+    try {
+        await deleteRServiceConfig(getAccountIdForCreate(req));
+        res.status(204).end();
+    } catch (error) {
+        res.status(500).json({ error: 'Не удалось отключить R-Service' });
+    }
+});
 
 // ────────────────────────────────────────────────────────────────
 // НОВАЯ ФУНКЦИЯ ФОРМАТИРОВАНИЯ СООБЩЕНИЯ
@@ -3876,12 +4084,231 @@ ${JSON.stringify(activeReminders)}
 "Удали напоминание про маму" → [[REMINDER_DELETE:{"id":123}]]`;
 }
 
+const R_SERVICE_FILTER_FIELDS = new Set([
+    'id', 'source', 'sourceID', 'subject', 'category', 'impact', 'status', 'workflow',
+    'next_target_at', 'completed_at', 'created_by', 'grouping', 'grouped_into',
+    'knowledge_article', 'requested_by', 'requested_for', 'service_instance',
+    'supplier_requestID', 'created_at', 'updated_at', 'team', 'member', 'template',
+    'major_incident_status', 'organization', 'response_target_at', 'resolution_target_at',
+    'desired_completion_at', 'urgent'
+]);
+const R_SERVICE_REFERENCE_FIELDS = new Set([
+    'workflow', 'created_by', 'grouped_into', 'knowledge_article', 'requested_by',
+    'requested_for', 'service_instance', 'team', 'member', 'template', 'organization'
+]);
+const R_SERVICE_API_FILTER_FIELDS = new Set([
+    'id', 'source', 'sourceID', 'subject', 'category', 'impact', 'status', 'workflow',
+    'next_target_at', 'completed_at', 'created_by', 'grouping', 'grouped_into',
+    'knowledge_article', 'requested_by', 'requested_for', 'service_instance',
+    'supplier_requestID', 'created_at', 'updated_at', 'team', 'member', 'template',
+    'major_incident_status', 'organization'
+]);
+const R_SERVICE_SCOPES = new Set([
+    'all', 'open', 'completed', 'assigned_to_me', 'assigned_to_my_team',
+    'requested_by_or_for_me', 'waiting_for_me', 'sla_accountability'
+]);
+const R_SERVICE_SORT_FIELDS = new Set([
+    'id', 'sourceID', 'subject', 'category', 'impact', 'status', 'next_target_at',
+    'completed_at', 'team', 'member', 'service_instance', 'created_at', 'updated_at'
+]);
+
+function buildRServiceSystemInstruction(context = {}) {
+    if (!context.configured) return '';
+    const userName = String(context.userName || 'пользователь токена');
+    return `
+
+У тебя есть read-only доступ к R-Service от имени «${userName}». Никогда не придумывай запросы и не утверждай, что получил данные, пока сервер не выполнил маркер.
+
+Для списка запросов формируй ТОЛЬКО один JSON-маркер:
+[[RSERVICE_QUERY:{"scope":"open","filters":[],"sort":"id","direction":"desc","limit":10}]]
+
+scope: all, open, completed, assigned_to_me, assigned_to_my_team, requested_by_or_for_me, waiting_for_me, sla_accountability.
+filters — массив объектов {"field":"...","operator":"...","value":...}.
+Допустимые field: id, source, sourceID, subject, category, impact, status, workflow, next_target_at, completed_at, created_by, grouping, grouped_into, knowledge_article, requested_by, requested_for, service_instance, supplier_requestID, created_at, updated_at, team, member, template, major_incident_status, organization, response_target_at, resolution_target_at, desired_completion_at, urgent.
+operator: eq, neq, in, not_in, lt, lte, gt, gte, between, present, empty, within.
+Для member/team и других ссылок передавай в value имя человека/команды либо числовой ID — сервер сам найдёт ID. «Я», «мне», «мои» и имя «${userName}» означают scope=assigned_to_me без фильтра member.
+Для сроков «осталось меньше N часов/дней» используй operator=within и value в МИНУТАХ. Например срок реакции менее суток: {"field":"response_target_at","operator":"within","value":1440}. Срок решения: resolution_target_at. Общая ближайшая цель: next_target_at.
+Не привязывайся к конкретным фразам пользователя: извлекай смысл, свойства, операторы и значения. Если имя или условие неоднозначно — задай уточняющий вопрос без маркера.
+
+Для одного запроса по известному номеру:
+[[RSERVICE_REQUEST:{"id":70470}]]
+После любого R-Service маркера не пиши предполагаемые результаты.`;
+}
+
+async function resolveRServiceReference(config, field, value) {
+    const numericId = Number(value);
+    if (Number.isInteger(numericId) && numericId > 0) return numericId;
+    const resourceByField = {
+        member: 'people', created_by: 'people', requested_by: 'people', requested_for: 'people',
+        team: 'teams', workflow: 'workflows', grouped_into: 'requests', knowledge_article: 'knowledge_articles',
+        service_instance: 'service_instances', template: 'request_templates', organization: 'organizations'
+    };
+    const resource = resourceByField[field];
+    if (!resource) throw new Error(`Для фильтра ${field} нужен числовой ID`);
+    const nameField = resource === 'requests' ? 'subject' : 'name';
+    const matches = await callRService(config, `/${resource}`, { [nameField]: String(value), fields: `id,${nameField}`, per_page: 10 });
+    if (!Array.isArray(matches) || matches.length === 0) throw new Error(`В R-Service не найдено: ${value}`);
+    if (matches.length > 1) {
+        const names = matches.slice(0, 5).map(item => `${item[nameField]} (ID ${item.id})`).join(', ');
+        throw new Error(`Найдено несколько совпадений «${value}»: ${names}. Уточните ID.`);
+    }
+    return matches[0].id;
+}
+
+function rServiceOperatorValue(operator, value) {
+    if (operator === 'present') return '!';
+    if (operator === 'empty') return '';
+    if (operator === 'neq') return `!${value}`;
+    if (operator === 'not_in') return `!${Array.isArray(value) ? value.join(',') : value}`;
+    if (operator === 'in') return Array.isArray(value) ? value.join(',') : value;
+    if (operator === 'lt') return `<${value}`;
+    if (operator === 'lte') return `<=${value}`;
+    if (operator === 'gt') return `>${value}`;
+    if (operator === 'gte') return `>=${value}`;
+    if (operator === 'between') {
+        if (!Array.isArray(value) || value.length !== 2) throw new Error('Для between нужны два значения');
+        return `>=${value[0]}<=${value[1]}`;
+    }
+    if (operator === 'eq') return value;
+    throw new Error(`Недопустимый оператор: ${operator}`);
+}
+
+async function executeRServiceQuery(config, rawQuery = {}) {
+    const scope = R_SERVICE_SCOPES.has(rawQuery.scope) ? rawQuery.scope : 'open';
+    const limit = Math.min(20, Math.max(1, Number(rawQuery.limit) || 10));
+    const filters = Array.isArray(rawQuery.filters) ? rawQuery.filters.slice(0, 12) : [];
+    const params = {
+        fields: 'id,sourceID,subject,category,impact,status,next_target_at,response_target_at,resolution_target_at,desired_completion_at,completed_at,team,member,service_instance,urgent,created_at,updated_at',
+        per_page: limit
+    };
+    if (R_SERVICE_SORT_FIELDS.has(rawQuery.sort)) {
+        params.sort = `${rawQuery.direction === 'asc' ? '' : '-'}${rawQuery.sort}`;
+    }
+    const postFilters = [];
+    const now = new Date();
+
+    for (const filter of filters) {
+        const field = String(filter?.field || '');
+        const operator = String(filter?.operator || 'eq');
+        if (!R_SERVICE_FILTER_FIELDS.has(field)) throw new Error(`Фильтр ${field} не разрешён для запросов`);
+        if (operator === 'within') {
+            const minutes = Number(filter.value);
+            if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 525600) throw new Error('Некорректный период для срока');
+            const end = new Date(now.getTime() + minutes * 60000);
+            if (field === 'next_target_at') {
+                params[field] = `>=${now.toISOString()}<=${end.toISOString()}`;
+            } else if (['response_target_at', 'resolution_target_at', 'desired_completion_at'].includes(field)) {
+                postFilters.push({ field, start: now, end });
+                params.per_page = 100;
+            } else {
+                throw new Error(`Оператор within неприменим к ${field}`);
+            }
+            continue;
+        }
+        if (!R_SERVICE_API_FILTER_FIELDS.has(field)) {
+            throw new Error(`R-Service REST API не поддерживает серверный фильтр ${field}`);
+        }
+        let value = filter.value;
+        let paramName = field;
+        if (R_SERVICE_REFERENCE_FIELDS.has(field)) {
+            if (!['eq', 'neq', 'in', 'not_in', 'present', 'empty'].includes(operator)) throw new Error(`Оператор ${operator} неприменим к ${field}`);
+            if (!['present', 'empty'].includes(operator)) {
+                const inputValues = Array.isArray(value) ? value : [value];
+                value = [];
+                for (const item of inputValues) value.push(await resolveRServiceReference(config, field, item));
+                if (value.length === 1) value = value[0];
+            }
+            paramName = `${field}_id`;
+        }
+        params[paramName] = rServiceOperatorValue(operator, value);
+    }
+
+    const endpoint = scope === 'all' ? '/requests' : `/requests/${scope}`;
+    let requests = [];
+    if (postFilters.length === 0) {
+        const response = await callRService(config, endpoint, params);
+        requests = Array.isArray(response) ? response : [];
+    } else {
+        let searchAfter = '';
+        for (let page = 0; page < 10; page += 1) {
+            const pageParams = { ...params, ...(searchAfter ? { search_after: searchAfter } : {}) };
+            const response = await callRService(config, endpoint, pageParams, true);
+            const pageItems = Array.isArray(response.data) ? response.data : [];
+            requests.push(...pageItems);
+            const link = String(response.headers?.link || '');
+            const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
+            if (!nextMatch || pageItems.length === 0) break;
+            const nextUrl = new URL(nextMatch[1]);
+            if (!nextUrl.href.startsWith(`${String(config.api_base_url).replace(/\/+$/, '')}/`)) break;
+            searchAfter = String(nextUrl.searchParams.get('search_after') || '');
+            if (!searchAfter) break;
+        }
+    }
+    for (const filter of postFilters) {
+        requests = requests.filter(item => {
+            const date = new Date(item?.[filter.field]);
+            return Number.isFinite(date.getTime()) && date >= filter.start && date <= filter.end;
+        });
+    }
+    if (postFilters.length > 0) {
+        const deadlineField = postFilters[0].field;
+        requests.sort((a, b) => new Date(a?.[deadlineField]).getTime() - new Date(b?.[deadlineField]).getTime());
+    }
+    return requests.slice(0, limit);
+}
+
+const R_SERVICE_STATUS_LABELS = {
+    declined: 'Отклонён', on_backlog: 'В бэклоге', assigned: 'Назначен', accepted: 'Принят',
+    in_progress: 'В работе', waiting_for: 'Ожидает', waiting_for_customer: 'Ожидает клиента',
+    reservation_pending: 'Ожидает резервирования', workflow_pending: 'Ожидает workflow',
+    project_pending: 'Ожидает проекта', completed: 'Завершён'
+};
+
+function formatRServiceDate(value) {
+    if (!value || ['best_effort', 'clock_stopped', 'no_target'].includes(value)) return value || '—';
+    const date = new Date(value);
+    if (!Number.isFinite(date.getTime())) return String(value);
+    return date.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function formatRServiceRequests(requests, config) {
+    if (!requests.length) return 'По заданным условиям запросов не найдено.';
+    const lines = [`<b>Запросы R-Service: ${requests.length}</b>`];
+    for (const item of requests) {
+        const link = `${String(config.portal_url).replace(/\/+$/, '')}/requests/${item.id}`;
+        lines.push('', `<b><a href="${escapeTelegramHtml(link)}">#${item.id}</a> ${escapeTelegramHtml(item.subject || 'Без темы')}</b>`);
+        lines.push(`Статус: ${escapeTelegramHtml(R_SERVICE_STATUS_LABELS[item.status] || item.status || '—')}`);
+        if (item.member?.name || item.team?.name) lines.push(`Исполнитель: ${escapeTelegramHtml(item.member?.name || '—')} · ${escapeTelegramHtml(item.team?.name || '—')}`);
+        const target = item.next_target_at || item.resolution_target_at || item.response_target_at;
+        if (target) lines.push(`Ближайшая цель: ${escapeTelegramHtml(formatRServiceDate(target))}`);
+    }
+    return lines.join('\n').slice(0, 3900);
+}
+
+function formatRServiceRequest(item, config) {
+    const link = `${String(config.portal_url).replace(/\/+$/, '')}/requests/${item.id}`;
+    const lines = [
+        `<b><a href="${escapeTelegramHtml(link)}">Запрос #${item.id}</a></b>`,
+        escapeTelegramHtml(item.subject || 'Без темы'),
+        '',
+        `Статус: ${escapeTelegramHtml(R_SERVICE_STATUS_LABELS[item.status] || item.status || '—')}`,
+        `Категория: ${escapeTelegramHtml(item.category || '—')}`,
+        `Исполнитель: ${escapeTelegramHtml(item.member?.name || '—')}`,
+        `Команда: ${escapeTelegramHtml(item.team?.name || '—')}`,
+        `Срок ответа: ${escapeTelegramHtml(formatRServiceDate(item.response_target_at))}`,
+        `Срок решения: ${escapeTelegramHtml(formatRServiceDate(item.resolution_target_at))}`,
+        `Создан: ${escapeTelegramHtml(formatRServiceDate(item.created_at))}`
+    ];
+    return lines.join('\n').slice(0, 3900);
+}
+
 async function runAiProviderForAiBot(aiBot, chatId, text, attachments = {}) {
     const provider = String(aiBot.provider || 'gemini').toLowerCase();
 
     const reminderInstruction = '\n\n' + buildReminderSystemInstruction(attachments.reminderContext);
+    const rServiceInstruction = buildRServiceSystemInstruction(attachments.rServiceContext);
     const originalPrompt = String(aiBot.systemPrompt || '');
-    const enhancedPrompt = originalPrompt + reminderInstruction;
+    const enhancedPrompt = originalPrompt + reminderInstruction + rServiceInstruction;
 
     const enhancedBot = { ...aiBot, systemPrompt: enhancedPrompt };
 
@@ -4917,6 +5344,11 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             timeZone: getAiReminderTimeZone(telegramUser),
             activeReminders
         };
+        const rServiceConfig = await getRServiceConfig(aiBot.account_id);
+        const rServiceContext = {
+            configured: Boolean(rServiceConfig?.access_token),
+            userName: rServiceConfig?.remote_user_name || ''
+        };
 
         if (!hasVoice && !hasPhoto && telegramUser && isAiReminderListIntent(text)) {
             const listResult = await sendAiReminderList(aiBot.telegramBotToken, chatId, telegramUser);
@@ -4951,10 +5383,12 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
         const aiResponse = await runAiProviderForAiBot(aiBot, chatId, text, {
             audioData: audioPayload,
             imageData: imagePayload,
-            reminderContext
+            reminderContext,
+            rServiceContext
         });
         let aiText = String(aiResponse?.text || '');
         const reminderAction = parseReminderActions(aiText)[0] || null;
+        const rServiceAction = parseRServiceActions(aiText)[0] || null;
         let directResponseSent = false;
         let assistantSessionText = '';
         console.log('[AI Bot] Reminder action:', reminderAction?.type || 'none', 'in text length:', aiText.length);
@@ -4988,6 +5422,32 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
             aiText = 'Не удалось определить Telegram-пользователя для управления напоминаниями.';
         }
         aiText = stripReminderMarkers(aiText);
+
+        if (!directResponseSent && rServiceAction) {
+            if (!rServiceConfig) {
+                aiText = 'R-Service ещё не подключён. Укажите URL и токен во вкладке «Интеграции → R-Service».';
+            } else {
+                try {
+                    let responseText;
+                    if (rServiceAction.type === 'request') {
+                        const request = await callRService(rServiceConfig, `/requests/${rServiceAction.id}`);
+                        responseText = formatRServiceRequest(request, rServiceConfig);
+                    } else {
+                        const query = rServiceAction.type === 'assigned'
+                            ? { scope: 'assigned_to_me', limit: rServiceAction.limit }
+                            : rServiceAction.query;
+                        const requests = await executeRServiceQuery(rServiceConfig, query);
+                        responseText = formatRServiceRequests(requests, rServiceConfig);
+                    }
+                    await sendTelegramMessage(aiBot.telegramBotToken, chatId, responseText);
+                    directResponseSent = true;
+                    assistantSessionText = responseText.replace(/<[^>]+>/g, '');
+                } catch (rServiceError) {
+                    aiText = `Не удалось выполнить запрос к R-Service: ${rServiceError.message}`;
+                }
+            }
+        }
+        aiText = stripRServiceMarkers(aiText);
 
         pushAiBotSessionMessage(aiBot.id, chatId, 'user', text);
         if (assistantSessionText || aiText) {

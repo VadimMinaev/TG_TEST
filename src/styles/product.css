@@ -298,6 +298,64 @@ button, a { touch-action: manipulation; }
   backdrop-filter: blur(12px);
 }
 .fp-form-body:has(.form-actions) { padding-bottom: 30px; }
+
+.integration-mode-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 7px;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted) / .38);
+}
+.integration-mode-tab {
+  min-height: 36px;
+  padding: 7px 14px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: hsl(var(--muted-foreground));
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.integration-mode-tab:hover { color: hsl(var(--foreground)); background: hsl(var(--card)); }
+.integration-mode-tab.active { border-color: hsl(var(--border)); color: hsl(var(--primary)); background: hsl(var(--card)); box-shadow: var(--shadow-xs); }
+.r-service-page { overflow: clip; }
+.r-service-header { align-items: center; padding: 22px clamp(18px, 3vw, 32px); }
+.r-service-header p { margin-top: 4px; color: hsl(var(--muted-foreground)); font-size: 13px; }
+.r-service-eyebrow { margin-bottom: 5px; color: hsl(var(--primary)); font-size: 10.5px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
+.r-service-status { display: inline-flex; align-items: center; gap: 7px; padding: 8px 11px; border: 1px solid hsl(var(--border)); border-radius: 999px; color: hsl(var(--muted-foreground)); font-size: 12px; font-weight: 700; }
+.r-service-status.connected { border-color: hsl(var(--success) / .25); color: hsl(var(--success)); background: hsl(var(--success) / .07); }
+.r-service-content { min-height: 440px; padding: clamp(18px, 3vw, 34px); }
+.r-service-form { width: min(900px, 100%); margin: 0 auto; display: flex; flex-direction: column; gap: 22px; }
+.r-service-security-note { display: flex; gap: 12px; padding: 15px; border: 1px solid hsl(var(--primary) / .18); border-radius: 12px; color: hsl(var(--primary)); background: hsl(var(--primary) / .055); }
+.r-service-security-note div { display: flex; flex-direction: column; gap: 3px; }
+.r-service-security-note strong { color: hsl(var(--foreground)); font-size: 13px; }
+.r-service-security-note span { color: hsl(var(--muted-foreground)); font-size: 12px; }
+.r-service-connection-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1px; overflow: hidden; border: 1px solid hsl(var(--border)); border-radius: 12px; background: hsl(var(--border)); }
+.r-service-connection-grid > div { min-width: 0; display: flex; flex-direction: column; gap: 4px; padding: 13px 15px; background: hsl(var(--background)); }
+.r-service-connection-grid span { color: hsl(var(--muted-foreground)); font-size: 10.5px; font-weight: 650; text-transform: uppercase; letter-spacing: .05em; }
+.r-service-connection-grid strong { overflow: hidden; color: hsl(var(--foreground)); font-size: 12.5px; text-overflow: ellipsis; white-space: nowrap; }
+.r-service-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.r-service-fields > div { display: flex; flex-direction: column; gap: 7px; }
+.r-service-fields .fp-input { width: 100%; padding: 9px 12px; }
+.r-service-help { color: hsl(var(--muted-foreground)); font-size: 11px; line-height: 1.45; }
+.r-service-token-field { position: relative; }
+.r-service-token-field .fp-input { padding-right: 50px; }
+.r-service-token-field .icon-button { position: absolute; top: 3px; right: 3px; }
+.r-service-examples { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 16px; border: 1px solid hsl(var(--border)); border-radius: 12px; background: hsl(var(--muted) / .28); }
+.r-service-examples strong { grid-column: 1 / -1; margin-bottom: 3px; font-size: 12.5px; }
+.r-service-examples span { color: hsl(var(--muted-foreground)); font-size: 11.5px; }
+.r-service-examples span::before { content: '“'; color: hsl(var(--primary)); }
+.r-service-actions { display: flex; justify-content: flex-end; gap: 9px; padding-top: 2px; }
+
+@media (max-width: 700px) {
+  .integration-mode-tabs { overflow-x: auto; }
+  .integration-mode-tab { flex: 1 0 auto; }
+  .r-service-header { align-items: flex-start; gap: 14px; }
+  .r-service-header, .r-service-content { padding-inline: 15px; }
+  .r-service-connection-grid, .r-service-fields, .r-service-examples { grid-template-columns: 1fr; }
+  .r-service-examples strong { grid-column: 1; }
+  .r-service-actions { flex-wrap: wrap; }
+  .r-service-actions > button { flex: 1 1 150px; }
+}
 .entity-view { gap: 22px; }
 .entity-view-title {
   margin: 0 0 10px;

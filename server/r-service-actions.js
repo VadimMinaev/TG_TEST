@@ -1,0 +1,32 @@
+'use strict';
+
+const MARKER_RE = /\[\[RSERVICE_(ASSIGNED_REQUESTS|REQUEST|QUERY):([\s\S]*?)\]\]/g;
+
+function parseRServiceActions(text) {
+    const actions = [];
+    const source = String(text || '');
+    let match;
+    while ((match = MARKER_RE.exec(source)) !== null) {
+        try {
+            const payload = JSON.parse(match[2]);
+            if (match[1] === 'ASSIGNED_REQUESTS') {
+                const limit = Math.min(20, Math.max(1, Number(payload.limit) || 10));
+                actions.push({ type: 'assigned', limit });
+            } else if (match[1] === 'REQUEST') {
+                const id = Number(payload.id);
+                if (Number.isInteger(id) && id > 0) actions.push({ type: 'request', id });
+            } else if (payload && typeof payload === 'object') {
+                actions.push({ type: 'query', query: payload });
+            }
+        } catch (_) {
+            // An invalid model marker is ignored instead of executing an uncertain request.
+        }
+    }
+    return actions;
+}
+
+function stripRServiceMarkers(text) {
+    return String(text || '').replace(MARKER_RE, '').trim();
+}
+
+module.exports = { parseRServiceActions, stripRServiceMarkers };

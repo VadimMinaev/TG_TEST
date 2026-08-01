@@ -196,6 +196,15 @@ export interface IntegrationRun {
   created_at: string;
 }
 
+export interface RServiceSettings {
+  configured: boolean;
+  portalUrl?: string;
+  apiBaseUrl?: string;
+  account?: string;
+  user?: { id: number | null; name: string } | null;
+  tokenMask?: string;
+}
+
 function getHeaders(): Record<string, string> {
   const token = localStorage.getItem('authToken');
   const headers: Record<string, string> = {
@@ -416,6 +425,35 @@ export const api = {
   },
 
   // Integrations
+  getRServiceSettings: async (): Promise<RServiceSettings> => {
+    const res = await fetch(`${API_BASE}/r-service/settings`, { headers: getHeaders() });
+    if (!res.ok) throw new Error('Не удалось загрузить настройки R-Service');
+    return res.json();
+  },
+
+  saveRServiceSettings: async (data: { portalUrl: string; accessToken?: string }): Promise<RServiceSettings> => {
+    const res = await fetch(`${API_BASE}/r-service/settings`, {
+      method: 'POST',
+      headers: getHeaders(),
+      body: JSON.stringify(data),
+    });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(result.error || 'Не удалось сохранить настройки R-Service');
+    return result;
+  },
+
+  testRServiceSettings: async (): Promise<{ ok: boolean; user: { id: number | null; name: string } }> => {
+    const res = await fetch(`${API_BASE}/r-service/settings/test`, { method: 'POST', headers: getHeaders() });
+    const result = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(result.error || 'Проверка R-Service не пройдена');
+    return result;
+  },
+
+  deleteRServiceSettings: async (): Promise<void> => {
+    const res = await fetch(`${API_BASE}/r-service/settings`, { method: 'DELETE', headers: getHeaders() });
+    if (!res.ok) throw new Error('Не удалось отключить R-Service');
+  },
+
   getIntegrations: async (): Promise<Integration[]> => {
     const res = await fetch(`${API_BASE}/integrations`, { headers: getHeaders() });
     if (!res.ok) throw new Error('Failed to fetch integrations');
