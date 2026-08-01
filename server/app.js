@@ -8,6 +8,7 @@ const { parseReminderActions, stripReminderMarkers } = require('./ai-reminder-ac
 const { parseRServiceActions, stripRServiceMarkers } = require('./r-service-actions');
 const { findBestReferenceMatches } = require('./r-service-reference-match');
 const { canonicalizeRServiceField } = require('./r-service-query-normalization');
+const { applyLocalFilters } = require('./r-service-local-filter');
 require('dotenv').config();
 
 const app = express();
@@ -4092,7 +4093,7 @@ const R_SERVICE_FILTER_FIELDS = new Set([
     'knowledge_article', 'requested_by', 'requested_for', 'service_instance',
     'supplier_requestID', 'created_at', 'updated_at', 'team', 'member', 'template',
     'major_incident_status', 'organization', 'response_target_at', 'resolution_target_at',
-    'desired_completion_at', 'urgent'
+    'desired_completion_at', 'urgent', 'assignment_count'
 ]);
 const R_SERVICE_REFERENCE_FIELDS = new Set([
     'workflow', 'created_by', 'grouped_into', 'knowledge_article', 'requested_by',
@@ -4101,9 +4102,9 @@ const R_SERVICE_REFERENCE_FIELDS = new Set([
 const R_SERVICE_API_FILTER_FIELDS = new Set([
     'id', 'source', 'sourceID', 'subject', 'category', 'impact', 'status', 'workflow',
     'next_target_at', 'completed_at', 'created_by', 'grouping', 'grouped_into',
-    'knowledge_article', 'requested_by', 'requested_for', 'service_instance',
+    'requested_by', 'requested_for', 'service_instance',
     'supplier_requestID', 'created_at', 'updated_at', 'team', 'member', 'template',
-    'major_incident_status', 'organization'
+    'major_incident_status', 'organization', 'assignment_count'
 ]);
 const R_SERVICE_SCOPES = new Set([
     'all', 'open', 'completed', 'assigned_to_me', 'assigned_to_my_team',
@@ -4111,7 +4112,8 @@ const R_SERVICE_SCOPES = new Set([
 ]);
 const R_SERVICE_SORT_FIELDS = new Set([
     'id', 'sourceID', 'subject', 'category', 'impact', 'status', 'next_target_at',
-    'completed_at', 'team', 'member', 'service_instance', 'created_at', 'updated_at'
+    'completed_at', 'team', 'member', 'service_instance', 'created_at', 'updated_at',
+    'assignment_count', 'reopen_count'
 ]);
 
 function buildRServiceSystemInstruction(context = {}) {
@@ -4126,7 +4128,7 @@ function buildRServiceSystemInstruction(context = {}) {
 
 scope: all, open, completed, assigned_to_me, assigned_to_my_team, requested_by_or_for_me, waiting_for_me, sla_accountability.
 filters — массив объектов {"field":"...","operator":"...","value":...}.
-Допустимые field: id, source, sourceID, subject, category, impact, status, workflow, next_target_at, completed_at, created_by, grouping, grouped_into, knowledge_article, requested_by, requested_for, service_instance, supplier_requestID, created_at, updated_at, team, member, template, major_incident_status, organization, response_target_at, resolution_target_at, desired_completion_at, urgent.
+Допустимые field: id, source, sourceID, subject, category, impact, status, workflow, next_target_at, completed_at, created_by, grouping, grouped_into, knowledge_article, requested_by, requested_for, service_instance, supplier_requestID, created_at, updated_at, team, member, template, major_incident_status, organization, response_target_at, resolution_target_at, desired_completion_at, urgent, assignment_count.
 operator: eq, neq, in, not_in, lt, lte, gt, gte, between, present, empty, within.
 Для member/team и других ссылок передавай в value имя человека/команды в именительном падеже либо числовой ID — сервер сам найдёт ID. «Исполнитель» означает member, «команда» — team, «инициатор/кто подал» — requested_by, «для кого/получатель» — requested_for. «Я», «мне», «мои» и имя «${userName}» означают scope=assigned_to_me без фильтра member.
 Для сроков «осталось меньше N часов/дней» используй operator=within и value в МИНУТАХ. Например срок реакции менее суток: {"field":"response_target_at","operator":"within","value":1440}. Явно сказанный срок решения: resolution_target_at. Общий «ближайший срок», «срок подходит», «горит» без уточнения вида SLA: next_target_at. Названия полей копируй точно, со знаками подчёркивания и суффиксом _at.
@@ -4205,7 +4207,7 @@ async function executeRServiceQuery(config, rawQuery = {}) {
     const limit = Math.min(20, Math.max(1, Number(rawQuery.limit) || 10));
     const filters = Array.isArray(rawQuery.filters) ? rawQuery.filters.slice(0, 12) : [];
     const params = {
-        fields: 'id,sourceID,subject,category,impact,status,next_target_at,response_target_at,resolution_target_at,desired_completion_at,completed_at,team,member,service_instance,urgent,created_at,updated_at',
+        fields: 'id,sourceID,subject,category,impact,status,next_target_at,response_target_at,resolution_target_at,desired_completion_at,completed_at,created_by,requested_by,requested_for,workflow,grouped_into,knowledge_article,team,member,service_instance,template,organization,urgent,assignment_count,reopen_count,created_at,updated_at',
         per_page: limit
     };
     if (R_SERVICE_SORT_FIELDS.has(rawQuery.sort)) {
@@ -4225,63 +4227,81 @@ async function executeRServiceQuery(config, rawQuery = {}) {
             if (field === 'next_target_at') {
                 params[field] = `>=${now.toISOString()}<=${end.toISOString()}`;
             } else if (['response_target_at', 'resolution_target_at', 'desired_completion_at'].includes(field)) {
-                postFilters.push({ field, start: now, end });
+                postFilters.push({ kind: 'deadline', field, operator, start: now, end });
                 params.per_page = 100;
             } else {
                 throw new Error(`Оператор within неприменим к ${field}`);
             }
             continue;
         }
-        if (!R_SERVICE_API_FILTER_FIELDS.has(field)) {
-            throw new Error(`R-Service REST API не поддерживает серверный фильтр ${field}`);
-        }
         let value = filter.value;
         let paramName = field;
+        if (!R_SERVICE_API_FILTER_FIELDS.has(field)) {
+            postFilters.push({ kind: R_SERVICE_REFERENCE_FIELDS.has(field) ? 'reference' : 'scalar', field, operator, value });
+            params.per_page = 100;
+            continue;
+        }
         if (R_SERVICE_REFERENCE_FIELDS.has(field)) {
             if (!['eq', 'neq', 'in', 'not_in', 'present', 'empty'].includes(operator)) throw new Error(`Оператор ${operator} неприменим к ${field}`);
             if (!['present', 'empty'].includes(operator)) {
                 const inputValues = Array.isArray(value) ? value : [value];
-                value = [];
-                for (const item of inputValues) value.push(await resolveRServiceReference(config, field, item));
-                if (value.length === 1) value = value[0];
+                try {
+                    value = [];
+                    for (const item of inputValues) value.push(await resolveRServiceReference(config, field, item));
+                    if (value.length === 1) value = value[0];
+                } catch (referenceError) {
+                    if (/несколько совпадений/i.test(String(referenceError.message || ''))) throw referenceError;
+                    postFilters.push({ kind: 'reference', field, operator, value: filter.value });
+                    params.per_page = 100;
+                    continue;
+                }
             }
             paramName = `${field}_id`;
         }
         params[paramName] = rServiceOperatorValue(operator, value);
     }
 
-    const endpoint = scope === 'all' ? '/requests' : `/requests/${scope}`;
+    let endpoint = '/requests';
+    if (scope === 'open' || scope === 'completed') params.state = scope;
+    else if (scope !== 'all') endpoint = `/requests/${scope}`;
     let requests = [];
+    let total = 0;
     if (postFilters.length === 0) {
-        const response = await callRService(config, endpoint, params);
-        requests = Array.isArray(response) ? response : [];
+        const response = await callRService(config, endpoint, params, true);
+        requests = Array.isArray(response.data) ? response.data : [];
+        total = Number(response.headers?.['x-pagination-total-entries']) || requests.length;
     } else {
         let searchAfter = '';
-        for (let page = 0; page < 10; page += 1) {
+        const seenCursors = new Set();
+        const seenRequestIds = new Set();
+        for (let page = 0; page < 100; page += 1) {
             const pageParams = { ...params, ...(searchAfter ? { search_after: searchAfter } : {}) };
             const response = await callRService(config, endpoint, pageParams, true);
             const pageItems = Array.isArray(response.data) ? response.data : [];
-            requests.push(...pageItems);
+            for (const item of pageItems) {
+                if (seenRequestIds.has(item.id)) continue;
+                seenRequestIds.add(item.id);
+                requests.push(item);
+            }
             const link = String(response.headers?.link || '');
             const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
             if (!nextMatch || pageItems.length === 0) break;
             const nextUrl = new URL(nextMatch[1]);
             if (!nextUrl.href.startsWith(`${String(config.api_base_url).replace(/\/+$/, '')}/`)) break;
             searchAfter = String(nextUrl.searchParams.get('search_after') || '');
-            if (!searchAfter) break;
+            if (!searchAfter || seenCursors.has(searchAfter)) break;
+            seenCursors.add(searchAfter);
         }
     }
-    for (const filter of postFilters) {
-        requests = requests.filter(item => {
-            const date = new Date(item?.[filter.field]);
-            return Number.isFinite(date.getTime()) && date >= filter.start && date <= filter.end;
-        });
-    }
+    requests = applyLocalFilters(requests, postFilters);
+    if (postFilters.length > 0) total = requests.length;
     if (postFilters.length > 0) {
-        const deadlineField = postFilters[0].field;
-        requests.sort((a, b) => new Date(a?.[deadlineField]).getTime() - new Date(b?.[deadlineField]).getTime());
+        const deadlineFilter = postFilters.find(filter => filter.kind === 'deadline');
+        if (deadlineFilter) {
+            requests.sort((a, b) => new Date(a?.[deadlineFilter.field]).getTime() - new Date(b?.[deadlineFilter.field]).getTime());
+        }
     }
-    return requests.slice(0, limit);
+    return { items: requests.slice(0, limit), total };
 }
 
 const R_SERVICE_STATUS_LABELS = {
@@ -4298,9 +4318,10 @@ function formatRServiceDate(value) {
     return date.toLocaleString('ru-RU', { timeZone: 'Europe/Moscow', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
-function formatRServiceRequests(requests, config) {
+function formatRServiceRequests(requests, config, total = requests.length) {
     if (!requests.length) return 'По заданным условиям запросов не найдено.';
-    const lines = [`<b>Запросы R-Service: ${requests.length}</b>`];
+    const countText = total > requests.length ? `показано ${requests.length} из ${total}` : String(total);
+    const lines = [`<b>Запросы R-Service: ${countText}</b>`];
     for (const item of requests) {
         const link = `${String(config.portal_url).replace(/\/+$/, '')}/requests/${item.id}`;
         lines.push('', `<b><a href="${escapeTelegramHtml(link)}">#${item.id}</a> ${escapeTelegramHtml(item.subject || 'Без темы')}</b>`);
@@ -5463,8 +5484,8 @@ app.post('/api/telegram/ai/:id/webhook', async (req, res) => {
                         const query = rServiceAction.type === 'assigned'
                             ? { scope: 'assigned_to_me', limit: rServiceAction.limit }
                             : rServiceAction.query;
-                        const requests = await executeRServiceQuery(rServiceConfig, query);
-                        responseText = formatRServiceRequests(requests, rServiceConfig);
+                        const result = await executeRServiceQuery(rServiceConfig, query);
+                        responseText = formatRServiceRequests(result.items, rServiceConfig, result.total);
                     }
                     await sendTelegramMessage(aiBot.telegramBotToken, chatId, responseText);
                     directResponseSent = true;
