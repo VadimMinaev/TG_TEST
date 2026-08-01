@@ -6,6 +6,7 @@ const bcrypt = require('bcrypt');
 const FormData = require('form-data');
 const { parseReminderActions, stripReminderMarkers } = require('./ai-reminder-actions');
 const { parseRServiceActions, stripRServiceMarkers } = require('./r-service-actions');
+const { findBestReferenceMatches } = require('./r-service-reference-match');
 require('dotenv').config();
 
 const app = express();
@@ -4126,7 +4127,7 @@ scope: all, open, completed, assigned_to_me, assigned_to_my_team, requested_by_o
 filters — массив объектов {"field":"...","operator":"...","value":...}.
 Допустимые field: id, source, sourceID, subject, category, impact, status, workflow, next_target_at, completed_at, created_by, grouping, grouped_into, knowledge_article, requested_by, requested_for, service_instance, supplier_requestID, created_at, updated_at, team, member, template, major_incident_status, organization, response_target_at, resolution_target_at, desired_completion_at, urgent.
 operator: eq, neq, in, not_in, lt, lte, gt, gte, between, present, empty, within.
-Для member/team и других ссылок передавай в value имя человека/команды либо числовой ID — сервер сам найдёт ID. «Я», «мне», «мои» и имя «${userName}» означают scope=assigned_to_me без фильтра member.
+Для member/team и других ссылок передавай в value имя человека/команды в именительном падеже либо числовой ID — сервер сам найдёт ID. «Исполнитель» означает member, «команда» — team, «инициатор/кто подал» — requested_by, «для кого/получатель» — requested_for. «Я», «мне», «мои» и имя «${userName}» означают scope=assigned_to_me без фильтра member.
 Для сроков «осталось меньше N часов/дней» используй operator=within и value в МИНУТАХ. Например срок реакции менее суток: {"field":"response_target_at","operator":"within","value":1440}. Срок решения: resolution_target_at. Общая ближайшая цель: next_target_at.
 Не привязывайся к конкретным фразам пользователя: извлекай смысл, свойства, операторы и значения. Если имя или условие неоднозначно — задай уточняющий вопрос без маркера.
 
@@ -4146,10 +4147,35 @@ async function resolveRServiceReference(config, field, value) {
     const resource = resourceByField[field];
     if (!resource) throw new Error(`Для фильтра ${field} нужен числовой ID`);
     const nameField = resource === 'requests' ? 'subject' : 'name';
-    const matches = await callRService(config, `/${resource}`, { [nameField]: String(value), fields: `id,${nameField}`, per_page: 10 });
-    if (!Array.isArray(matches) || matches.length === 0) throw new Error(`В R-Service не найдено: ${value}`);
+    const exactMatches = await callRService(config, `/${resource}`, { [nameField]: String(value), fields: `id,${nameField}`, per_page: 10 });
+    if (Array.isArray(exactMatches) && exactMatches.length === 1) return exactMatches[0].id;
+    if (Array.isArray(exactMatches) && exactMatches.length > 1) {
+        const names = exactMatches.slice(0, 5).map(item => `${item[nameField]} (ID ${item.id})`).join(', ');
+        throw new Error(`Найдено несколько совпадений «${value}»: ${names}. Уточните ID.`);
+    }
+
+    // R-Service string filters are case-sensitive. If exact lookup returned nothing,
+    // scan a bounded collection and compare names locally (case, ё/е and word order).
+    const candidates = [];
+    let searchAfter = '';
+    for (let page = 0; page < 10; page += 1) {
+        const params = { fields: `id,${nameField}`, per_page: 100, ...(searchAfter ? { search_after: searchAfter } : {}) };
+        const response = await callRService(config, `/${resource}`, params, true);
+        const pageItems = Array.isArray(response.data) ? response.data : [];
+        candidates.push(...pageItems);
+        const link = String(response.headers?.link || '');
+        const nextMatch = link.match(/<([^>]+)>;\s*rel="next"/);
+        if (!nextMatch || pageItems.length === 0) break;
+        const nextUrl = new URL(nextMatch[1]);
+        if (!nextUrl.href.startsWith(`${String(config.api_base_url).replace(/\/+$/, '')}/`)) break;
+        searchAfter = String(nextUrl.searchParams.get('search_after') || '');
+        if (!searchAfter) break;
+    }
+
+    const matches = findBestReferenceMatches(value, candidates.map(item => ({ ...item, name: item[nameField] })));
+    if (matches.length === 0) throw new Error(`В R-Service не найдено: ${value}`);
     if (matches.length > 1) {
-        const names = matches.slice(0, 5).map(item => `${item[nameField]} (ID ${item.id})`).join(', ');
+        const names = matches.slice(0, 5).map(item => `${item.name} (ID ${item.id})`).join(', ');
         throw new Error(`Найдено несколько совпадений «${value}»: ${names}. Уточните ID.`);
     }
     return matches[0].id;

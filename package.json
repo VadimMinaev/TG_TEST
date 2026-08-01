@@ -1,6 +1,6 @@
 {
   "name": "telegram-webhook-integration",
-  "version": "1.0.448",
+  "version": "1.0.449",
   "description": "Webhook to Telegram integration with routing rules",
   "main": "server/app.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "dev": "node --watch server/app.js",
     "dev:client": "vite",
     "lint": "tsc --noEmit",
-    "test:server": "node --test server/ai-reminder-actions.test.js server/r-service-actions.test.js",
+    "test:server": "node --test server/ai-reminder-actions.test.js server/r-service-actions.test.js server/r-service-reference-match.test.js",
     "check:encoding": "node scripts/check-encoding.js",
     "build": "npm run check:encoding && vite build",
     "preview": "vite preview",
